@@ -174,6 +174,12 @@ docker run -d --name antigravity-manager \
     - **Web Login**: **Must** use `WEB_PASSWORD`. Using API Key will be rejected (more secure).
     - **API Calls**: Continue to use `API_KEY`. This allows you to share the API Key with team members while keeping the password for administrative access only.
 
+#### 🆙 Upgrade Guide for Older Versions
+If you are upgrading from v4.0.1 or earlier, your installation won't have a `WEB_PASSWORD` set by default. You can add one using any of these methods:
+1.  **Web UI (Recommended)**: Log in using your existing `API_KEY`, go to the **API Proxy Settings** page, find the **Web UI Management Password** section below the API Key, set your new password, and save.
+2.  **Environment Variable (Docker)**: Stop the old container and start the new one with the added parameter `-e WEB_PASSWORD=your_new_password`.
+3.  **Config File**: Directly edit `~/.antigravity_tools/gui_config.json` and add `"admin_password": "your_new_password"` inside the `proxy` object.
+
 # Option 2: Use Docker Compose
 # 1. Enter the Docker directory
 cd docker
