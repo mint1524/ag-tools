@@ -178,6 +178,12 @@ docker run -d --name antigravity-manager \
 2.  **环境变量 (Docker)**：停止旧容器，并在启动新容器时增加 `-e WEB_PASSWORD=您的新密码` 参数。
 3.  **配置文件**：直接修改 `~/.antigravity_tools/gui_config.json`，在 `proxy` 对象中添加 `"admin_password": "您的新密码"`。
 
+> [!TIP]
+> **優先級邏輯 (Priority)**:
+> - **環境變量** (`WEB_PASSWORD`) 具有最高優先級。如果設置了環境變量，程序將始終使用它，忽略配置文件中的值。
+> - **配置文件** (`gui_config.json`) 用於持久化存儲。當您通過 Web UI 修改密碼並保存時，新密碼會寫入此文件。
+> - **回退機制**: 如果上述兩者皆未設置，則回退使用 `API_KEY`；若連 `API_KEY` 也未設置，則隨機生成。
+
 # 方式 2: 使用 Docker Compose
 # 1. 进入项目的 docker 目录
 cd docker

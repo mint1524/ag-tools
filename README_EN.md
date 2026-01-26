@@ -180,6 +180,12 @@ If you are upgrading from v4.0.1 or earlier, your installation won't have a `WEB
 2.  **Environment Variable (Docker)**: Stop the old container and start the new one with the added parameter `-e WEB_PASSWORD=your_new_password`.
 3.  **Config File**: Directly edit `~/.antigravity_tools/gui_config.json` and add `"admin_password": "your_new_password"` inside the `proxy` object.
 
+> [!TIP]
+> **Priority Logic**:
+> - **Environment Variable** (`WEB_PASSWORD`) has the highest priority. If set, the application will always use it and ignore values in the configuration file.
+> - **Configuration File** (`gui_config.json`) is used for persistent storage. When you change the password via Web UI and save, it is written here.
+> - **Fallback**: If neither is set, it falls back to `API_KEY`; if even `API_KEY` is missing, a random one is generated.
+
 # Option 2: Use Docker Compose
 # 1. Enter the Docker directory
 cd docker
