@@ -173,16 +173,16 @@ docker run -d --name antigravity-manager \
     - **API 调用**：统一使用 `API_KEY`。这样您可以将 API Key 分发给成员，而保留密码仅供管理员使用。
 
 #### 🆙 旧版本升级指引
-如果您是从 v4.0.1 及更早版本升级，默认没有设置 `WEB_PASSWORD`。您可以通过以下任一方式添加：
-1.  **Web UI 界面 (推荐)**：使用您原有的 `API_KEY` 登录管理后台，进入 **API 反代设置** 页面，在 API 密钥下方找到 **Web UI 管理后台密码** 项进行设置并保存。
-2.  **环境变量 (Docker)**：停止旧容器，并在启动新容器时增加 `-e WEB_PASSWORD=您的新密码` 参数。
+如果您是从 v4.0.1 及更早版本升级，系统默认未设置 `WEB_PASSWORD`。您可以通过以下任一方式设置：
+1.  **Web UI 界面 (推荐)**：使用原有 `API_KEY` 登录后，在 **API 反代设置** 页面手动设置并保存。新密码将持久化存储在 `gui_config.json` 中。
+2.  **环境变量 (Docker)**：在启动容器时增加 `-e WEB_PASSWORD=您的新密码`。**注意：环境变量具有最高优先级，将覆盖 UI 中的任何修改。**
 3.  **配置文件**：直接修改 `~/.antigravity_tools/gui_config.json`，在 `proxy` 对象中添加 `"admin_password": "您的新密码"`。
 
 > [!TIP]
-> **優先級邏輯 (Priority)**:
-> - **環境變量** (`WEB_PASSWORD`) 具有最高優先級。如果設置了環境變量，程序將始終使用它，忽略配置文件中的值。
-> - **配置文件** (`gui_config.json`) 用於持久化存儲。當您通過 Web UI 修改密碼並保存時，新密碼會寫入此文件。
-> - **回退機制**: 如果上述兩者皆未設置，則回退使用 `API_KEY`；若連 `API_KEY` 也未設置，則隨機生成。
+> **密码优先级逻辑 (Priority)**:
+> - **第一优先级 (环境变量)**: `ABV_WEB_PASSWORD` 或 `WEB_PASSWORD`。只要设置了环境变量，系统将始终使用它。
+> - **第二优先级 (配置文件)**: `gui_config.json` 中的 `admin_password` 字段。UI 的“保存”操作会更新此值。
+> - **保底回退 (向后兼容)**: 若上述均未设置，则回退使用 `API_KEY` 作为登录密码。
 
 # 方式 2: 使用 Docker Compose
 # 1. 进入项目的 docker 目录
