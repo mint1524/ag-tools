@@ -1,6 +1,6 @@
 use crate::proxy::TokenManager;
 use axum::{
-    extract::{Path, State, Query},
+    extract::{DefaultBodyLimit, Path, State, Query},
     http::{StatusCode, HeaderMap},
     response::{IntoResponse, Json, Response, Html},
     routing::{any, get, post, delete},
@@ -413,6 +413,13 @@ impl AxumServer {
             .layer(axum::middleware::from_fn_with_state(state.clone(), admin_auth_middleware));
 
         // 3. 整合并应用全局层
+        // 从环境变量读取 body 大小限制，默认 50MB
+        let max_body_size: usize = std::env::var("ABV_MAX_BODY_SIZE")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(50 * 1024 * 1024); // 默认 50MB
+        tracing::info!("请求体大小限制: {} MB", max_body_size / 1024 / 1024);
+
         let app = Router::new()
             .nest("/api", admin_routes)
             .merge(proxy_routes)
@@ -421,6 +428,7 @@ impl AxumServer {
             // 应用全局监控与状态层 (外层)
             .layer(axum::middleware::from_fn_with_state(state.clone(), service_status_middleware))
             .layer(cors_layer())
+            .layer(DefaultBodyLimit::max(max_body_size)) // 放宽 body 大小限制
             .with_state(state.clone());
 
         // 静态文件托管 (用于 Headless/Docker 模式)
