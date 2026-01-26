@@ -247,6 +247,9 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.0.2 (2026-01-26)**:
+        -   **[Core Fix] Session Persistence After Account Switch (Fix Issue #1159)**:
+            - Enhanced database injection logic to synchronize identity info (Email) and clear legacy UserID cache during account switching.
+            - Resolved session association failures caused by mismatches between the new Token and old identity metadata.
         -   **[Core Fix] Model Mapping Persistence in Docker/Web Mode (Fix Issue #1149)**:
             - Resolved an issue where model mapping configurations modified via API in Docker or Web deployment modes were not saved to disk.
             - Ensured the `admin_update_model_mapping` interface correctly invokes persistence logic, so configurations remain effective after container restarts.

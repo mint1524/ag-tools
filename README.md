@@ -358,7 +358,10 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
-    *   **v4.0.2 (2026-01-26)**:
+        -   **v4.0.2 (2026-01-26)**:
+        -   **[核心修复] 解决切换账号后会话无法持久化保存 (Fix Issue #1159)**:
+            - 增强了数据库注入逻辑，在切换账号时同步更新身份标识（Email）并清除旧的 UserID 缓存。
+            - 解决了因 Token 与身份标识不匹配导致客户端无法正确关联或保存新会话的问题。
         -   **[核心修复] Docker/Web 模式下模型映射持久化 (Fix Issue #1149)**:
             - 修复了在 Docker 或 Web 部署模式下，管理员通过 API 修改的模型映射配置（Model Mapping）无法保存到硬盘的问题。
             - 确保 `admin_update_model_mapping` 接口正确调用持久化逻辑，配置在重启容器后依然生效。
