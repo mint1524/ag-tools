@@ -241,6 +241,13 @@ print(response.choices[0].message.content)
                 - ✅ Significantly improves Schema compatibility and model understanding for MCP tools (e.g., Pencil)
                 - ✅ Establishes pluggable foundation for adding more MCP tools (filesystem, database, etc.) in the future
                 - ✅ Fully backward compatible, all 25 tests passing
+        -   **[Security Enhancement] Web UI Management Password & API Key Separation (Fix Issue #1139)**:
+            - **Independent Password Configuration**: Support setting a separate management console login password via `ABV_WEB_PASSWORD` or `WEB_PASSWORD` environment variables.
+            - **Intelligent Authentication Logic**: 
+                - Management interfaces prioritize validating the independent password, automatically falling back to `API_KEY` if not set (ensuring backward compatibility).
+                - AI Proxy interfaces strictly only allow `API_KEY` for authentication, achieving permission isolation.
+            - **Configuration UI Support**: Added a management password editing item in "Dashboard - Service Config," supporting one-click retrieval or modification.
+            - **Log Guidance**: Headless mode startup clearly prints the status and retrieval methods for both API Key and Web UI Password.
     *   **v4.0.1 (2026-01-26)**:
         -   **[UX Optimization] Theme & Language Transition Smoothness**:
             - Resolved the UI freezing issue during theme and language switching by decoupling configuration persistence from the state update loop.

@@ -8,10 +8,11 @@
 您可以直接從 Docker Hub 拉取已構建好的鏡像並啟动，無需獲取源碼：
 
 > [!IMPORTANT]
-> **安全警告**：從 v4.0.2 開始，Docker 版 Web 管理界面默認開啟強制鑒權。
-> *   **推薦方式**：通過 `-e API_KEY=xxx` 設置您的自定義密鑰。
-> *   **默認行為**：如果您未設置密鑰，系統會在啟動時生成一個隨機密鑰。您可以在容器日誌中搜索 `Current API Key` 來查看它。
-> *   **查看方式**：執行 `docker logs antigravity-manager` 或 `grep '"api_key"' ~/.antigravity_tools/gui_config.json`。
+> **安全警告**：從 v4.0.2 開始，Docker 版支持 **管理密碼與 API Key 分離**：
+> *   **API Key**：通過 `-e API_KEY=xxx` 設置，用於所有 AI 協議的 API 調用鑒權。
+> *   **Web 管理密碼**：通過 `-e WEB_PASSWORD=xxx` 設置，僅用於 Web UI 登錄。
+> *   **默認行為**：若未設置 `WEB_PASSWORD`，系統會自動回退使用 `API_KEY` 作為登錄密碼。若兩者皆未設置，則生成隨機 Key。
+> *   **查看方式**：在日誌中搜索 `Current API Key` (API) 或 `Web UI Password` (Login)。
 
 ```bash
 # 啟動容器 (請替换 your-secret-key 為強密鑰)
@@ -54,8 +55,9 @@ docker build --build-arg USE_MIRROR=true -t antigravity-manager:latest -f docker
 | 變量名 | 默認值 | 說明 |
 | :--- | :--- | :--- |
 | `PORT` | `8045` | 容器內服務監聽端口 |
-| `ABV_API_KEY` | - | **[重要]** 反代與管理後台密鑰。Web 端登錄及管理 API 調用均需此 Key |
-| `LOG_LEVEL` | `info` | 日誌等級 (debug, info, warn, error) |
+| `ABV_API_KEY` | - | **[重要]** 代理 API 密鑰。客戶端（如 Claude Code）訪問時需提供的 Key |
+| `ABV_WEB_PASSWORD` | - | **[安全]** Web 管理後台登錄密碼。若不設置則回退使用 API Key |
+| `LOG_LEVEL` | `info` | 日志等級 (debug, info, warn, error) |
 | `ABV_DIST_PATH` | `/app/dist` | 前端靜態資源託管路徑 (Dockerfile 已內置) |
 | `ABV_PUBLIC_URL` | - | 用於遠程 OAuth 回調的公網 URL (可選) |
 
