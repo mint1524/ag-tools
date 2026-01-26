@@ -9,7 +9,7 @@ interface ConfigState {
 
     // Actions
     loadConfig: () => Promise<void>;
-    saveConfig: (config: AppConfig) => Promise<void>;
+    saveConfig: (config: AppConfig, silent?: boolean) => Promise<void>;
     updateTheme: (theme: string) => Promise<void>;
     updateLanguage: (language: string) => Promise<void>;
 }
@@ -29,8 +29,8 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
         }
     },
 
-    saveConfig: async (config: AppConfig) => {
-        set({ loading: true, error: null });
+    saveConfig: async (config: AppConfig, silent: boolean = false) => {
+        if (!silent) set({ loading: true, error: null });
         try {
             await configService.saveConfig(config);
             set({ config, loading: false });
@@ -42,17 +42,17 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
 
     updateTheme: async (theme: string) => {
         const { config } = get();
-        if (!config) return;
+        if (!config || config.theme === theme) return;
 
         const newConfig = { ...config, theme };
-        await get().saveConfig(newConfig);
+        await get().saveConfig(newConfig, true);
     },
 
     updateLanguage: async (language: string) => {
         const { config } = get();
-        if (!config) return;
+        if (!config || config.language === language) return;
 
         const newConfig = { ...config, language };
-        await get().saveConfig(newConfig);
+        await get().saveConfig(newConfig, true);
     },
 }));

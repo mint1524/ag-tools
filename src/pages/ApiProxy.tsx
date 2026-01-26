@@ -366,7 +366,13 @@ export default function ApiProxy() {
     const loadStatus = async () => {
         try {
             const s = await invoke<ProxyStatus>('get_proxy_status');
-            setStatus(s);
+            // 如果后端返回 starting 或 busy，则在 UI 上表现为加载中
+            if (s.base_url === 'starting' || s.base_url === 'busy') {
+                // 如果当前已经是运行状态，不要被覆盖为 false
+                setStatus(prev => ({ ...s, running: prev.running }));
+            } else {
+                setStatus(s);
+            }
         } catch (error) {
             console.error('获取状态失败:', error);
         }

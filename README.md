@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业的 AI 账号管理与协议反代系统 (v4.0.0)
+> 专业的 AI 账号管理与协议反代系统 (v4.0.1)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.0.0-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.0.1-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -149,7 +149,7 @@ brew install --cask antigravity-tools
 *   **Linux**: `.deb` 或 `AppImage`
 
 ### 选项 C: Docker 部署 (推荐用于 NAS/服务器)
-如果您希望在容器化环境中运行，我们提供了原生的 Docker 镜像。该镜像内置了对 v4.0.0 原生 Headless 架构的支持，可自动托管前端静态资源，并通过浏览器直接进行管理。
+如果您希望在容器化环境中运行，我们提供了原生的 Docker 镜像。该镜像内置了对 v4.0.1 原生 Headless 架构的支持，可自动托管前端静态资源，并通过浏览器直接进行管理。
 
 ```bash
 # 方式 1: 直接运行 (推荐)
@@ -330,6 +330,14 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
+    *   **v4.0.1 (2026-01-26)**:
+        -   **[UX 优化] 主题与语言切换平滑度**:
+            - 解决了主题和语言切换时的 UI 卡顿问题，将配置持久化逻辑与状态更新解耦。
+            - 优化了导航栏中的 View Transition API 使用，确保视觉更新不阻塞操作。
+            - 将窗口背景同步调用改为异步，避免 React 渲染延迟。
+        -   **[核心修复] 反代服务启动死锁**:
+            - 修复了启动反代服务时会阻塞状态轮询请求的竞态/死锁问题。
+            - 引入了原子启动标志和非阻塞状态检查，确保 UI 在服务初始化期间保持响应。
     *   **v4.0.0 (2026-01-25)**:
         -   **[重大架构] 深度迁移至 Tauri v2 (Tauri v2 Migration)**:
             - 全面适配 Tauri v2 核心 API，包括系统托盘、窗口管理与事件系统。

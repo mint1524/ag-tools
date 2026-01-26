@@ -1,6 +1,6 @@
 # Antigravity Tools 🚀
 # Antigravity Tools 🚀
-> Professional AI Account Management & Proxy System (v4.0.0)
+> Professional AI Account Management & Proxy System (v4.0.1)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -10,7 +10,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.0.0-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.0.1-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -151,7 +151,7 @@ Download from [GitHub Releases](https://github.com/lbjlaq/Antigravity-Manager/re
 *   **Linux**: `.deb` or `AppImage`
 
 ### Option C: Docker Deployment (Recommended for NAS/Servers)
-If you prefer running in a containerized environment, we provide a native Docker image. This image supports the v4.0.0 Native Headless architecture, automatically hosts frontend static resources, and allows for direct browser-based management.
+If you prefer running in a containerized environment, we provide a native Docker image. This image supports the v4.0.1 Native Headless architecture, automatically hosts frontend static resources, and allows for direct browser-based management.
 
 ```bash
 # Option 1: Direct Run (Recommended)
@@ -216,6 +216,14 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.0.1 (2026-01-26)**:
+        -   **[UX Optimization] Theme & Language Transition Smoothness**:
+            - Resolved the UI freezing issue during theme and language switching by decoupling configuration persistence from the state update loop.
+            - Optimized View Transition API usage in the Navbar to ensure non-blocking visual updates.
+            - Made window background sync calls asynchronous to prevent React render delays.
+        -   **[Core Fix] Proxy Service Startup Deadlock**:
+            - Fixed a race condition/deadlock where starting the proxy service would block status polling requests.
+            - Introduced an atomic startup flag and non-blocking status checks to ensure the UI remains responsive during service initialization.
     *   **v4.0.0 (2026-01-25)**:
         -   **[Major Architecture] Deep Migration to Tauri v2**:
             - Fully adapted to Tauri v2 core APIs, including system tray, window management, and event systems.

@@ -8,7 +8,7 @@ import { isTauri, isLinux } from '../../utils/env';
 
 function Navbar() {
     const location = useLocation();
-    const { t, i18n } = useTranslation();
+    const { t } = useTranslation();
     const { config, saveConfig } = useConfigStore();
 
     const navItems = [
@@ -43,11 +43,13 @@ function Navbar() {
 
             // @ts-ignore
             const transition = document.startViewTransition(async () => {
-                await saveConfig({
+                // Just let the state change trigger the transition
+                // No need to await the IPC call inside the transition block
+                saveConfig({
                     ...config,
                     theme: newTheme,
                     language: config.language
-                });
+                }, true);
             });
 
             transition.ready.then(() => {
@@ -74,7 +76,7 @@ function Navbar() {
                 ...config,
                 theme: newTheme,
                 language: config.language
-            });
+            }, true);
         }
     };
 
@@ -113,8 +115,7 @@ function Navbar() {
             ...config,
             language: langCode,
             theme: config.theme
-        });
-        i18n.changeLanguage(langCode);
+        }, true);
         setIsLangOpen(false);
     };
 

@@ -130,6 +130,7 @@ pub struct AxumServer {
     zai_state: Arc<RwLock<crate::proxy::ZaiConfig>>,
     experimental: Arc<RwLock<crate::proxy::config::ExperimentalConfig>>,
     pub cloudflared_state: Arc<crate::commands::cloudflared::CloudflaredState>,
+    pub is_running: Arc<RwLock<bool>>,
 }
 
 impl AxumServer {
@@ -165,6 +166,13 @@ impl AxumServer {
         *exp = config.experimental.clone();
         tracing::info!("实验性配置已热更新");
     }
+
+    pub async fn set_running(&self, running: bool) {
+        let mut r = self.is_running.write().await;
+        *r = running;
+        tracing::info!("反代服务运行状态更新为: {}", running);
+    }
+
     /// 启动 Axum 服务器
     pub async fn start(
         host: String,
@@ -188,6 +196,7 @@ impl AxumServer {
 	        let zai_vision_mcp_state =
 	            Arc::new(crate::proxy::zai_vision_mcp::ZaiVisionMcpState::new());
 	        let experimental_state = Arc::new(RwLock::new(experimental_config));
+            let is_running_state = Arc::new(RwLock::new(true));
 
 	        let state = AppState {
 	            token_manager: token_manager.clone(),
@@ -210,7 +219,7 @@ impl AxumServer {
             account_service: Arc::new(crate::modules::account_service::AccountService::new(integration.clone())),
             security: security_state.clone(),
             cloudflared_state: cloudflared_state.clone(),
-            is_running: Arc::new(RwLock::new(true)),
+            is_running: is_running_state.clone(),
         };
 
 
@@ -445,6 +454,7 @@ impl AxumServer {
             zai_state,
             experimental: experimental_state.clone(),
             cloudflared_state,
+            is_running: is_running_state,
         };
 
         // 在新任务中启动服务器

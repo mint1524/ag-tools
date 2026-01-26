@@ -75,7 +75,7 @@ jobs:
 
   docker-build:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request' && (github.repository == 'lbjlaq/Antigravity-Manager' || vars.ENABLE_DOCKER_PUSH == 'true') && github.ref_name != 'v4.0.0'
+    if: github.event_name != 'pull_request' && (github.repository == 'lbjlaq/Antigravity-Manager' || vars.ENABLE_DOCKER_PUSH == 'true')
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
