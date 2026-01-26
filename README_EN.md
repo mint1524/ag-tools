@@ -166,6 +166,14 @@ docker run -d --name antigravity-manager \
 
 # Forgot keys? Run `docker logs antigravity-manager` or `grep -E '"api_key"|"admin_password"' ~/.antigravity_tools/gui_config.json`
 
+#### 🔐 Authentication Scenarios
+*   **Scenario A: Only `API_KEY` is set**
+    - **Web Login**: Use `API_KEY` to access the dashboard.
+    - **API Calls**: Use `API_KEY` for AI request authentication.
+*   **Scenario B: Both `API_KEY` and `WEB_PASSWORD` are set (Recommended)**
+    - **Web Login**: **Must** use `WEB_PASSWORD`. Using API Key will be rejected (more secure).
+    - **API Calls**: Continue to use `API_KEY`. This allows you to share the API Key with team members while keeping the password for administrative access only.
+
 # Option 2: Use Docker Compose
 # 1. Enter the Docker directory
 cd docker

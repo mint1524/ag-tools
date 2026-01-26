@@ -25,6 +25,14 @@ docker run -d \
   lbjlaq/antigravity-manager:latest
 ```
 
+#### 🔐 鑒權邏輯 (Security Scenarios)
+*   **場景 A：僅設置了 `API_KEY`**
+    - **Web 登錄**：使用 `API_KEY` 即可進入後台。
+    - **API 調用**：使用 `API_KEY` 進行 AI 請求鑒權。
+*   **場景 B：同時設置了 `API_KEY` 和 `WEB_PASSWORD` (推薦)**
+    - **Web 登錄**：**必須**使用 `WEB_PASSWORD`。此時輸入 API Key 將被拒絕，確保管理權限與調用權限隔離。
+    - **API 調用**：繼續使用 `API_KEY`。您可以放心地將 API Key 分發給團隊成員，而保留密碼僅供管理員使用。
+
 ### 2. 使用 Docker Compose
 在 `docker` 目錄下執行：
 ```bash

@@ -164,6 +164,14 @@ docker run -d --name antigravity-manager \
 
 # 忘记密钥？执行 docker logs antigravity-manager 或 grep -E '"api_key"|"admin_password"' ~/.antigravity_tools/gui_config.json
 
+#### 🔐 鉴权逻辑说明
+*   **场景 A：仅设置了 `API_KEY`**
+    - **Web 登录**：使用 `API_KEY` 进入后台。
+    - **API 调用**：使用 `API_KEY` 进行 AI 请求鉴权。
+*   **场景 B：同时设置了 `API_KEY` 和 `WEB_PASSWORD` (推荐)**
+    - **Web 登录**：**必须**使用 `WEB_PASSWORD`，使用 API Key 将被拒绝（更安全）。
+    - **API 调用**：统一使用 `API_KEY`。这样您可以将 API Key 分发给成员，而保留密码仅供管理员使用。
+
 # 方式 2: 使用 Docker Compose
 # 1. 进入项目的 docker 目录
 cd docker
