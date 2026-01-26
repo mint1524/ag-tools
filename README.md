@@ -154,7 +154,8 @@ brew install --cask antigravity-tools
 ```bash
 # 方式 1: 直接运行 (推荐)
 # 请务必通过 -e API_KEY=xxx 设置您的密钥，否则无法通过 Web 端管理账号
-# 若未设置密钥或忘记了，请通过 `docker logs antigravity-manager` 或执行 `grep '"api_key"' ~/.antigravity_tools/gui_config.json` 查看
+# 若未设置密钥或忘记了，请通过 `docker logs antigravity-manager` 寻找 `Current API Key` 或 `Web UI Password`
+# 或执行 `grep -E '"api_key"|"admin_password"' ~/.antigravity_tools/gui_config.json` 查看
 docker run -d --name antigravity-manager -p 8045:8045 -e API_KEY=your-secret-key -v ~/.antigravity_tools:/root/.antigravity_tools lbjlaq/antigravity-manager:latest
 
 # 方式 2: 使用 Docker Compose

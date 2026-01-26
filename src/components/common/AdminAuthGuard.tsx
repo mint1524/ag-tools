@@ -52,14 +52,14 @@ export const AdminAuthGuard: React.FC<{ children: React.ReactNode }> = ({ childr
                         <Lock className="w-8 h-8 text-blue-500" />
                     </div>
                     <h2 className="text-2xl font-bold text-center text-slate-900 dark:text-slate-100 mb-2 font-display">安全访问控制</h2>
-                    <p className="text-center text-slate-500 dark:text-slate-400 mb-8 text-sm">当前运行在 Web 模式下，请输入 API Key 以管理您的反代服务。</p>
+                    <p className="text-center text-slate-500 dark:text-slate-400 mb-8 text-sm">当前运行在 Web 模式下，请输入管理密码或 API Key 以进入后台。</p>
 
                     <form onSubmit={handleLogin} className="space-y-6">
                         <div className="relative">
                             <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                             <input
                                 type="password"
-                                placeholder="请输入 API Key (sk-...)"
+                                placeholder="请输入管理密码或 API Key"
                                 className="w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-base-200 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 transition-all outline-none text-slate-900 dark:text-white"
                                 value={apiKey}
                                 onChange={(e) => setApiKey(e.target.value)}
@@ -76,11 +76,11 @@ export const AdminAuthGuard: React.FC<{ children: React.ReactNode }> = ({ childr
 
                     <div className="mt-8 pt-6 border-t border-slate-50 dark:border-white/5 text-center">
                         <p className="text-[10px] text-slate-400 leading-relaxed">
-                            提示：这是您设置的 <code className="bg-slate-100 dark:bg-white/10 px-1 rounded">API_KEY</code>。
+                            注意：如果设置了独立的管理密码，请输入管理密码；否则请输入 <code className="bg-slate-100 dark:bg-white/10 px-1 rounded">API_KEY</code>。
                             <br />
-                            如果您忘记了，请运行 <code className="bg-slate-100 dark:bg-white/10 px-1 rounded">docker logs antigravity-manager</code> 寻找 <code className="text-blue-500">Current API Key</code>
+                            如果您忘记了，请运行 <code className="bg-slate-100 dark:bg-white/10 px-1 rounded">docker logs antigravity-manager</code> 寻找 <code className="text-blue-500">Current API Key</code> 或 <code className="text-blue-500">Web UI Password</code>
                             <br />
-                            或执行 <code className="bg-slate-100 dark:bg-white/10 px-1 rounded">grep '"api_key"' ~/.antigravity_tools/gui_config.json</code> 查看。
+                            或执行 <code className="bg-slate-100 dark:bg-white/10 px-1 rounded">grep -E '"api_key"|"admin_password"' ~/.antigravity_tools/gui_config.json</code> 查看。
                         </p>
                     </div>
                 </div>

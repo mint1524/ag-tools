@@ -155,7 +155,10 @@ If you prefer running in a containerized environment, we provide a native Docker
 
 ```bash
 # Option 1: Direct Run (Recommended)
-docker run -d --name antigravity-manager -p 8045:8045 -v ~/.antigravity_tools:/root/.antigravity_tools lbjlaq/antigravity-manager:latest
+# IMPORTANT: Please set your secret key via -e API_KEY=xxx, otherwise you won't be able to log in.
+# If you didn't set it or forgot, look for "Current API Key" or "Web UI Password" in `docker logs antigravity-manager`
+# or run `grep -E '"api_key"|"admin_password"' ~/.antigravity_tools/gui_config.json`
+docker run -d --name antigravity-manager -p 8045:8045 -e API_KEY=your-secret-key -v ~/.antigravity_tools:/root/.antigravity_tools lbjlaq/antigravity-manager:latest
 
 # Option 2: Use Docker Compose
 # 1. Enter the Docker directory
