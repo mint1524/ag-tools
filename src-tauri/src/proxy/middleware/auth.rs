@@ -40,10 +40,11 @@ async fn auth_middleware_internal(
     let path = request.uri().path().to_string();
 
     // 过滤心跳和健康检查请求,避免日志噪音
-    if !path.contains("event_logging") && path != "/healthz" {
+    let is_health_check = path == "/healthz" || path == "/api/health" || path == "/health";
+    if !path.contains("event_logging") && !is_health_check {
         tracing::info!("Request: {} {}", method, path);
     } else {
-        tracing::trace!("Heartbeat: {} {}", method, path);
+        tracing::trace!("Heartbeat/Health: {} {}", method, path);
     }
 
     // Allow CORS preflight regardless of auth policy.
@@ -52,15 +53,27 @@ async fn auth_middleware_internal(
     }
 
     let security = security.read().await.clone();
-    
-    // 如果是管理接口或者强制严格模式，忽略 effective_mode，改为强制校验
+    let effective_mode = security.effective_auth_mode();
+
+    // 权限检查逻辑
     if !force_strict {
-        let effective_mode = security.effective_auth_mode();
+        // AI 代理接口 (v1/chat/completions 等)
         if matches!(effective_mode, ProxyAuthMode::Off) {
             return Ok(next.run(request).await);
         }
 
-        if matches!(effective_mode, ProxyAuthMode::AllExceptHealth) && path == "/healthz" {
+        if matches!(effective_mode, ProxyAuthMode::AllExceptHealth) && is_health_check {
+            return Ok(next.run(request).await);
+        }
+    } else {
+        // 管理接口 (/api/*)
+        // 1. 如果全局鉴权关闭，则管理接口也放行 (除非是强制局域网模式)
+        if matches!(effective_mode, ProxyAuthMode::Off) {
+            return Ok(next.run(request).await);
+        }
+
+        // 2. 健康检查在所有模式下对管理接口放行
+        if is_health_check {
             return Ok(next.run(request).await);
         }
     }
