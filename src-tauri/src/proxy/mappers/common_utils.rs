@@ -527,7 +527,7 @@ mod tests {
 
         let (config_standard, _) =
             parse_image_config_with_params("gemini-3-pro-image", None, Some("standard"));
-        assert!(config_standard.get("imageSize").is_none());
+        assert_eq!(config_standard["imageSize"], "1K");
 
         // Test size parameter mapping with dynamic calculation
         let (config_16_9, _) =
