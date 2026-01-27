@@ -33,7 +33,8 @@
         "disabled": "無効",
         "tauri_api_not_loaded": "Tauri APIが読み込まれていません。アプリを再起動してください",
         "environment_error": "環境エラー: {{error}}",
-        "load_more": "もっと読み込む"
+        "load_more": "もっと読み込む",
+        "submit": "送信"
     },
     "nav": {
         "dashboard": "ダッシュボード",
@@ -195,7 +196,10 @@
                 "copy_link": "認証リンクをコピー",
                 "copied": "コピーしました",
                 "link_label": "認証URL",
-                "link_click_to_copy": "クリックしてコピー"
+                "link_click_to_copy": "クリックしてコピー",
+                "manual_hint": "ブラウザがリダイレクトされませんでしたか？ここにコールバックURLまたはコードを貼り付けてください：",
+                "manual_placeholder": "コールバックURLまたはコードを貼り付け...",
+                "error_no_flow": "まず「OAuth認証を開始」をクリックしてください"
             },
             "token": {
                 "label": "リフレッシュトークン",

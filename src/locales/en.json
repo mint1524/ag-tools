@@ -32,7 +32,8 @@
         "enabled": "Enabled",
         "disabled": "Disabled",
         "tauri_api_not_loaded": "Tauri API not loaded, please restart the app",
-        "environment_error": "Environment error: {{error}}"
+        "environment_error": "Environment error: {{error}}",
+        "submit": "Submit"
     },
     "nav": {
         "dashboard": "Dashboard",
@@ -201,7 +202,10 @@
                 "copy_link": "Copy Auth Link",
                 "copied": "Copied",
                 "link_label": "Authorization URL",
-                "link_click_to_copy": "Click to copy"
+                "link_click_to_copy": "Click to copy",
+                "manual_hint": "Browser didn't redirect? Paste the full callback URL or raw Code here:",
+                "manual_placeholder": "Paste callback URL or code...",
+                "error_no_flow": "Please click 'Start OAuth' first"
             },
             "token": {
                 "label": "Refresh Token",

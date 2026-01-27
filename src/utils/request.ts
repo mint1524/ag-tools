@@ -95,6 +95,7 @@ const COMMAND_MAPPING: Record<string, { url: string; method: 'GET' | 'POST' | 'D
   'start_oauth_login': { url: '/api/accounts/oauth/start', method: 'POST' },
   'complete_oauth_login': { url: '/api/accounts/oauth/complete', method: 'POST' },
   'cancel_oauth_login': { url: '/api/accounts/oauth/cancel', method: 'POST' },
+  'submit_oauth_code': { url: '/api/accounts/oauth/submit-code', method: 'POST' },
 
   // Import
   'import_v1_accounts': { url: '/api/accounts/import/v1', method: 'POST' },

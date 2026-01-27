@@ -99,6 +99,10 @@ impl AccountService {
         modules::oauth_server::cancel_oauth_flow();
     }
 
+    pub async fn submit_oauth_code(&self, code: String, state: Option<String>) -> Result<(), String> {
+        modules::oauth_server::submit_oauth_code(code, state).await
+    }
+
     async fn process_oauth_token(&self, token_res: modules::oauth::TokenResponse) -> Result<Account, String> {
         let refresh_token = token_res.refresh_token.ok_or_else(|| {
             "未获取到 Refresh Token。请撤销权限后重试。".to_string()

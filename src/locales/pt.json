@@ -32,7 +32,8 @@
         "enabled": "Habilitado",
         "disabled": "Desabilitado",
         "tauri_api_not_loaded": "API Tauri não carregada, por favor reinicie o aplicativo",
-        "environment_error": "Erro de ambiente: {{error}}"
+        "environment_error": "Erro de ambiente: {{error}}",
+        "submit": "Enviar"
     },
     "nav": {
         "dashboard": "Painel",
@@ -193,7 +194,10 @@
                 "copy_link": "Copiar Link de Autenticação",
                 "copied": "Copiado",
                 "link_label": "URL de Autorização",
-                "link_click_to_copy": "Clique para copiar"
+                "link_click_to_copy": "Clique para copiar",
+                "manual_hint": "O navegador não redirecionou automaticamente? Cole o link de retorno ou o Código de Autorização aqui:",
+                "manual_placeholder": "Cole o link ou o código aqui...",
+                "error_no_flow": "Nenhum fluxo de autenticação ativo encontrado. Por favor, reinicie o OAuth."
             },
             "token": {
                 "label": "Refresh Token",

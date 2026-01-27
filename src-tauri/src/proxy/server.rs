@@ -351,6 +351,7 @@ impl AxumServer {
             .route("/accounts/oauth/start", post(admin_start_oauth_login))
             .route("/accounts/oauth/complete", post(admin_complete_oauth_login))
             .route("/accounts/oauth/cancel", post(admin_cancel_oauth_login))
+            .route("/accounts/oauth/submit-code", post(admin_submit_oauth_code))
             .route("/zai/models/fetch", post(admin_fetch_zai_models))
             .route("/proxy/monitor/toggle", post(admin_set_proxy_monitor_enabled))
             .route("/proxy/cloudflared/status", get(admin_cloudflared_get_status))
@@ -792,6 +793,25 @@ async fn admin_cancel_oauth_login(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     state.account_service.cancel_oauth_login();
+    Ok(StatusCode::OK)
+}
+
+#[derive(Deserialize)]
+struct SubmitCodeRequest {
+    code: String,
+    state: Option<String>,
+}
+
+async fn admin_submit_oauth_code(
+    State(state): State<AppState>,
+    Json(payload): Json<SubmitCodeRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    state.account_service.submit_oauth_code(payload.code, payload.state).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error: e }),
+        )
+    })?;
     Ok(StatusCode::OK)
 }
 

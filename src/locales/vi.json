@@ -33,7 +33,8 @@
         "enabled": "Đã bật",
         "disabled": "Đã tắt",
         "tauri_api_not_loaded": "Tauri API chưa được tải, vui lòng khởi động lại ứng dụng",
-        "environment_error": "Lỗi môi trường: {{error}}"
+        "environment_error": "Lỗi môi trường: {{error}}",
+        "submit": "Gửi"
     },
     "nav": {
         "dashboard": "Tổng quan",
@@ -194,7 +195,10 @@
                 "copy_link": "Sao chép Link xác thực",
                 "copied": "Đã sao chép",
                 "link_label": "URL Xác thực",
-                "link_click_to_copy": "Nhấn để sao chép"
+                "link_click_to_copy": "Nhấn để sao chép",
+                "manual_hint": "Trình duyệt không tự động chuyển hướng? Vui lòng dán liên kết phản hồi hoặc Mã xác thực tại đây:",
+                "manual_placeholder": "Dán liên kết hoặc mã tại đây...",
+                "error_no_flow": "Không tìm thấy luồng xác thực hoạt động. Vui lòng bắt đầu lại OAuth."
             },
             "token": {
                 "label": "Refresh Token",

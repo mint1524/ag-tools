@@ -387,6 +387,13 @@ pub async fn cancel_oauth_login() -> Result<(), String> {
     Ok(())
 }
 
+/// 手动提交 OAuth Code (用于 Docker/远程环境无法自动回调时)
+#[tauri::command]
+pub async fn submit_oauth_code(code: String, state: Option<String>) -> Result<(), String> {
+    modules::logger::log_info("收到手动提交 OAuth Code 请求");
+    modules::oauth_server::submit_oauth_code(code, state).await
+}
+
 // --- 导入命令 ---
 
 #[tauri::command]

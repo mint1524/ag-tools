@@ -4,7 +4,7 @@ use serde_json::json;
 use crate::models::QuotaData;
 use crate::modules::config;
 
-const QUOTA_API_URL: &str = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
+const QUOTA_API_URL: &str = "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:fetchAvailableModels";
 const USER_AGENT: &str = "antigravity/1.11.3 Darwin/arm64";
 
 /// Critical retry threshold: considered near recovery when quota reaches 95%
@@ -63,7 +63,7 @@ fn create_warmup_client() -> reqwest::Client {
     crate::utils::http::get_long_client()
 }
 
-const CLOUD_CODE_BASE_URL: &str = "https://cloudcode-pa.googleapis.com";
+const CLOUD_CODE_BASE_URL: &str = "https://daily-cloudcode-pa.sandbox.googleapis.com";
 
 /// Fetch project ID and subscription tier
 async fn fetch_project_id(access_token: &str, email: &str) -> (Option<String>, Option<String>) {

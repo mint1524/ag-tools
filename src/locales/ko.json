@@ -32,7 +32,8 @@
         "enabled": "활성화됨",
         "disabled": "비활성화됨",
         "tauri_api_not_loaded": "Tauri API가 로드되지 않았습니다. 앱을 다시 시작해주세요.",
-        "environment_error": "환경 오류: {{error}}"
+        "environment_error": "환경 오류: {{error}}",
+        "submit": "제출"
     },
     "nav": {
         "dashboard": "대시보드",
@@ -201,7 +202,10 @@
                 "copy_link": "인증 링크 복사",
                 "copied": "복사됨",
                 "link_label": "인증 URL",
-                "link_click_to_copy": "클릭하여 복사"
+                "link_click_to_copy": "클릭하여 복사",
+                "manual_hint": "브라우저가 리다이렉트되지 않았나요? 여기에 콜백 URL 또는 코드를 붙여넣으세요:",
+                "manual_placeholder": "콜백 URL 또는 코드 붙여넣기...",
+                "error_no_flow": "먼저 'OAuth 인증 시작'을 클릭하세요"
             },
             "token": {
                 "label": "Refresh Token",

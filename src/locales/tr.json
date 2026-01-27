@@ -32,7 +32,8 @@
         "enabled": "Etkin",
         "disabled": "Devre Dışı",
         "tauri_api_not_loaded": "Tauri API yüklenemedi, lütfen uygulamayı yeniden başlatın",
-        "environment_error": "Ortam hatası: {{error}}"
+        "environment_error": "Ortam hatası: {{error}}",
+        "submit": "Gönder"
     },
     "nav": {
         "dashboard": "Kontrol Paneli",
@@ -188,7 +189,10 @@
                 "copy_link": "Yetkilendirme Bağlantısını Kopyala",
                 "copied": "Kopyalandı",
                 "link_label": "Yetkilendirme URL'si",
-                "link_click_to_copy": "Kopyalamak için tıklayın"
+                "link_click_to_copy": "Kopyalamak için tıklayın",
+                "manual_hint": "Tarayıcı otomatik olarak yönlendirilmedi mi? Lütfen geri dönüş bağlantısını veya Yetkilendirme Kodunu buraya yapıştırın:",
+                "manual_placeholder": "Bağlantıyı veya kodu buraya yapıştırın...",
+                "error_no_flow": "Aktif kimlik doğrulama akışı bulunamadı. Lütfen OAuth'u yeniden başlatın."
             },
             "token": {
                 "label": "Refresh Token",

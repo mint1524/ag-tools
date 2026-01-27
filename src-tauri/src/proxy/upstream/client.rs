@@ -5,13 +5,16 @@ use reqwest::{header, Client, Response, StatusCode};
 use serde_json::Value;
 use tokio::time::Duration;
 
-// Cloud Code v1internal endpoints (fallback order: prod → daily)
-// 优先使用稳定的 prod 端点，避免影响缓存命中率
+// Cloud Code v1internal endpoints (fallback order: Sandbox → Daily → Prod)
+// 优先使用 Sandbox/Daily 环境以避免 Prod环境的 429 错误 (Ref: Issue #1176)
 const V1_INTERNAL_BASE_URL_PROD: &str = "https://cloudcode-pa.googleapis.com/v1internal";
-const V1_INTERNAL_BASE_URL_DAILY: &str = "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal";
-const V1_INTERNAL_BASE_URL_FALLBACKS: [&str; 2] = [
-    V1_INTERNAL_BASE_URL_PROD,   // 优先使用生产环境（稳定）
-    V1_INTERNAL_BASE_URL_DAILY,  // 备用测试环境（新功能）
+const V1_INTERNAL_BASE_URL_DAILY: &str = "https://daily-cloudcode-pa.googleapis.com/v1internal";
+const V1_INTERNAL_BASE_URL_SANDBOX: &str = "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal";
+
+const V1_INTERNAL_BASE_URL_FALLBACKS: [&str; 3] = [
+    V1_INTERNAL_BASE_URL_SANDBOX, // 优先级 1: Sandbox (已知有效且稳定)
+    V1_INTERNAL_BASE_URL_DAILY,   // 优先级 2: Daily (备用)
+    V1_INTERNAL_BASE_URL_PROD,    // 优先级 3: Prod (仅作为兜底)
 ];
 
 pub struct UpstreamClient {

@@ -33,7 +33,8 @@
         "enabled": "已啟用",
         "disabled": "已停用",
         "tauri_api_not_loaded": "Tauri API 未正確載入,請重啟應用",
-        "environment_error": "環境錯誤: {{error}}"
+        "environment_error": "環境錯誤: {{error}}",
+        "submit": "提交"
     },
     "nav": {
         "dashboard": "儀表板",
@@ -198,7 +199,10 @@
                 "copy_link": "複製授權連結",
                 "copied": "已複製",
                 "link_label": "授權連結",
-                "link_click_to_copy": "點選複製"
+                "link_click_to_copy": "點選複製",
+                "manual_hint": "瀏覽器沒有自動跳轉？請在此處貼上回調連結或 Authorization Code：",
+                "manual_placeholder": "在此處貼上連結或代碼...",
+                "error_no_flow": "未找到活躍的授權流程，請重新開始 OAuth 授權。"
             },
             "token": {
                 "label": "Refresh Token",
