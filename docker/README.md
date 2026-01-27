@@ -8,7 +8,7 @@
 您可以直接從 Docker Hub 拉取已構建好的鏡像並啟动，無需獲取源碼：
 
 > [!IMPORTANT]
-> **安全警告**：從 v4.0.2 開始，Docker 版支持 **管理密碼與 API Key 分離**：
+> **安全警告**：從 v4.0.3 開始，Docker 版支持 **管理密碼與 API Key 分離**：
 > *   **API Key**：通過 `-e API_KEY=xxx` 設置，用於所有 AI 協議的 API 調用鑒權。
 > *   **Web 管理密碼**：通過 `-e WEB_PASSWORD=xxx` 設置，僅用於 Web UI 登錄。
 > *   **默認行為**：若未設置 `WEB_PASSWORD`，系統會自動回退使用 `API_KEY` 作為登錄密碼。若兩者皆未設置，則生成隨機 Key。
@@ -21,6 +21,7 @@ docker run -d \
   -p 8045:8045 \
   -e API_KEY=your-api-key \
   -e WEB_PASSWORD=your-login-password \
+  -e ABV_MAX_BODY_SIZE=104857600 \
   -v ~/.antigravity_tools:/root/.antigravity_tools \
   lbjlaq/antigravity-manager:latest
 ```
@@ -77,6 +78,7 @@ docker build --build-arg USE_MIRROR=true -t antigravity-manager:latest -f docker
 | `PORT` | `8045` | 容器內服務監聽端口 |
 | `ABV_API_KEY` | - | **[重要]** 代理 API 密鑰。客戶端（如 Claude Code）訪問時需提供的 Key |
 | `ABV_WEB_PASSWORD` | - | **[安全]** Web 管理後台登錄密碼。若不設置則回退使用 API Key |
+| `ABV_MAX_BODY_SIZE` | `104857600` | **[性能]** 最大請求體限制 (Byte)。默認 100MB，用於解決大圖傳輸 413 錯誤 |
 | `LOG_LEVEL` | `info` | 日志等級 (debug, info, warn, error) |
 | `ABV_DIST_PATH` | `/app/dist` | 前端靜態資源託管路徑 (Dockerfile 已內置) |
 | `ABV_PUBLIC_URL` | - | 用於遠程 OAuth 回調的公網 URL (可選) |

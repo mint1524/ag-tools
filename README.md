@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业的 AI 账号管理与协议反代系统 (v4.0.2)
+> 专业的 AI 账号管理与协议反代系统 (v4.0.3)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.0.2-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.0.3-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -78,7 +78,7 @@
 
 ### 5. 🎨 多模态与 Imagen 3 支持
 *   **高级画质控制**: 支持通过 OpenAI `size` (如 `1024x1024`, `16:9`) 参数自动映射到 Imagen 3 的相应规格。
-*   **超强 Body 支持**: 后端支持高达 **100MB** 的 Payload，处理 4K 高清图识别绰绰有余。
+*   **超强 Body 支持**: 后端支持高达 **100MB** (可配置) 的 Payload，处理 4K 高清图识别绰绰有余。
 
 ## 📸 界面导览 (GUI Overview)
 
@@ -159,6 +159,7 @@ docker run -d --name antigravity-manager \
   -p 8045:8045 \
   -e API_KEY=sk-your-api-key \
   -e WEB_PASSWORD=your-login-password \
+  -e ABV_MAX_BODY_SIZE=104857600 \
   -v ~/.antigravity_tools:/root/.antigravity_tools \
   lbjlaq/antigravity-manager:latest
 
@@ -358,6 +359,19 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
+    *   **v4.0.3 (2026-01-27)**:
+        -   **[功能增强] 提高请求体限制以支持大体积图片 Payload (PR #1167)**:
+            - 将默认请求体大小限制从 2MB 提升至 **100MB**，解决多图并发传输时的 413 (Payload Too Large) 错误。
+            - 新增环境变量 `ABV_MAX_BODY_SIZE`，支持用户根据需求动态调整最大限制。
+            - 服务启动时自动输出当前生效的 Body Limit 日志，便于排查。
+        -   **[核心修复] 解决 Google OAuth 'state' 参数缺失导致的授权失败 (Issue #1168)**:
+            - 修复了添加 Google 账号时可能出现的 "Agent execution terminated" 错误。
+            - 实现了随机 `state` 参数的生成与回调验证，增强了 OAuth 流程的安全性和兼容性。
+            - 确保在桌面端和 Web 模式下的授权流程均符合 OAuth 2.0 标准。
+        -   **[核心修复] 解决 Docker/Web 模式下代理开关及账号变动需重启生效的问题 (Issue #1166)**:
+            - 实现了代理开关状态的持久化存储，确保容器重启后状态保持一致。
+            - 在账号增删、切换、重排及导入后自动触发 Token 管理器热加载，使变更立即在反代服务中生效。
+            - 优化了账号切换逻辑，自动清除旧会话绑定，确保请求立即路由到新账号。
     *   **v4.0.2 (2026-01-26)**:
         -   **[核心修复] 解决开启“访问授权”导致的重复认证与 401 循环 (Fix Issue #1163)**:
             - 修正了后端鉴权中间件逻辑，确保在鉴权关闭模式（Off/Auto）下管理接口不再强制拦截。

@@ -1,6 +1,6 @@
 # Antigravity Tools 🚀
 # Antigravity Tools 🚀
-> Professional AI Account Management & Proxy System (v4.0.2)
+> Professional AI Account Management & Proxy System (v4.0.3)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -10,7 +10,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.0.2-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.0.3-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -80,7 +80,7 @@ If you find this project helpful, feel free to buy me a coffee!
 
 ### 5. 🎨 Multimodal & Imagen 3 Support
 *   **Advanced Image Control**: Supports precise control over image generation tasks via OpenAI `size` (e.g., `1024x1024`, `16:9`) parameters or model name suffixes.
-*   **Enhanced Payload Support**: The backend supports payloads up to **100MB**, more than enough for 4K HD image recognition and processing.
+*   **Enhanced Payload Support**: The backend supports payloads up to **100MB** (configurable), more than enough for 4K HD image recognition and processing.
 
 ##  GUI Overview
 
@@ -151,7 +151,7 @@ Download from [GitHub Releases](https://github.com/lbjlaq/Antigravity-Manager/re
 *   **Linux**: `.deb` or `AppImage`
 
 ### Option C: Docker Deployment (Recommended for NAS/Servers)
-If you prefer running in a containerized environment, we provide a native Docker image. This image supports the v4.0.2 Native Headless architecture, automatically hosts frontend static resources, and allows for direct browser-based management.
+If you prefer running in a containerized environment, we provide a native Docker image. This image supports the v4.0.3 Native Headless architecture, automatically hosts frontend static resources, and allows for direct browser-based management.
 
 ```bash
 # Option 1: Direct Run (Recommended)
@@ -161,6 +161,7 @@ docker run -d --name antigravity-manager \
   -p 8045:8045 \
   -e API_KEY=sk-your-api-key \
   -e WEB_PASSWORD=your-login-password \
+  -e ABV_MAX_BODY_SIZE=104857600 \
   -v ~/.antigravity_tools:/root/.antigravity_tools \
   lbjlaq/antigravity-manager:latest
 
@@ -246,6 +247,19 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.0.3 (2026-01-27)**:
+        -   **[Enhancement] Increase Body Limit to Support Large Image Payloads (PR #1167)**:
+            - Increased the default request body limit from 2MB to **100MB** to resolve 413 (Payload Too Large) errors during multi-image transfers.
+            - Added environment variable `ABV_MAX_BODY_SIZE` to allow dynamic adjustment of the maximum limit.
+            - Transparently logs the effective Body Limit on startup for easier troubleshooting.
+        -   **[Core Fix] Resolve Google OAuth Authorization Failure Due to Missing 'state' Parameter (Issue #1168)**:
+            - Fixed the "Agent execution terminated" error when adding Google accounts.
+            - Implemented random `state` parameter generation and callback verification to enhance OAuth security and compatibility.
+            - Ensured authorization flows comply with OAuth 2.0 standards in both desktop and web modes.
+        -   **[Core Fix] Resolve Proxy Toggle and Account Changes Requiring Restart in Docker/Web Mode (Issue #1166)**:
+            - Implemented persistent storage for proxy toggle states, ensuring consistency across container restarts.
+            - Added automatic hot-reloading of the Token Manager after adding, deleting, switching, reordering, or importing accounts, making changes effective immediately in the proxy service.
+            - Optimized account switching logic to automatically clear legacy session bindings, ensuring requests are immediately routed to the new account.
     *   **v4.0.2 (2026-01-26)**:
         -   **[Core Fix] Session Persistence After Account Switch (Fix Issue #1159)**:
             - Enhanced database injection logic to synchronize identity info (Email) and clear legacy UserID cache during account switching.
