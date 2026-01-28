@@ -363,6 +363,10 @@ response = client.chat.completions.create(
         -   **[核心修复] 彻底解决 Docker/Web 模式 Google OAuth 400 错误 (Google OAuth Fix)**:
             - **协议对齐**: 强制所有模式（包括 Docker/Web）使用 `localhost` 作为 OAuth 重定向 URI，绕过了 Google 对私网 IP 和非 HTTPS 环境的拦截策略。
             - **流程优化**: 配合已有的“手动授权码回填”功能，确保即使在远程服务器部署环境下，用户也能顺利完成 Google 账号的授权与添加。
+        -   **[功能增强] 新增阿拉伯语支持与 RTL 布局适配 (PR #1220)**:
+            - **国际化拓展**: 新增完整的阿拉伯语 (`ar`) 翻译支持。
+            - **RTL 布局**: 实现了自动检测并适配从右向左 (Right-to-Left) 的 UI 布局。
+            - **排版优化**: 引入了 Effra 字体家族，显著提升了阿拉伯语文本的可读性与美观度。
     *   **v4.0.4 (2026-01-27)**:
         -   **[功能增强] 深度集成 Gemini 图像生成与多协议支持 (PR #1203)**:
             - **OpenAI 兼容性增强**: 支持通过标准 OpenAI Images API (`/v1/images/generate`) 调用 Gemini 3 图像模型，支持 `size`、`quality` 等参数。
