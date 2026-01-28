@@ -264,6 +264,10 @@ print(response.choices[0].message.content)
         -   **[Core Fix] Fix Ghost Account Issue After Deletion**:
             -   **Sync Reload**: Fixed a critical bug where deleted accounts would persist in the proxy service's memory cache.
             -   **Immediate Effect**: Now, deleting single or multiple accounts triggers a mandatory reload of the proxy service, ensuring the deleted accounts are immediately removed from the active pool and no longer participate in request rotation.
+        -   **[Core Fix] Cloudflared Tunnel Startup Fixes (Fix PR #1238)**:
+            -   **Startup Crash Fix**: Removed unsupported command-line arguments (`--no-autoupdate` / `--loglevel`) that caused the cloudflared process to exit immediately.
+            -   **URL Parsing Correction**: Fixed an offset error in named tunnel URL extraction, ensuring correctly formatted access links.
+            -   **Windows Experience**: Added `DETACHED_PROCESS` flags for Windows, enabling fully silent background execution without popup windows.
     *   **v4.0.5 (2026-01-28)**:
         -   **[Core Fix] Resolve Google OAuth 400 Error in Docker/Web Mode (Google OAuth Fix)**:
             - **Protocol Alignment**: Forced `localhost` as the OAuth redirect URI for all modes (including Docker/Web) to bypass Google's security restrictions on private IPs and non-HTTPS environments.
