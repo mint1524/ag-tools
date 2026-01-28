@@ -553,7 +553,9 @@
                 "max_wait": "Max Wait (sec)",
                 "max_wait_tooltip": "Only used in 'Cache First' mode: wait instead of switching if the rate limit reset time is below this value.",
                 "clear_bindings": "Clear Session Bindings",
-                "clear_bindings_tooltip": "Hard reset all session-account bindings, forcing accounts to be re-assigned on next request."
+                "clear_bindings_tooltip": "Hard reset all session-account bindings, forcing accounts to be re-assigned on next request.",
+                "clear_rate_limits": "Clear Rate Limit Records",
+                "clear_rate_limits_tooltip": "Immediately clear local rate limit records for all accounts, forcing next requests to try upstream directly."
             },
             "experimental": {
                 "title": "Experimental Settings",
@@ -632,7 +634,9 @@
             "regenerate_key_title": "Regenerate API Key",
             "regenerate_key_msg": "Are you sure you want to regenerate the API Key? The old key will be invalidated immediately.",
             "clear_bindings_title": "Clear Session Bindings",
-            "clear_bindings_msg": "Are you sure you want to clear all session-account bindings?"
+            "clear_bindings_msg": "Are you sure you want to clear all session-account bindings?",
+            "clear_rate_limits_title": "Clear Rate Limit Records",
+            "clear_rate_limits_confirm": "Are you sure you want to clear all local rate limit records?"
         },
         "model": {
             "flash": "Fast Response",

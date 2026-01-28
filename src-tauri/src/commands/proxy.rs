@@ -693,3 +693,30 @@ pub async fn get_preferred_account(
     }
 }
 
+/// 清除指定账号的限流记录
+#[tauri::command]
+pub async fn clear_proxy_rate_limit(
+    state: State<'_, ProxyServiceState>,
+    account_id: String,
+) -> Result<bool, String> {
+    let instance_lock = state.instance.read().await;
+    if let Some(instance) = instance_lock.as_ref() {
+        Ok(instance.token_manager.clear_rate_limit(&account_id))
+    } else {
+        Err("服务未运行".to_string())
+    }
+}
+
+/// 清除所有限流记录
+#[tauri::command]
+pub async fn clear_all_proxy_rate_limits(
+    state: State<'_, ProxyServiceState>,
+) -> Result<(), String> {
+    let instance_lock = state.instance.read().await;
+    if let Some(instance) = instance_lock.as_ref() {
+        instance.token_manager.clear_all_rate_limits();
+        Ok(())
+    } else {
+        Err("服务未运行".to_string())
+    }
+}

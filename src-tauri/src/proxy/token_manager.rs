@@ -127,6 +127,8 @@ impl TokenManager {
         match self.load_single_account(&path).await {
             Ok(Some(token)) => {
                 self.tokens.insert(account_id.to_string(), token);
+                // [NEW] 重新加载账号时自动清除该账号的限流记录
+                self.clear_rate_limit(account_id);
                 Ok(())
             }
             Ok(None) => Err("账号加载失败".to_string()),
@@ -136,7 +138,10 @@ impl TokenManager {
 
     /// 重新加载所有账号
     pub async fn reload_all_accounts(&self) -> Result<usize, String> {
-        self.load_accounts().await
+        let count = self.load_accounts().await?;
+        // [NEW] 重新加载所有账号时自动清除所有限流记录
+        self.clear_all_rate_limits();
+        Ok(count)
     }
     
     /// 加载单个账号
@@ -1141,9 +1146,13 @@ impl TokenManager {
     }
     
     /// 清除指定账号的限流记录
-    #[allow(dead_code)]
     pub fn clear_rate_limit(&self, account_id: &str) -> bool {
         self.rate_limit_tracker.clear(account_id)
+    }
+
+    /// 清除所有限流记录
+    pub fn clear_all_rate_limits(&self) {
+        self.rate_limit_tracker.clear_all();
     }
     
     /// 标记账号请求成功，重置连续失败计数

@@ -343,6 +343,8 @@ impl AxumServer {
             .route("/proxy/mapping", post(admin_update_model_mapping))
             .route("/proxy/api-key/generate", post(admin_generate_api_key))
             .route("/proxy/session-bindings/clear", post(admin_clear_proxy_session_bindings))
+            .route("/proxy/rate-limits", delete(admin_clear_all_rate_limits))
+            .route("/proxy/rate-limits/:accountId", delete(admin_clear_rate_limit))
             .route(
                 "/proxy/preferred-account",
                 get(admin_get_preferred_account).post(admin_set_preferred_account),
@@ -1096,6 +1098,27 @@ async fn admin_clear_proxy_session_bindings(
     state.token_manager.clear_all_sessions();
     logger::log_info("[API] 已清除所有会话绑定");
     StatusCode::OK
+}
+
+async fn admin_clear_all_rate_limits(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    state.token_manager.clear_all_rate_limits();
+    logger::log_info("[API] 已清除所有限流记录");
+    StatusCode::OK
+}
+
+async fn admin_clear_rate_limit(
+    State(state): State<AppState>,
+    Path(account_id): Path<String>,
+) -> impl IntoResponse {
+    let cleared = state.token_manager.clear_rate_limit(&account_id);
+    if cleared {
+        logger::log_info(&format!("[API] 已清除账号 {} 的限流记录", account_id));
+        StatusCode::OK
+    } else {
+        StatusCode::NOT_FOUND
+    }
 }
 
 async fn admin_get_preferred_account(

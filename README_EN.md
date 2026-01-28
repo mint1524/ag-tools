@@ -255,6 +255,12 @@ print(response.choices[0].message.content)
             - **i18n Expansion**: Added full Arabic (`ar`) language support.
             - **RTL Layout**: Implemented automatic detection and adaptation for Right-to-Left (RTL) UI layouts.
             - **Typography**: Integrated the Effra font family to significantly enhance the readability and aesthetics of Arabic text.
+        -   **[Enhancement] Manual Clear Rate Limit Records**:
+            - **Management UI Integration**: Added a "Clear Rate Limit Records" button in the "Proxy Settings -> Account Rotation & Session Scheduling" section, allowing manual clearing of local rate limit locks (429/503 records) across both Desktop and Web modes.
+            - **Smart Sync Linkage**: Implemented smart synchronization of quotas and limits. Refreshing account quotas (single or all) now automatically clears local rate limit states, ensuring immediate effect for updated quotas.
+            - **Backend Core**: Implemented manual and automatic clearing logic within `RateLimitTracker` and `TokenManager` to ensure state consistency under high concurrency.
+            - **API Support**: Added corresponding Tauri commands and Admin API (`DELETE /api/proxy/rate-limits`) to facilitate programmatic management and integration.
+            - **Force Retry**: Enables forcing the next request to ignore previous backoff times and attempt to connect to the upstream directly, facilitating immediate business recovery after network restoration.
     *   **v4.0.4 (2026-01-27)**:
         -   **[Enhancement] Deep Integration of Gemini Image Generation & Multi-Protocol Support (PR #1203)**:
             - **OpenAI Compatibility**: Added support for calling Gemini 3 image models via the standard OpenAI Images API (`/v1/images/generate`), supporting parameters like `size` and `quality`.

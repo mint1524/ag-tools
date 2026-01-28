@@ -564,6 +564,8 @@
                 "max_wait_tooltip": "「キャッシュ優先」モードでのみ使用: レートリミットのリセット時間がこの値以下の場合、切り替えずに待機します。",
                 "clear_bindings": "セッションバインディングをクリア",
                 "clear_bindings_tooltip": "すべてのセッションとアカウントの紐付けを強制リセットし、次のリクエストでアカウントを再割り当てします。",
+                "clear_rate_limits": "レート制限の記録をクリア",
+                "clear_rate_limits_tooltip": "すべてのアカウントのローカルレート制限記録を即座にクリアし、次のリクエストで直接アップストリームを試行するように強制します。",
                 "fixed_account": "固定アカウントモード",
                 "fixed_account_tooltip": "有効にすると、すべてのAPIリクエストは、アカウントを切り替える代わりに、選択されたアカウントのみを使用します。",
                 "round_robin_set": "ラウンドロビンモードが有効",
@@ -648,7 +650,9 @@
             "regenerate_key_title": "APIキーを再生成",
             "regenerate_key_msg": "APIキーを再生成してもよろしいですか？古いキーは即座に無効になります。",
             "clear_bindings_title": "セッションバインディングをクリア",
-            "clear_bindings_msg": "すべてのセッションとアカウントの紐付けをクリアしてもよろしいですか？"
+            "clear_bindings_msg": "すべてのセッションとアカウントの紐付けをクリアしてもよろしいですか？",
+            "clear_rate_limits_title": "レート制限の記録をクリア",
+            "clear_rate_limits_confirm": "すべてのローカルレート制限記録をクリアしてもよろしいですか？"
         },
         "model": {
             "flash": "高速レスポンス",

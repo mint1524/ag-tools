@@ -17,6 +17,7 @@ import {
     Layers,
     Puzzle,
     Zap,
+    ZapOff,
     ArrowRight,
     Sparkles,
     Code,
@@ -173,6 +174,7 @@ export default function ApiProxy() {
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
     const [isRegenerateKeyConfirmOpen, setIsRegenerateKeyConfirmOpen] = useState(false);
     const [isClearBindingsConfirmOpen, setIsClearBindingsConfirmOpen] = useState(false);
+    const [isClearRateLimitsConfirmOpen, setIsClearRateLimitsConfirmOpen] = useState(false);
 
     // [FIX #820] Fixed account mode states
     const [preferredAccountId, setPreferredAccountId] = useState<string | null>(null);
@@ -546,6 +548,21 @@ export default function ApiProxy() {
             showToast(t('common.success'), 'success');
         } catch (error) {
             console.error('Failed to clear session bindings:', error);
+            showToast(`${t('common.error')}: ${error}`, 'error');
+        }
+    };
+
+    const handleClearRateLimits = () => {
+        setIsClearRateLimitsConfirmOpen(true);
+    };
+
+    const executeClearRateLimits = async () => {
+        setIsClearRateLimitsConfirmOpen(false);
+        try {
+            await invoke('clear_all_proxy_rate_limits');
+            showToast(t('common.success'), 'success');
+        } catch (error) {
+            console.error('Failed to clear rate limits:', error);
             showToast(`${t('common.error')}: ${error}`, 'error');
         }
     };
@@ -1491,13 +1508,24 @@ print(response.text)`;
                                                         placement="right"
                                                     />
                                                 </label>
-                                                <button
-                                                    onClick={handleClearSessionBindings}
-                                                    className="text-[10px] text-indigo-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
-                                                >
-                                                    <Trash2 size={12} />
-                                                    {t('proxy.config.scheduling.clear_bindings')}
-                                                </button>
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={handleClearRateLimits}
+                                                        className="text-[10px] text-indigo-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
+                                                        title={t('proxy.config.scheduling.clear_rate_limits_tooltip')}
+                                                    >
+                                                        <ZapOff size={12} />
+                                                        {t('proxy.config.scheduling.clear_rate_limits')}
+                                                    </button>
+                                                    <button
+                                                        onClick={handleClearSessionBindings}
+                                                        className="text-[10px] text-indigo-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
+                                                        title={t('proxy.config.scheduling.clear_bindings_tooltip')}
+                                                    >
+                                                        <Trash2 size={12} />
+                                                        {t('proxy.config.scheduling.clear_bindings')}
+                                                    </button>
+                                                </div>
                                             </div>
                                             <div className="grid grid-cols-1 gap-2">
                                                 {(['CacheFirst', 'Balance', 'PerformanceFirst'] as const).map(mode => (
@@ -2319,6 +2347,16 @@ print(response.text)`;
                     isDestructive={true}
                     onConfirm={executeClearSessionBindings}
                     onCancel={() => setIsClearBindingsConfirmOpen(false)}
+                />
+
+                <ModalDialog
+                    isOpen={isClearRateLimitsConfirmOpen}
+                    title={t('proxy.dialog.clear_rate_limits_title') || '清除限流记录'}
+                    message={t('proxy.dialog.clear_rate_limits_confirm') || '确定要清除所有本地限流记录吗？'}
+                    type="confirm"
+                    isDestructive={true}
+                    onConfirm={executeClearRateLimits}
+                    onCancel={() => setIsClearRateLimitsConfirmOpen(false)}
                 />
             </div >
         </div >

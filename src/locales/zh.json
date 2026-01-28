@@ -553,7 +553,9 @@
                 "max_wait": "最大等待时长 (秒)",
                 "max_wait_tooltip": "仅在“缓存优先”模式下生效：如果账号限流重置时间小于此值，则原地等待而非切换账号。",
                 "clear_bindings": "清除会话绑定",
-                "clear_bindings_tooltip": "立即断开所有会话与账号的绑定关系，强制下一次请求重新分配账号。"
+                "clear_bindings_tooltip": "立即断开所有会话与账号的绑定关系，强制下一次请求重新分配账号。",
+                "clear_rate_limits": "清除限流记录",
+                "clear_rate_limits_tooltip": "立即清除所有账号的本地限流记录，强制下一次请求尝试直接调用上游。"
             },
             "experimental": {
                 "title": "实验性设置 (Experimental)",
@@ -629,7 +631,9 @@
             "regenerate_key_title": "重新生成 API Key",
             "regenerate_key_msg": "确定要重新生成 API Key 吗？旧的 Key 将立即失效。",
             "clear_bindings_title": "清除会话绑定",
-            "clear_bindings_msg": "确定要清除所有会话与账号的绑定映射吗？"
+            "clear_bindings_msg": "确定要清除所有会话与账号的绑定映射吗？",
+            "clear_rate_limits_title": "清除限流记录",
+            "clear_rate_limits_confirm": "确定要清除所有本地限流记录吗？"
         },
         "model": {
             "flash": "极速响应",
