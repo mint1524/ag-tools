@@ -294,6 +294,7 @@ pub fn run() {
             commands::open_data_folder,
             commands::get_data_dir_path,
             commands::show_main_window,
+            commands::set_window_theme,
             commands::get_antigravity_path,
             commands::get_antigravity_args,
             commands::check_for_updates,

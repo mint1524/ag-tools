@@ -542,6 +542,20 @@ pub async fn show_main_window(window: tauri::Window) -> Result<(), String> {
     window.show().map_err(|e| e.to_string())
 }
 
+/// 设置窗口主题（用于同步 Windows 标题栏按钮颜色）
+#[tauri::command]
+pub async fn set_window_theme(window: tauri::Window, theme: String) -> Result<(), String> {
+    use tauri::Theme;
+
+    let tauri_theme = match theme.as_str() {
+        "dark" => Some(Theme::Dark),
+        "light" => Some(Theme::Light),
+        _ => None, // system default
+    };
+
+    window.set_theme(tauri_theme).map_err(|e| e.to_string())
+}
+
 /// 获取 Antigravity 可执行文件路径
 #[tauri::command]
 pub async fn get_antigravity_path(bypass_config: Option<bool>) -> Result<String, String> {
