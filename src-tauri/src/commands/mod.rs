@@ -41,18 +41,29 @@ pub async fn add_account(
 }
 
 /// 删除账号
+/// 删除账号
 #[tauri::command]
-pub async fn delete_account(app: tauri::AppHandle, account_id: String) -> Result<(), String> {
+pub async fn delete_account(
+    app: tauri::AppHandle,
+    proxy_state: tauri::State<'_, crate::commands::proxy::ProxyServiceState>,
+    account_id: String,
+) -> Result<(), String> {
     let service = modules::account_service::AccountService::new(
         crate::modules::integration::SystemManager::Desktop(app.clone())
     );
-    service.delete_account(&account_id)
+    service.delete_account(&account_id)?;
+
+    // Reload token pool
+    let _ = crate::commands::proxy::reload_proxy_accounts(proxy_state).await;
+
+    Ok(())
 }
 
 /// 批量删除账号
 #[tauri::command]
 pub async fn delete_accounts(
     app: tauri::AppHandle,
+    proxy_state: tauri::State<'_, crate::commands::proxy::ProxyServiceState>,
     account_ids: Vec<String>,
 ) -> Result<(), String> {
     modules::logger::log_info(&format!(
@@ -66,6 +77,10 @@ pub async fn delete_accounts(
 
     // 强制同步托盘
     crate::modules::tray::update_tray_menus(&app);
+
+    // Reload token pool
+    let _ = crate::commands::proxy::reload_proxy_accounts(proxy_state).await;
+
     Ok(())
 }
 
