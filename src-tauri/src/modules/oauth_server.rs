@@ -45,10 +45,17 @@ fn oauth_fail_html() -> &'static str {
 
 async fn ensure_oauth_flow_prepared(app_handle: Option<tauri::AppHandle>) -> Result<String, String> {
 
-    // Return URL if flow already exists
-    if let Ok(state) = get_oauth_flow_state().lock() {
-        if let Some(s) = state.as_ref() {
-            return Ok(s.auth_url.clone());
+    // Return URL if flow already exists and is still "fresh" (receiver hasn't been taken)
+    if let Ok(mut state) = get_oauth_flow_state().lock() {
+        if let Some(s) = state.as_mut() {
+            if s.code_rx.is_some() {
+                return Ok(s.auth_url.clone());
+            } else {
+                // Flow is already "in progress" (rx taken), but user requested a NEW one.
+                // Force cancel the old one to allow a new attempt.
+                let _ = s.cancel_tx.send(true);
+                *state = None;
+            }
         }
     }
 
@@ -447,4 +454,36 @@ pub async fn submit_oauth_code(code_input: String, state_input: Option<String>) 
     tx.send(Ok(code)).await.map_err(|_| "Failed to send code to OAuth flow (receiver dropped)".to_string())?;
     
     Ok(())
+}
+/// Manually prepare an OAuth flow without starting listeners.
+/// Useful for Web/Docker environments where we only need manual code submission.
+pub fn prepare_oauth_flow_manually(redirect_uri: String, state_str: String) -> Result<(String, mpsc::Receiver<Result<String, String>>), String> {
+    let auth_url = oauth::get_auth_url(&redirect_uri, &state_str);
+    
+    // Check if we can reuse existing state
+    if let Ok(mut lock) = get_oauth_flow_state().lock() {
+        if let Some(s) = lock.as_mut() {
+             // If we already have a code_rx, we can't easily "steal" it again because it's already returned.
+             // But if this is a NEW request (different state), we should overwrite.
+             // For now, let's just clear and restart to be safe.
+             let _ = s.cancel_tx.send(true);
+             *lock = None;
+        }
+    }
+
+    let (cancel_tx, _cancel_rx) = watch::channel(false);
+    let (code_tx, code_rx) = mpsc::channel(1);
+
+    if let Ok(mut state) = get_oauth_flow_state().lock() {
+        *state = Some(OAuthFlowState {
+            auth_url: auth_url.clone(),
+            redirect_uri: redirect_uri.clone(),
+            state: state_str,
+            cancel_tx,
+            code_tx,
+            code_rx: None, // We return it directly
+        });
+    }
+
+    Ok((auth_url, code_rx))
 }
