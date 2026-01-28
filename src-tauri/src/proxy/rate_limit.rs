@@ -241,9 +241,14 @@ impl RateLimitTracker {
                     },
                     RateLimitReason::ModelCapacityExhausted => {
                         // 模型容量耗尽：服务端暂时无可用 GPU 实例
-                        // 这是临时性问题，使用较短的重试时间（15秒）
-                        tracing::warn!("检测到模型容量不足 (MODEL_CAPACITY_EXHAUSTED)，服务端暂无可用实例，15秒后重试");
-                        15
+                        // 这是临时性问题，使用渐进式重试策略：[5s, 10s, 15s]
+                        let lockout = match failure_count {
+                            1 => 5,
+                            2 => 10,
+                            _ => 15,
+                        };
+                        tracing::warn!("检测到模型容量不足 (MODEL_CAPACITY_EXHAUSTED)，第{}次失败，{}秒后重试", failure_count, lockout);
+                        lockout
                     },
                     RateLimitReason::ServerError => {
                         // 服务器错误：执行"软避让"，默认锁定 8 秒

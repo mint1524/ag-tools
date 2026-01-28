@@ -1667,7 +1667,7 @@ fn build_generation_config(
 
     // max_tokens 映射为 maxOutputTokens
     // Respect client-provided max_tokens (aligns with OpenAI mapper behavior)
-    let mut final_max_tokens: i64 = claude_req.max_tokens.map(|t| t as i64).unwrap_or(16384);
+    let mut final_max_tokens: i64 = claude_req.max_tokens.map(|t| t as i64).unwrap_or(81920);
     
     // [NEW] 确保 maxOutputTokens 大于 thinkingBudget (API 强约束)
     if let Some(thinking_config) = config.get("thinkingConfig") {
@@ -2357,6 +2357,32 @@ mod tests {
         } else {
             panic!("Expected array content at index 2");
         }
+    }
+    #[test]
+    fn test_default_max_tokens() {
+        let req = ClaudeRequest {
+            model: "claude-3-opus".to_string(),
+            messages: vec![Message {
+                role: "user".to_string(),
+                content: MessageContent::String("Hello".to_string()),
+            }],
+            system: None,
+            tools: None,
+            stream: false,
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            top_k: None,
+            thinking: None,
+            metadata: None,
+            output_config: None,
+            size: None,
+            quality: None,
+        };
+
+        let result = transform_claude_request_in(&req, "test-v", false).unwrap();
+        let max_output_tokens = result["request"]["generationConfig"]["maxOutputTokens"].as_i64().unwrap();
+        assert_eq!(max_output_tokens, 81920);
     }
 }
 

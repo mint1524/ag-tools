@@ -359,7 +359,7 @@ pub fn transform_openai_request(
     // 3. 构建请求体
 
     let mut gen_config = json!({
-        "maxOutputTokens": request.max_tokens.unwrap_or(16384),
+        "maxOutputTokens": request.max_tokens.unwrap_or(81920),
         "temperature": request.temperature.unwrap_or(1.0),
         "topP": request.top_p.unwrap_or(1.0),
     });
@@ -373,7 +373,7 @@ pub fn transform_openai_request(
     if actual_include_thinking {
         gen_config["thinkingConfig"] = json!({
             "includeThoughts": true,
-            "thinkingBudget": 16000
+            "thinkingBudget": 32000
         });
         tracing::debug!(
             "[OpenAI-Request] Injected thinkingConfig for model {}: thinkingBudget=16000",
@@ -624,5 +624,44 @@ mod tests {
             parts[1]["inlineData"]["mimeType"].as_str().unwrap(),
             "image/png"
         );
+    }
+    #[test]
+    fn test_default_max_tokens_openai() {
+        let req = OpenAIRequest {
+            model: "gpt-4".to_string(),
+            messages: vec![OpenAIMessage {
+                role: "user".to_string(),
+                content: Some(OpenAIContent::String("Hello".to_string())),
+                reasoning_content: None,
+                tool_calls: None,
+                tool_call_id: None,
+                name: None,
+            }],
+            stream: false,
+            n: None,
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            response_format: None,
+            tools: None,
+            tool_choice: None,
+            parallel_tool_calls: None,
+            instructions: None,
+            input: None,
+            prompt: None,
+            size: None,
+            quality: None,
+            person_generation: None,
+        };
+
+        let result = transform_openai_request(&req, "test-p", "gemini-3-pro-high-thinking");
+        let gen_config = &result["request"]["generationConfig"];
+        let max_output_tokens = gen_config["maxOutputTokens"].as_i64().unwrap();
+        assert_eq!(max_output_tokens, 81920);
+        
+        // Verify thinkingBudget
+        let budget = gen_config["thinkingConfig"]["thinkingBudget"].as_i64().unwrap();
+        assert_eq!(budget, 32000);
     }
 }
