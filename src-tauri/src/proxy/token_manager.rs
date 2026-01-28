@@ -1525,10 +1525,10 @@ impl TokenManager {
                 None, // session_id
             );
             
-            crate::modules::account::add_account(email_clone, None, token_data)
+            crate::modules::account::upsert_account(email_clone, None, token_data)
         }).await
         .map_err(|e| format!("Task join error: {}", e))?
-        .map_err(|e| format!("Failed to add account: {}", e))?;
+        .map_err(|e| format!("Failed to save account: {}", e))?;
 
         // 4. 重新加载 (更新内存)
         self.reload_all_accounts().await.map(|_| ())

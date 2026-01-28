@@ -1,6 +1,6 @@
 # Antigravity Tools 🚀
 # Antigravity Tools 🚀
-> Professional AI Account Management & Proxy System (v4.0.5)
+> Professional AI Account Management & Proxy System (v4.0.6)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -10,7 +10,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.0.5-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.0.6-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -247,6 +247,15 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.0.6 (2026-01-28)**:
+        -   **[Core Fix] Resolve Google OAuth "Account already exists" Error**:
+            - **Persistence Upgrade**: Upgraded the authorization saving logic from "add only" to `upsert` (update or insert) mode. Re-authorizing an existing account now smoothly updates its tokens and project info without error.
+        -   **[Core Fix] Fix Manual OAuth Code Backfill Failure in Docker/Web Mode**:
+            - **Flow State Pre-initialization**: The backend now synchronizes and initializes the OAuth flow state when generating auth links in web mode. This ensures that manually pasted auth codes or URLs are correctly recognized and processed in environments like Docker where auto-redirect is unavailable.
+        -   **[UX Improvement] Unified OAuth Persistence Path**: Refactored `TokenManager` to ensure all platforms share the same robust account verification and storage logic.
+        -   **[Performance] Optimize Rate Limit Recovery Mechanism (PR #1247)**:
+            - **Auto-Cleanup Frequency**: Shortened the background auto-cleanup interval for rate limit records from 60s to 15s, significantly speeding up business recovery after 429 or 503 errors.
+            - **Smart Sync Clearing**: Optimized account refresh logic to immediately clear local rate limit locks when refreshing single or all accounts, allowing updated quotas to be used instantly.
     *   **v4.0.5 (2026-01-28)**:
         -   **[Core Fix] Resolve Google OAuth 400 Error in Docker/Web Mode (Google OAuth Fix)**:
             - **Protocol Alignment**: Forced `localhost` as the OAuth redirect URI for all modes (including Docker/Web) to bypass Google's security restrictions on private IPs and non-HTTPS environments.

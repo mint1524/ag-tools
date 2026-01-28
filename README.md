@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业的 AI 账号管理与协议反代系统 (v4.0.5)
+> 专业的 AI 账号管理与协议反代系统 (v4.0.6)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.0.5-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.0.6-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -359,6 +359,15 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
+    *   **v4.0.6 (2026-01-28)**:
+        -   **[核心修复] 彻底解决 Google OAuth "Account already exists" 错误**:
+            - **持久化升级**: 将授权成功后的保存逻辑从“仅新增”升级为 `upsert` (更新或新增) 模式。现在重新授权已存在的账号会平滑更新其 Token 和项目信息，不再弹出报错。
+        -   **[核心修复] 修复 Docker/Web 模式下手动回填授权码失效问题**:
+            - **Flow 状态预初始化**: 在 Web 模式生成授权链接时，后端会同步初始化 OAuth Flow 状态。这确保了在 Docker 等无法自动跳转的环境下，手动复制回填授权码或 URL 能够被后端正确识别并处理。
+        -   **[体验优化] 统一 Web 与桌面端的 OAuth 持久化路径**: 重构了 `TokenManager`，确保所有平台共用同一套健壮的账号核验与存储逻辑。
+        -   **[性能优化] 优化限流恢复机制 (PR #1247)**:
+            - **自动清理频率**: 将限流记录的后台自动清理间隔从 60 秒缩短至 15 秒，大幅提升了触发 429 或 503 错误后的业务恢复速度。
+            - **智能同步清理**: 优化了单个或全部账号刷新逻辑，确保刷新账号的同时即刻清除本地限流锁定，使最新配额能立即投入使用。
     *   **v4.0.5 (2026-01-28)**:
         -   **[核心修复] 彻底解决 Docker/Web 模式 Google OAuth 400 错误 (Google OAuth Fix)**:
             - **协议对齐**: 强制所有模式（包括 Docker/Web）使用 `localhost` 作为 OAuth 重定向 URI，绕过了 Google 对私网 IP 和非 HTTPS 环境的拦截策略。

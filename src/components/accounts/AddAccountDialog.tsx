@@ -366,19 +366,34 @@ function AddAccountDialog({ onAdd }: AddAccountDialogProps) {
     const handleManualSubmit = async () => {
         if (!manualCode.trim()) return;
 
+        setStatus('loading');
+        setMessage(t('accounts.add.oauth.manual_submitting', '正在提交授权码...') || 'Submitting code...');
+
         try {
             await invoke('submit_oauth_code', { code: manualCode.trim(), state: null });
-            // The existing flow (startOAuthLogin) will pick this up and complete.
+
+            // 提交成功反馈
+            setStatus('success');
+            setMessage(t('accounts.add.oauth.manual_submitted', '授权码已提交，后台正在处理并刷新列表') || 'Code submitted! Backend is processing...');
+
             setManualCode('');
+
+            // 对齐 Web 模式下的刷新逻辑
+            if (!isTauri()) {
+                setTimeout(async () => {
+                    await fetchAccounts();
+                    setIsOpen(false);
+                    resetState();
+                }, 2000);
+            }
         } catch (error) {
             let errStr = String(error);
-            // If no flow is active, we might want to try starting one and then submitting, 
-            // but for now let's just show error.
             if (errStr.includes("No active OAuth flow")) {
                 setMessage(t('accounts.add.oauth.error_no_flow'));
                 setStatus('error');
             } else {
                 setMessage(`${t('common.error')}: ${errStr}`);
+                setStatus('error');
             }
         }
     };
