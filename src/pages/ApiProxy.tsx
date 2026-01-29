@@ -17,7 +17,6 @@ import {
     Layers,
     Puzzle,
     Zap,
-    ZapOff,
     ArrowRight,
     Sparkles,
     Code,
@@ -35,6 +34,8 @@ import GroupedSelect, { SelectOption } from '../components/common/GroupedSelect'
 import { CliSyncCard } from '../components/proxy/CliSyncCard';
 import DebouncedSlider from '../components/common/DebouncedSlider';
 import { listAccounts } from '../services/accountService';
+import CircuitBreaker from '../components/settings/CircuitBreaker';
+import { CircuitBreakerConfig } from '../types/config';
 
 interface ProxyStatus {
     running: boolean;
@@ -533,6 +534,15 @@ export default function ApiProxy() {
                     ...updates
                 }
             }
+        };
+        saveConfig(newConfig);
+    };
+
+    const updateCircuitBreakerConfig = (newBreakerConfig: CircuitBreakerConfig) => {
+        if (!appConfig) return;
+        const newConfig = {
+            ...appConfig,
+            circuit_breaker: newBreakerConfig
         };
         saveConfig(newConfig);
     };
@@ -1509,14 +1519,7 @@ print(response.text)`;
                                                     />
                                                 </label>
                                                 <div className="flex items-center gap-3">
-                                                    <button
-                                                        onClick={handleClearRateLimits}
-                                                        className="text-[10px] text-indigo-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
-                                                        title={t('proxy.config.scheduling.clear_rate_limits_tooltip')}
-                                                    >
-                                                        <ZapOff size={12} />
-                                                        {t('proxy.config.scheduling.clear_rate_limits')}
-                                                    </button>
+                                                    {/* [MOVED] Clear Rate Limit button moved to CircuitBreaker component */}
                                                     <button
                                                         onClick={handleClearSessionBindings}
                                                         className="text-[10px] text-indigo-500 hover:text-indigo-600 transition-colors flex items-center gap-1"
@@ -1639,6 +1642,32 @@ print(response.text)`;
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Circuit Breaker Section */}
+                                    {appConfig.circuit_breaker && (
+                                        <div className="pt-4 border-t border-gray-100 dark:border-gray-700/50">
+                                            <div className="flex items-center justify-between mb-4">
+                                                <label className="text-xs font-medium text-gray-700 dark:text-gray-300 inline-flex items-center gap-1">
+                                                    {t('proxy.config.circuit_breaker.title', { defaultValue: 'Adaptive Circuit Breaker' })}
+                                                    <HelpTooltip text={t('proxy.config.circuit_breaker.tooltip', { defaultValue: 'Prevent continuous failures by exponentially backing off when quota is exhausted.' })} />
+                                                </label>
+                                                <input
+                                                    type="checkbox"
+                                                    className="toggle toggle-sm toggle-warning"
+                                                    checked={appConfig.circuit_breaker.enabled}
+                                                    onChange={(e) => updateCircuitBreakerConfig({ ...appConfig.circuit_breaker, enabled: e.target.checked })}
+                                                />
+                                            </div>
+
+                                            {appConfig.circuit_breaker.enabled && (
+                                                <CircuitBreaker
+                                                    config={appConfig.circuit_breaker}
+                                                    onChange={updateCircuitBreakerConfig}
+                                                    onClearRateLimits={handleClearRateLimits}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </CollapsibleCard>
 

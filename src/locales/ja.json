@@ -570,7 +570,16 @@
                 "fixed_account_tooltip": "有効にすると、すべてのAPIリクエストは、アカウントを切り替える代わりに、選択されたアカウントのみを使用します。",
                 "round_robin_set": "ラウンドロビンモードが有効",
                 "fixed_account_set": "固定アカウントモードが有効",
-                "account_changed": "アカウントが次へ変更されました：{{email}}"
+                "account_changed": "アカウントが次へ変更されました：{{email}}",
+                "circuit_breaker": {
+                    "title": "アダプティブサーキットブレーカー",
+                    "tooltip": "クォータを使い果たして繰り返し失敗するアカウントのロックアウト時間を自動的に増やします。これにより、デッドアカウントでのAPI呼び出しの浪費を防ぎ、一時的なエラーから迅速に回復できるようになります。",
+                    "backoff_levels": "バックオフレベル (秒)",
+                    "level": "Lv {{level}}",
+                    "input_placeholder": "60, 300, 1800, 7200",
+                    "invalid_format": "無効な形式。カンマ区切りの数字を使用してください (例: 60, 300)",
+                    "clear_records": "レート制限の記録をすべてクリア"
+                }
             },
             "experimental": {
                 "title": "実験設定 (Experimental)",

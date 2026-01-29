@@ -93,8 +93,11 @@ pub async fn handle_chat_completions(
             });
     }
 
-    debug!("Received OpenAI request for model: {}", openai_req.model);
     let trace_id = format!("req_{}", chrono::Utc::now().timestamp_subsec_millis());
+    info!(
+        "[{}] OpenAI Chat Request: {} | {} messages | stream: {}",
+        trace_id, openai_req.model, openai_req.messages.len(), openai_req.stream
+    );
 
     // 1. 获取 UpstreamClient (Clone handle)
     let upstream = state.upstream.clone();
@@ -511,7 +514,7 @@ pub async fn handle_completions(
     State(state): State<AppState>,
     Json(mut body): Json<Value>,
 ) -> Response {
-    info!(
+    debug!(
         "Received /v1/completions or /v1/responses payload: {:?}",
         body
     );

@@ -550,7 +550,16 @@
                 "round_robin_set": "Chế độ luân phiên đã bật",
                 "fixed_account_set": "Chế độ tài khoản cố định đã bật",
                 "account_changed": "Tài khoản đã thay đổi thành: {{email}}",
-                "clear_bindings_tooltip": "Ngắt ngay lập tức tất cả các mối quan hệ liên kết giữa phiên và tài khoản, buộc lần yêu cầu tiếp theo phải phân bổ lại tài khoản."
+                "clear_bindings_tooltip": "Ngắt ngay lập tức tất cả các mối quan hệ liên kết giữa phiên và tài khoản, buộc lần yêu cầu tiếp theo phải phân bổ lại tài khoản.",
+                "circuit_breaker": {
+                    "title": "Bộ ngắt mạch thích ứng",
+                    "tooltip": "Tự động tăng thời gian khóa cho các tài khoản liên tục thất bại do cạn kiệt hạn ngạch. Điều này ngăn chặn việc lãng phí các cuộc gọi API trên các tài khoản đã chết trong khi cho phép các lỗi tạm thời phục hồi nhanh chóng.",
+                    "backoff_levels": "Cấp độ lùi (Giây)",
+                    "level": "Cấp {{level}}",
+                    "input_placeholder": "60, 300, 1800, 7200",
+                    "invalid_format": "Định dạng không hợp lệ. Sử dụng các số cách nhau bởi dấu phẩy (ví dụ: 60, 300)",
+                    "clear_records": "Xóa tất cả hồ sơ giới hạn tốc độ"
+                }
             },
             "experimental": {
                 "title": "Cài đặt thử nghiệm",

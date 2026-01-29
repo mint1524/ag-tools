@@ -545,7 +545,16 @@
                 "max_wait": "Tempo Máximo de Espera (seg)",
                 "max_wait_tooltip": "Usado apenas no modo 'Cache Primeiro': aguardar em vez de alternar se o tempo de reset do limite de taxa estiver abaixo deste valor.",
                 "clear_bindings": "Limpar Vinculações de Sessão",
-                "clear_bindings_tooltip": "Redefinir todas as vinculações sessão-conta, forçando contas a serem reatribuídas na próxima solicitação."
+                "clear_bindings_tooltip": "Redefinir todas as vinculações sessão-conta, forçando contas a serem reatribuídas na próxima solicitação.",
+                "circuit_breaker": {
+                    "title": "Disjuntor Adaptativo",
+                    "tooltip": "Aumenta automaticamente a duração do bloqueio para contas que falham repetidamente com esgotamento de cota. Isso evita o desperdício de chamadas de API em contas mortas, permitindo que erros transitórios se recuperem rapidamente.",
+                    "backoff_levels": "Níveis de Recuo (Segundos)",
+                    "level": "Nível {{level}}",
+                    "input_placeholder": "60, 300, 1800, 7200",
+                    "invalid_format": "Formato inválido. Use números separados por vírgula (ex: 60, 300)",
+                    "clear_records": "Limpar Todos os Registros de Limite de Taxa"
+                }
             },
             "experimental": {
                 "title": "Configurações Experimentais",

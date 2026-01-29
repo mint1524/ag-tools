@@ -23,6 +23,8 @@ pub struct AppConfig {
     pub quota_protection: QuotaProtectionConfig, // [NEW] Quota protection configuration
     #[serde(default)]
     pub pinned_quota_models: PinnedQuotaModelsConfig, // [NEW] Pinned quota models list
+    #[serde(default)]
+    pub circuit_breaker: CircuitBreakerConfig, // [NEW] Circuit breaker configuration
 }
 
 /// Scheduled warmup configuration
@@ -130,6 +132,37 @@ impl Default for PinnedQuotaModelsConfig {
     }
 }
 
+/// Circuit breaker configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CircuitBreakerConfig {
+    /// Whether circuit breaker is enabled
+    pub enabled: bool,
+
+    /// Unified backoff steps (seconds)
+    /// Default: [60, 300, 1800, 7200]
+    #[serde(default = "default_backoff_steps")]
+    pub backoff_steps: Vec<u64>,
+}
+
+fn default_backoff_steps() -> Vec<u64> {
+    vec![60, 300, 1800, 7200]
+}
+
+impl CircuitBreakerConfig {
+    pub fn new() -> Self {
+        Self {
+            enabled: true,
+            backoff_steps: default_backoff_steps(),
+        }
+    }
+}
+
+impl Default for CircuitBreakerConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AppConfig {
     pub fn new() -> Self {
         Self {
@@ -147,6 +180,7 @@ impl AppConfig {
             scheduled_warmup: ScheduledWarmupConfig::default(),
             quota_protection: QuotaProtectionConfig::default(),
             pinned_quota_models: PinnedQuotaModelsConfig::default(),
+            circuit_breaker: CircuitBreakerConfig::default(),
         }
     }
 }

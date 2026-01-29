@@ -557,6 +557,15 @@
                 "fixed_account_tooltip": "啟用後，所有 API 請求將只使用所選帳戶，而不會在帳戶之間輪換。",
                 "round_robin_set": "輪詢模式已啟用"
             },
+            "circuit_breaker": {
+                "title": "自適應熔斷器",
+                "tooltip": "當帳號因配額耗盡反覆失敗時，自動增加鎖定時間。這可以防止在死帳號上浪費 API 呼叫，同時允許瞬態錯誤快速恢復。",
+                "backoff_levels": "退避等級 (秒)",
+                "input_placeholder": "輸入退避時長 (秒)，以逗號分隔",
+                "level": "等級 {{level}}",
+                "invalid_format": "格式無效。請使用逗號分隔的數字 (例如 60, 300)",
+                "clear_records": "清除所有限流記錄"
+            },
             "experimental": {
                 "title": "實驗性設定 (Experimental)",
                 "title_tooltip": "探索性功能，可能在未來版本中調整或移除。",

@@ -557,6 +557,15 @@
                 "clear_rate_limits": "清除限流记录",
                 "clear_rate_limits_tooltip": "立即清除所有账号的本地限流记录，强制下一次请求尝试直接调用上游。"
             },
+            "circuit_breaker": {
+                "title": "自适应熔断器",
+                "tooltip": "当账号因配额耗尽反复失败时，自动增加锁定时间。这可以防止在死账号上浪费 API 调用，同时允许瞬态错误快速恢复。",
+                "backoff_levels": "退避等级 (秒)",
+                "input_placeholder": "输入退避时长 (秒)，以逗号分隔",
+                "level": "等级 {{level}}",
+                "invalid_format": "格式无效。请使用逗号分隔的数字 (例如 60, 300)",
+                "clear_records": "清除所有限流记录"
+            },
             "experimental": {
                 "title": "实验性设置 (Experimental)",
                 "title_tooltip": "探索性功能，可能在未来版本中调整或移除。",

@@ -557,6 +557,15 @@
                 "clear_rate_limits": "속도 제한 기록 지우기",
                 "clear_rate_limits_tooltip": "모든 계정의 로컬 속도 제한을 즉시 삭제하고, 다음 요청 시 직접 시도하도록 강제합니다."
             },
+            "circuit_breaker": {
+                "title": "적응형 서킷 브레이커",
+                "tooltip": "할당량 초과로 인하여 반복적으로 실패하는 계정의 잠금 시간을 자동으로 늘립니다. 이는 작동하지 않는 계정에 대한 불필요한 API 호출을 방지하고, 일시적인 오류는 빠르게 복구될 수 있게 합니다.",
+                "backoff_levels": "백오프 레벨 (초)",
+                "input_placeholder": "백오프 기간을 초 단위로 쉼표로 구분하여 입력하세요",
+                "level": "레벨 {{level}}",
+                "invalid_format": "잘못된 형식입니다. 쉼표로 구분된 숫자(예: 60, 300)를 사용하세요.",
+                "clear_records": "모든 제한 기록 삭제"
+            },
             "experimental": {
                 "title": "실험적 설정",
                 "title_tooltip": "향후 버전에서 조정되거나 제거될 수 있는 탐색적 기능입니다.",

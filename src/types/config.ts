@@ -74,6 +74,11 @@ export interface ExperimentalConfig {
     context_compression_threshold_l3?: number;
 }
 
+export interface CircuitBreakerConfig {
+    enabled: boolean;
+    backoff_steps: number[];
+}
+
 export interface AppConfig {
     language: string;
     theme: string;
@@ -91,6 +96,7 @@ export interface AppConfig {
     scheduled_warmup: ScheduledWarmupConfig;
     quota_protection: QuotaProtectionConfig; // [NEW] 配额保护配置
     pinned_quota_models: PinnedQuotaModelsConfig; // [NEW] 配额关注列表
+    circuit_breaker: CircuitBreakerConfig; // [NEW] 熔断器配置
     proxy: ProxyConfig;
 }
 

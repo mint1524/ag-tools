@@ -520,7 +520,16 @@
                 "fixed_account_tooltip": "Etkinleştirildiğinde, tüm API istekleri hesaplar arasında geçiş yapmak yerine yalnızca seçilen hesabı kullanacaktır.",
                 "round_robin_set": "Round-robin modu etkinleştirildi",
                 "fixed_account_set": "Sabit hesap modu etkinleştirildi",
-                "account_changed": "Hesap şuna değiştirildi: {{email}}"
+                "account_changed": "Hesap şuna değiştirildi: {{email}}",
+                "circuit_breaker": {
+                    "title": "Uyarlanabilir Devre Kesici",
+                    "tooltip": "Kota tükenmesi nedeniyle art arda başarısız olan hesaplar için kilitleme süresini otomatik olarak artırır. Bu, geçici hataların hızla düzelmesine izin verirken, ölü hesaplarda API çağrılarının boşa harcanmasını önler.",
+                    "backoff_levels": "Geri Çekilme Seviyeleri (Saniye)",
+                    "level": "Seviye {{level}}",
+                    "input_placeholder": "60, 300, 1800, 7200",
+                    "invalid_format": "Geçersiz format. Virgülle ayrılmış sayılar kullanın (örn. 60, 300)",
+                    "clear_records": "Tüm Hız Sınırı Kayıtlarını Temizle"
+                }
             },
             "experimental": {
                 "title": "Deneysel Ayarlar",

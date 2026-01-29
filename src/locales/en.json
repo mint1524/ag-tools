@@ -557,6 +557,15 @@
                 "clear_rate_limits": "Clear Rate Limit Records",
                 "clear_rate_limits_tooltip": "Immediately clear local rate limit records for all accounts, forcing next requests to try upstream directly."
             },
+            "circuit_breaker": {
+                "title": "Adaptive Circuit Breaker",
+                "tooltip": "Automatically increases lockout duration for accounts that repeatedly fail with quota exhaustion. This prevents wasting API calls on dead accounts while allowing transient errors to recover quickly.",
+                "backoff_levels": "Backoff Levels (Seconds)",
+                "input_placeholder": "Enter backoff durations in seconds, separated by commas",
+                "level": "Lv {{level}}",
+                "invalid_format": "Invalid format. Use comma separated numbers (e.g. 60, 300)",
+                "clear_records": "Clear All Rate Limit Records"
+            },
             "experimental": {
                 "title": "Experimental Settings",
                 "title_tooltip": "Exploratory features that may be adjusted or removed in future versions.",
