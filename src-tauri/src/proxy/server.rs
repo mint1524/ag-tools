@@ -326,12 +326,12 @@ impl AxumServer {
             .route("/accounts/import/db", post(admin_import_from_db))
             .route("/accounts/import/db-custom", post(admin_import_custom_db))
             .route("/accounts/sync/db", post(admin_sync_account_from_db))
-            .route("/stats/summary", get(admin_get_stats_summary))
-            .route("/stats/hourly", get(admin_get_stats_hourly))
-            .route("/stats/daily", get(admin_get_stats_daily))
-            .route("/stats/weekly", get(admin_get_stats_weekly))
-            .route("/stats/accounts", get(admin_get_stats_accounts))
-            .route("/stats/models", get(admin_get_stats_models))
+            .route("/stats/summary", get(admin_get_token_stats_summary))
+            .route("/stats/hourly", get(admin_get_token_stats_hourly))
+            .route("/stats/daily", get(admin_get_token_stats_daily))
+            .route("/stats/weekly", get(admin_get_token_stats_weekly))
+            .route("/stats/accounts", get(admin_get_token_stats_by_account))
+            .route("/stats/models", get(admin_get_token_stats_by_model))
             .route("/config", get(admin_get_config).post(admin_save_config))
             .route("/proxy/cli/status", post(admin_get_cli_sync_status))
             .route("/proxy/cli/sync", post(admin_execute_cli_sync))
@@ -873,80 +873,7 @@ async fn admin_get_logs(
 
 
 
-#[derive(Deserialize, Debug, Default)]
-#[serde(rename_all = "camelCase")]
-struct StatsRequest {
-    #[serde(default = "default_stats_range")]
-    range: i64,
-}
 
-fn default_stats_range() -> i64 { 24 }
-
-async fn admin_get_stats_summary(
-    Query(params): Query<StatsRequest>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    let stats = token_stats::get_summary_stats(params.range).map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e }))
-    })?;
-    Ok(Json(stats))
-}
-
-async fn admin_get_token_stats_hourly() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    let res = tokio::task::spawn_blocking(|| {
-        token_stats::get_hourly_stats(24 * 7) // Default 7 days
-    }).await;
-
-    match res {
-        Ok(Ok(stats)) => Ok(Json(stats)),
-        Ok(Err(e)) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e }))),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() }))),
-    }
-}
-
-async fn admin_get_token_stats_daily() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    let res = tokio::task::spawn_blocking(|| {
-        token_stats::get_daily_stats(30) // Default 30 days
-    }).await;
-
-    match res {
-        Ok(Ok(stats)) => Ok(Json(stats)),
-        Ok(Err(e)) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e }))),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() }))),
-    }
-}
-
-async fn admin_get_token_stats_weekly() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    let res = tokio::task::spawn_blocking(|| {
-        token_stats::get_weekly_stats(12) // Default 12 weeks
-    }).await;
-
-    match res {
-        Ok(Ok(stats)) => Ok(Json(stats)),
-        Ok(Err(e)) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e }))),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() }))),
-    }
-}
-
-async fn admin_get_stats_accounts(
-    Query(params): Query<StatsRequest>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    let stats = token_stats::get_account_stats(params.range).map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e }))
-    })?;
-    Ok(Json(stats))
-}
-
-async fn admin_get_token_stats_by_model() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    let res = tokio::task::spawn_blocking(|| {
-        token_stats::get_model_stats(24 * 30) // Default 30 days
-    }).await;
-
-    match res {
-        Ok(Ok(stats)) => Ok(Json(stats)),
-        Ok(Err(e)) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e }))),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() }))),
-    }
-}
 
 
 
@@ -1280,6 +1207,32 @@ async fn admin_get_proxy_stats(
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     let stats = state.monitor.get_stats().await;
     Ok(Json(stats))
+}
+
+async fn admin_get_data_dir_path() -> impl IntoResponse {
+    match crate::modules::account::get_data_dir() {
+        Ok(p) => Json(p.to_string_lossy().to_string()),
+        Err(e) => Json(format!("Error: {}", e)),
+    }
+}
+
+async fn admin_should_check_updates() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let settings = crate::modules::update_checker::load_update_settings()
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e })))?;
+    let should = crate::modules::update_checker::should_check_for_updates(&settings);
+    Ok(Json(should))
+}
+
+async fn admin_get_antigravity_path() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let path = crate::commands::get_antigravity_path(Some(true)).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e })))?;
+    Ok(Json(path))
+}
+
+async fn admin_get_antigravity_args() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let args = crate::commands::get_antigravity_args().await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e })))?;
+    Ok(Json(args))
 }
 
 // Token Stats Handlers
