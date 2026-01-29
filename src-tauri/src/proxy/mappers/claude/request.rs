@@ -2384,8 +2384,10 @@ mod tests {
         };
 
         let result = transform_claude_request_in(&req, "test-v", false).unwrap();
-        let max_output_tokens = result["request"]["generationConfig"]["maxOutputTokens"].as_i64().unwrap();
-        assert_eq!(max_output_tokens, 81920);
+        // [FIX] Since we removed the default 81920, maxOutputTokens should NOT be present
+        // when max_tokens is None and thinking is disabled
+        let gen_config = &result["request"]["generationConfig"];
+        assert!(gen_config.get("maxOutputTokens").is_none(), "maxOutputTokens should not be set when max_tokens is None");
     }
 }
 
