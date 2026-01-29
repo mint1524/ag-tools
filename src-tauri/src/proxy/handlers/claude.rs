@@ -21,6 +21,7 @@ use crate::proxy::mappers::claude::{
 use crate::proxy::server::AppState;
 use crate::proxy::mappers::context_manager::ContextManager;
 use crate::proxy::mappers::estimation_calibrator::get_calibrator;
+use crate::proxy::debug_logger;
 use axum::http::HeaderMap;
 use std::sync::{atomic::Ordering, Arc};
 
@@ -121,6 +122,7 @@ pub async fn handle_messages(
         .take(6)
         .map(char::from)
         .collect::<String>().to_lowercase();
+    let debug_cfg = state.debug_logging.read().await.clone();
         
     // Decide whether this request should be handled by z.ai (Anthropic passthrough) or the existing Google flow.
     let zai = state.zai.read().await.clone();
@@ -143,6 +145,17 @@ pub async fn handle_messages(
             ).into_response();
         }
     };
+
+    if debug_logger::is_enabled(&debug_cfg) {
+        let original_payload = json!({
+            "kind": "original_request",
+            "protocol": "anthropic",
+            "trace_id": trace_id,
+            "original_model": request.model,
+            "request": serde_json::to_value(&request).unwrap_or(json!({})),
+        });
+        debug_logger::write_debug_payload(&debug_cfg, Some(&trace_id), "original_request", &original_payload).await;
+    }
 
     // [Issue #703 Fix] 智能兜底判断:需要归一化模型名用于配额保护检查
     let normalized_model = crate::proxy::common::model_mapping::normalize_to_standard_id(&request.model)
@@ -653,6 +666,20 @@ pub async fn handle_messages(
                 ).into_response();
             }
         };
+
+        if debug_logger::is_enabled(&debug_cfg) {
+            let payload = json!({
+                "kind": "v1internal_request",
+                "protocol": "anthropic",
+                "trace_id": trace_id,
+                "original_model": request.model,
+                "mapped_model": request_with_mapped.model,
+                "request_type": config.request_type,
+                "attempt": attempt,
+                "v1internal_request": gemini_body.clone(),
+            });
+            debug_logger::write_debug_payload(&debug_cfg, Some(&trace_id), "v1internal_request", &payload).await;
+        }
         
     // 4. 上游调用 - 自动转换逻辑
     let client_wants_stream = request.stream;
@@ -698,8 +725,22 @@ pub async fn handle_messages(
 
             // 处理流式响应
             if actual_stream {
-                let stream = response.bytes_stream();
-                let gemini_stream = Box::pin(stream);
+                let meta = json!({
+                    "protocol": "anthropic",
+                    "trace_id": trace_id,
+                    "original_model": request.model,
+                    "mapped_model": request_with_mapped.model,
+                    "request_type": config.request_type,
+                    "attempt": attempt,
+                    "status": status.as_u16(),
+                });
+                let gemini_stream = debug_logger::wrap_reqwest_stream_with_debug(
+                    Box::pin(response.bytes_stream()),
+                    debug_cfg.clone(),
+                    trace_id.clone(),
+                    "upstream_response",
+                    meta,
+                );
 
                 let current_message_count = request_with_mapped.messages.len();
 
@@ -893,6 +934,20 @@ pub async fn handle_messages(
         let error_text = response.text().await.unwrap_or_else(|_| format!("HTTP {}", status));
         last_error = format!("HTTP {}: {}", status_code, error_text);
         debug!("[{}] Upstream Error Response: {}", trace_id, error_text);
+        if debug_logger::is_enabled(&debug_cfg) {
+            let payload = json!({
+                "kind": "upstream_response_error",
+                "protocol": "anthropic",
+                "trace_id": trace_id,
+                "original_model": request.model,
+                "mapped_model": request_with_mapped.model,
+                "request_type": config.request_type,
+                "attempt": attempt,
+                "status": status_code,
+                "error_text": error_text,
+            });
+            debug_logger::write_debug_payload(&debug_cfg, Some(&trace_id), "upstream_response_error", &payload).await;
+        }
         
         // 3. 标记限流状态(用于 UI 显示) - 使用异步版本以支持实时配额刷新
         // 🆕 传入实际使用的模型,实现模型级别限流,避免不同模型配额互相影响

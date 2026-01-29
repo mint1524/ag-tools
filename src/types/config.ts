@@ -14,10 +14,16 @@ export interface ProxyConfig {
     custom_mapping?: Record<string, string>;
     request_timeout: number;
     enable_logging: boolean;
+    debug_logging?: DebugLoggingConfig;
     upstream_proxy: UpstreamProxyConfig;
     zai?: ZaiConfig;
     scheduling?: StickySessionConfig;
     experimental?: ExperimentalConfig;
+}
+
+export interface DebugLoggingConfig {
+    enabled: boolean;
+    output_dir?: string;
 }
 
 export type SchedulingMode = 'CacheFirst' | 'Balance' | 'PerformanceFirst';
@@ -121,4 +127,3 @@ export interface CloudflaredStatus {
     url?: string;
     error?: string;
 }
-

@@ -176,6 +176,23 @@ fn default_false() -> bool {
     false
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DebugLoggingConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default)]
+    pub output_dir: Option<String>,
+}
+
+impl Default for DebugLoggingConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            output_dir: None,
+        }
+    }
+}
+
 /// 反代服务配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProxyConfig {
@@ -219,6 +236,10 @@ pub struct ProxyConfig {
     /// 是否开启请求日志记录 (监控)
     #[serde(default)]
     pub enable_logging: bool,
+
+    /// 调试日志配置 (保存完整链路)
+    #[serde(default)]
+    pub debug_logging: DebugLoggingConfig,
 
     /// 上游代理配置
     #[serde(default)]
@@ -265,6 +286,7 @@ impl Default for ProxyConfig {
             custom_mapping: std::collections::HashMap::new(),
             request_timeout: default_request_timeout(),
             enable_logging: true, // 默认开启，支持 token 统计功能
+            debug_logging: DebugLoggingConfig::default(),
             upstream_proxy: UpstreamProxyConfig::default(),
             zai: ZaiConfig::default(),
             scheduling: crate::proxy::sticky_config::StickySessionConfig::default(),

@@ -12,6 +12,7 @@ use crate::proxy::mappers::openai::{
 };
 // use crate::proxy::upstream::client::UpstreamClient; // 通过 state 获取
 use crate::proxy::server::AppState;
+use crate::proxy::debug_logger;
 
 const MAX_RETRY_ATTEMPTS: usize = 3;
 use super::common::{
@@ -98,6 +99,17 @@ pub async fn handle_chat_completions(
         "[{}] OpenAI Chat Request: {} | {} messages | stream: {}",
         trace_id, openai_req.model, openai_req.messages.len(), openai_req.stream
     );
+    let debug_cfg = state.debug_logging.read().await.clone();
+    if debug_logger::is_enabled(&debug_cfg) {
+        let original_payload = json!({
+            "kind": "original_request",
+            "protocol": "openai",
+            "trace_id": trace_id,
+            "original_model": openai_req.model,
+            "request": serde_json::to_value(&openai_req).unwrap_or(json!({})),
+        });
+        debug_logger::write_debug_payload(&debug_cfg, Some(&trace_id), "original_request", &original_payload).await;
+    }
 
     // 1. 获取 UpstreamClient (Clone handle)
     let upstream = state.upstream.clone();
@@ -162,6 +174,20 @@ pub async fn handle_chat_completions(
         // 4. 转换请求
         let gemini_body = transform_openai_request(&openai_req, &project_id, &mapped_model);
 
+        if debug_logger::is_enabled(&debug_cfg) {
+            let payload = json!({
+                "kind": "v1internal_request",
+                "protocol": "openai",
+                "trace_id": trace_id,
+                "original_model": openai_req.model,
+                "mapped_model": mapped_model,
+                "request_type": config.request_type,
+                "attempt": attempt,
+                "v1internal_request": gemini_body.clone(),
+            });
+            debug_logger::write_debug_payload(&debug_cfg, Some(&trace_id), "v1internal_request", &payload).await;
+        }
+
         // [New] 打印转换后的报文 (Gemini Body) 供调试
         if let Ok(body_json) = serde_json::to_string_pretty(&gemini_body) {
             debug!("[OpenAI-Request] Transformed Gemini Body:\n{}", body_json);
@@ -212,12 +238,27 @@ pub async fn handle_chat_completions(
                 use axum::response::Response;
                 use futures::StreamExt;
 
-                let gemini_stream = response.bytes_stream();
+                let meta = json!({
+                    "protocol": "openai",
+                    "trace_id": trace_id,
+                    "original_model": openai_req.model,
+                    "mapped_model": mapped_model,
+                    "request_type": config.request_type,
+                    "attempt": attempt,
+                    "status": status.as_u16(),
+                });
+                let gemini_stream = debug_logger::wrap_reqwest_stream_with_debug(
+                    Box::pin(response.bytes_stream()),
+                    debug_cfg.clone(),
+                    trace_id.clone(),
+                    "upstream_response",
+                    meta,
+                );
 
                 // [P1 FIX] Enhanced Peek logic to handle heartbeats and slow start
                 // Pre-read until we find meaningful content, skip heartbeats
                 let mut openai_stream =
-                    create_openai_sse_stream(Box::pin(gemini_stream), openai_req.model.clone());
+                    create_openai_sse_stream(gemini_stream, openai_req.model.clone());
 
                 let mut first_data_chunk = None;
                 let mut retry_this_account = false;
@@ -369,6 +410,20 @@ pub async fn handle_chat_completions(
             status_code,
             error_text
         );
+        if debug_logger::is_enabled(&debug_cfg) {
+            let payload = json!({
+                "kind": "upstream_response_error",
+                "protocol": "openai",
+                "trace_id": trace_id,
+                "original_model": openai_req.model,
+                "mapped_model": mapped_model,
+                "request_type": config.request_type,
+                "attempt": attempt,
+                "status": status_code,
+                "error_text": error_text,
+            });
+            debug_logger::write_debug_payload(&debug_cfg, Some(&trace_id), "upstream_response_error", &payload).await;
+        }
 
         // 确定重试策略
         let strategy = determine_retry_strategy(status_code, &error_text, false);
