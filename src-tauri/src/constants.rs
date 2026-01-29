@@ -4,9 +4,8 @@ use regex::Regex;
 /// URL to fetch the latest Antigravity version
 const VERSION_URL: &str = "https://antigravity-auto-updater-974169037036.us-central1.run.app";
 
-/// Hardcoded fallback version if all else fails
-/// NOTE: Update this when releasing major versions
-const FALLBACK_VERSION: &str = "1.15.8";
+/// Fallback version derived from Cargo.toml at compile time
+const FALLBACK_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Pre-compiled regex for version parsing (X.Y.Z pattern)
 static VERSION_REGEX: LazyLock<Regex> = LazyLock::new(|| {
@@ -24,10 +23,9 @@ fn parse_version(text: &str) -> Option<String> {
 enum VersionSource {
     Remote,
     CargoToml,
-    Fallback,
 }
 
-/// Fetch version from remote endpoint, with multiple fallbacks
+/// Fetch version from remote endpoint, with fallback to Cargo.toml
 /// Uses a separate thread to avoid blocking the main/UI thread
 fn fetch_remote_version() -> (String, VersionSource) {
     // Spawn a named thread for the blocking HTTP call
@@ -45,33 +43,32 @@ fn fetch_remote_version() -> (String, VersionSource) {
         });
 
     // Wait for the thread
-    if let Ok(handle) = handle {
-        if let Ok(Some(version)) = handle.join() {
-            return (version, VersionSource::Remote);
+    match handle {
+        Ok(h) => {
+            if let Ok(Some(version)) = h.join() {
+                return (version, VersionSource::Remote);
+            }
+        }
+        Err(e) => {
+            tracing::debug!("Failed to spawn version-fetch thread: {}", e);
         }
     }
 
-    // Fallback 1: Cargo.toml version
-    let cargo_version = env!("CARGO_PKG_VERSION");
-    if !cargo_version.is_empty() && cargo_version.contains('.') {
-        return (cargo_version.to_string(), VersionSource::CargoToml);
-    }
-
-    // Fallback 2: Hardcoded version
-    (FALLBACK_VERSION.to_string(), VersionSource::Fallback)
+    // Fallback: Cargo.toml version (always valid at compile time)
+    (FALLBACK_VERSION.to_string(), VersionSource::CargoToml)
 }
 
 /// Shared User-Agent string for all upstream API requests.
 /// Format: antigravity/{version} {os}/{arch}
-/// Version priority: remote endpoint > Cargo.toml > hardcoded fallback
+/// Version priority: remote endpoint > Cargo.toml
 /// OS and architecture are detected at runtime.
 pub static USER_AGENT: LazyLock<String> = LazyLock::new(|| {
     let (version, source) = fetch_remote_version();
 
     tracing::info!(
-        "User-Agent version initialized: {} (source: {:?})",
-        version,
-        source
+        version = %version,
+        source = ?source,
+        "User-Agent initialized"
     );
 
     format!(
@@ -113,3 +110,4 @@ mod tests {
         assert_eq!(parse_version(text), Some("1.15.8".to_string()));
     }
 }
+
