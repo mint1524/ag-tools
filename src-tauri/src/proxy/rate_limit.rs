@@ -600,8 +600,8 @@ mod tests {
     #[test]
     fn test_get_remaining_wait() {
         let tracker = RateLimitTracker::new();
-        tracker.parse_from_error("acc1", 429, Some("30"), "", None);
-        let wait = tracker.get_remaining_wait("acc1");
+        tracker.parse_from_error("acc1", 429, Some("30"), "", None, &[60, 300]);
+        let wait = tracker.get_remaining_wait("acc1", None);
         assert!(wait > 25 && wait <= 30);
     }
 
@@ -609,8 +609,8 @@ mod tests {
     fn test_safety_buffer() {
         let tracker = RateLimitTracker::new();
         // 如果 API 返回 1s，我们强制设为 2s
-        tracker.parse_from_error("acc1", 429, Some("1"), "", None);
-        let wait = tracker.get_remaining_wait("acc1");
+        tracker.parse_from_error("acc1", 429, Some("1"), "", None, &[60, 300]);
+        let wait = tracker.get_remaining_wait("acc1", None);
         // Due to time passing, it might be 1 or 2
         assert!(wait >= 1 && wait <= 2);
     }
