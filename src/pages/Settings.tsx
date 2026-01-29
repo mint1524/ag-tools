@@ -48,6 +48,10 @@ function Settings() {
         },
         pinned_quota_models: {
             models: ['gemini-3-pro-high', 'gemini-3-flash', 'gemini-3-pro-image', 'claude-sonnet-4-5-thinking']
+        },
+        circuit_breaker: {
+            enabled: true,
+            backoff_steps: [60, 300, 1800, 7200]
         }
     });
 
