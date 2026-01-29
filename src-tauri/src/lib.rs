@@ -4,6 +4,7 @@ mod commands;
 mod utils;
 mod proxy;  // Proxy service module
 pub mod error;
+pub mod constants;
 
 use tauri::Manager;
 use modules::logger;
