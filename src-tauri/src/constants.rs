@@ -3,7 +3,10 @@ use std::sync::LazyLock;
 /// URL to fetch the latest Antigravity version
 const VERSION_URL: &str = "https://antigravity-auto-updater-974169037036.us-central1.run.app";
 
-/// Fetch version from remote endpoint, fallback to Cargo.toml version on failure
+/// Hardcoded fallback version if all else fails
+const FALLBACK_VERSION: &str = "1.15.8";
+
+/// Fetch version from remote endpoint, with multiple fallbacks
 fn fetch_remote_version() -> String {
     // Use blocking client for one-time initialization
     match reqwest::blocking::Client::builder()
@@ -27,13 +30,20 @@ fn fetch_remote_version() -> String {
         }
         Err(_) => {}
     }
-    // Fallback to compile-time version from Cargo.toml
-    env!("CARGO_PKG_VERSION").to_string()
+
+    // Fallback 1: Use compile-time version from Cargo.toml if it looks like a valid version
+    let cargo_version = env!("CARGO_PKG_VERSION");
+    if !cargo_version.is_empty() && cargo_version.contains('.') {
+        return cargo_version.to_string();
+    }
+
+    // Fallback 2: Hardcoded version as last resort
+    FALLBACK_VERSION.to_string()
 }
 
 /// Shared User-Agent string for all upstream API requests.
 /// Format: antigravity/{version} {os}/{arch}
-/// Version is fetched from remote endpoint, with Cargo.toml as fallback.
+/// Version priority: remote endpoint > Cargo.toml > hardcoded fallback
 /// OS and architecture are detected at runtime.
 pub static USER_AGENT: LazyLock<String> = LazyLock::new(|| {
     format!(
