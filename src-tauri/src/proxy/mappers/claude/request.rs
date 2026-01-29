@@ -1666,23 +1666,26 @@ fn build_generation_config(
     }*/
 
     // max_tokens 映射为 maxOutputTokens
-    // Respect client-provided max_tokens (aligns with OpenAI mapper behavior)
-    let mut final_max_tokens: i64 = claude_req.max_tokens.map(|t| t as i64).unwrap_or(81920);
+    // [FIX] 不再默认设置 81920，防止非思维模型 (如 claude-sonnet-4-5) 报 400 Invalid Argument
+    let mut final_max_tokens: Option<i64> = claude_req.max_tokens.map(|t| t as i64);
     
     // [NEW] 确保 maxOutputTokens 大于 thinkingBudget (API 强约束)
     if let Some(thinking_config) = config.get("thinkingConfig") {
         if let Some(budget) = thinking_config.get("thinkingBudget").and_then(|t| t.as_u64()) {
-            if final_max_tokens <= budget as i64 {
-                final_max_tokens = (budget + 8192) as i64;
+            let current = final_max_tokens.unwrap_or(0);
+            if current <= budget as i64 {
+                final_max_tokens = Some((budget + 8192) as i64);
                 tracing::info!(
                     "[Generation-Config] Bumping maxOutputTokens to {} due to thinking budget of {}", 
-                    final_max_tokens, budget
+                    final_max_tokens.unwrap(), budget
                 );
             }
         }
     }
     
-    config["maxOutputTokens"] = json!(final_max_tokens);
+    if let Some(val) = final_max_tokens {
+        config["maxOutputTokens"] = json!(val);
+    }
 
     // [优化] 设置全局停止序列,防止模型幻觉出对话标记
     // 注意: 不包含 "[DONE]" 是因为:

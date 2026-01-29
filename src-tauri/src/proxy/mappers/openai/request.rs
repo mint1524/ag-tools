@@ -25,11 +25,11 @@ pub fn transform_openai_request(
         request.quality.as_deref()  // [NEW] Pass quality parameter
     );
 
-    // 检测 Gemini 3 Pro thinking 模型
-    let is_gemini_3_thinking = mapped_model_lower.contains("gemini-3")
-        && (mapped_model_lower.ends_with("-high")
-            || mapped_model_lower.ends_with("-low")
-            || mapped_model_lower.contains("-pro"));
+    // [FIX] 仅当模型名称显式包含 "-thinking" 时才视为 Gemini 思维模型
+    // 避免对 gemini-3-pro (preview) 等其实不支持 thinkingConfig 的模型注入参数导致 400
+    let is_gemini_3_thinking = mapped_model_lower.contains("gemini") 
+        && mapped_model_lower.contains("-thinking") 
+        && !mapped_model_lower.contains("claude");
     let is_claude_thinking = mapped_model_lower.ends_with("-thinking");
     let is_thinking_model = is_gemini_3_thinking || is_claude_thinking;
 
@@ -359,10 +359,15 @@ pub fn transform_openai_request(
     // 3. 构建请求体
 
     let mut gen_config = json!({
-        "maxOutputTokens": request.max_tokens.unwrap_or(81920),
         "temperature": request.temperature.unwrap_or(1.0),
-        "topP": request.top_p.unwrap_or(1.0),
+        "topP": request.top_p.unwrap_or(0.95), // Gemini default is usually 0.95
     });
+
+    // [FIX] 移除默认的 81920 maxOutputTokens，防止非思维模型 (如 claude-sonnet-4-5) 报 400 Invalid Argument
+    // 仅在用户显式提供时设置
+    if let Some(max_tokens) = request.max_tokens {
+         gen_config["maxOutputTokens"] = json!(max_tokens);
+    }
 
     // [NEW] 支持多候选结果数量 (n -> candidateCount)
     if let Some(n) = request.n {
@@ -371,13 +376,27 @@ pub fn transform_openai_request(
 
     // 为 thinking 模型注入 thinkingConfig (使用 thinkingBudget 而非 thinkingLevel)
     if actual_include_thinking {
+        let budget = 32000;
         gen_config["thinkingConfig"] = json!({
             "includeThoughts": true,
-            "thinkingBudget": 32000
+            "thinkingBudget": budget
         });
+
+        // [CRITICAL] 思维模型的 maxOutputTokens 必须大于 thinkingBudget
+        // 如果当前 maxOutputTokens 未设置或小于预算，强制提升
+        let current_max = gen_config["maxOutputTokens"].as_i64().unwrap_or(0);
+        if current_max <= budget {
+            let new_max = budget + 8192; // 预留 8k 给实际回答
+            gen_config["maxOutputTokens"] = json!(new_max);
+            tracing::debug!(
+                "[OpenAI-Request] Adjusted maxOutputTokens to {} for thinking model (budget={})",
+                new_max, budget
+            );
+        }
+        
         tracing::debug!(
-            "[OpenAI-Request] Injected thinkingConfig for model {}: thinkingBudget=16000",
-            mapped_model
+            "[OpenAI-Request] Injected thinkingConfig for model {}: thinkingBudget={}",
+            mapped_model, budget
         );
     }
 
