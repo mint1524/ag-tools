@@ -240,7 +240,7 @@ impl AxumServer {
         use crate::proxy::handlers;
         use crate::proxy::middleware::{
             auth_middleware, admin_auth_middleware, monitor_middleware, 
-            service_status_middleware, cors_layer
+            service_status_middleware, cors_layer, ip_filter_middleware
         };
 
         // 1. 构建主 AI 代理路由 (遵循 auth_mode 配置)
@@ -308,7 +308,8 @@ impl AxumServer {
             .route("/v1/api/event_logging", post(silent_ok_handler))
             // 应用 AI 服务特定的层
             .layer(axum::middleware::from_fn_with_state(state.clone(), auth_middleware))
-            .layer(axum::middleware::from_fn_with_state(state.clone(), monitor_middleware));
+            .layer(axum::middleware::from_fn_with_state(state.clone(), monitor_middleware))
+            .layer(axum::middleware::from_fn_with_state(state.clone(), ip_filter_middleware));
 
         // 2. 构建管理 API (强制鉴权)
         let admin_routes = Router::new()
