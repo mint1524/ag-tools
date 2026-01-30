@@ -35,7 +35,6 @@ import {
     Diamond,
     Gem,
     Circle,
-    Clock,
     ToggleLeft,
     ToggleRight,
     Sparkles,
@@ -45,6 +44,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
 import { getQuotaColor, formatTimeRemaining, getTimeRemainingColor } from '../../utils/format';
 import { useConfigStore } from '../../stores/useConfigStore';
+import { QuotaItem } from './QuotaItem';
 
 // ============================================================================
 // 类型定义
@@ -107,30 +107,7 @@ interface AccountRowContentProps {
 // 辅助函数
 // ============================================================================
 
-/**
- * 根据配额百分比获取对应的背景色类名
- */
-function getColorClass(percentage: number): string {
-    const color = getQuotaColor(percentage);
-    switch (color) {
-        case 'success': return 'bg-emerald-500';
-        case 'warning': return 'bg-amber-500';
-        case 'error': return 'bg-rose-500';
-        default: return 'bg-gray-500';
-    }
-}
 
-/**
- * 根据重置时间获取对应的文字色类名
- */
-function getTimeColorClass(resetTime: string | undefined): string {
-    const color = getTimeRemainingColor(resetTime);
-    switch (color) {
-        case 'success': return 'text-emerald-500 dark:text-emerald-400';
-        case 'warning': return 'text-amber-500 dark:text-amber-400';
-        default: return 'text-gray-400 dark:text-gray-500 opacity-60';
-    }
-}
 
 // ============================================================================
 // 模型分组配置
@@ -418,38 +395,13 @@ function AccountRowContent({
                             const modelData = model.data;
 
                             return (
-                                <div key={model.id} className="relative h-[22px] flex items-center px-1.5 rounded-md overflow-hidden border border-gray-100/50 dark:border-white/5 bg-gray-50/30 dark:bg-white/5 group/quota">
-                                    {modelData && (
-                                        <div
-                                            className={`absolute inset-y-0 left-0 transition-all duration-700 ease-out opacity-15 dark:opacity-20 ${getColorClass(modelData.percentage)}`}
-                                            style={{ width: `${modelData.percentage}%` }}
-                                        />
-                                    )}
-                                    <div className="relative z-10 w-full flex items-center text-[10px] font-mono leading-none gap-1.5">
-                                        <span className="flex-1 min-w-0 text-gray-500 dark:text-gray-400 font-bold truncate text-left" title={model.id}>
-                                            {model.label}
-                                        </span>
-                                        <div className="w-[58px] flex justify-start shrink-0">
-                                            {modelData?.reset_time ? (
-                                                <span className={cn("flex items-center gap-0.5 font-medium transition-colors truncate", getTimeColorClass(modelData.reset_time))}>
-                                                    <Clock className="w-2.5 h-2.5 shrink-0" />
-                                                    {formatTimeRemaining(modelData.reset_time)}
-                                                </span>
-                                            ) : (
-                                                <span className="text-gray-300 dark:text-gray-600 italic scale-90">N/A</span>
-                                            )}
-                                        </div>
-                                        <span className={cn("w-[28px] text-right font-bold transition-colors flex items-center justify-end gap-0.5 shrink-0",
-                                            getQuotaColor(modelData?.percentage || 0) === 'success' ? 'text-emerald-600 dark:text-emerald-400' :
-                                                getQuotaColor(modelData?.percentage || 0) === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
-                                        )}>
-                                            {isModelProtected(account.protected_models, model.protectedKey) && (
-                                                <span title={t('accounts.quota_protected')}><Lock className="w-2.5 h-2.5 text-amber-500" /></span>
-                                            )}
-                                            {modelData ? `${modelData.percentage}%` : '-'}
-                                        </span>
-                                    </div>
-                                </div>
+                                <QuotaItem
+                                    key={model.id}
+                                    label={model.label}
+                                    percentage={modelData?.percentage || 0}
+                                    resetTime={modelData?.reset_time}
+                                    isProtected={isModelProtected(account.protected_models, model.protectedKey)}
+                                />
                             );
                         })}
                     </div>
