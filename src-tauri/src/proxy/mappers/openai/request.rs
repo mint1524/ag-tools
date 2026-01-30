@@ -704,7 +704,7 @@ mod tests {
         let result = transform_openai_request(&req, "test-p", "gemini-3-pro-high-thinking");
         let gen_config = &result["request"]["generationConfig"];
         let max_output_tokens = gen_config["maxOutputTokens"].as_i64().unwrap();
-        // For thinking models, maxOutputTokens = thinkingBudget (32000) + 8192
+        // budget(32000) + 8192 = 40192
         assert_eq!(max_output_tokens, 40192);
         
         // Verify thinkingBudget
