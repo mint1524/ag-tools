@@ -167,7 +167,28 @@ impl TokenManager {
             return Ok(None);
         }
 
-        // 【新增】配额保护检查 - 在检查 proxy_disabled 之前执行
+
+        // [修复 #1344] 先检查账号是否被手动禁用(非配额保护原因)
+        let is_proxy_disabled = account.get("proxy_disabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        
+        let disabled_reason = account.get("proxy_disabled_reason")
+            .and_then(|v| v.as_str())
+            .unwrap_or("");
+        
+        if is_proxy_disabled && disabled_reason != "quota_protection" {
+            // 账号被手动禁用(非配额保护原因)
+            tracing::debug!(
+                "Account skipped due to manual disable: {:?} (email={}, reason={})",
+                path,
+                account.get("email").and_then(|v| v.as_str()).unwrap_or("<unknown>"),
+                disabled_reason
+            );
+            return Ok(None);
+        }
+
+        // 配额保护检查 - 只处理配额保护逻辑
         // 这样可以在加载时自动恢复配额已恢复的账号
         if self.check_and_protect_quota(&mut account, path).await {
             tracing::debug!(
@@ -178,7 +199,9 @@ impl TokenManager {
             return Ok(None);
         }
 
-        // 检查主动禁用状态
+        // [兼容性] 检查旧版 proxy_disabled 标记(已被配额保护恢复的情况)
+        // 如果账号被旧版配额保护禁用,但配额已恢复,上面的检查会自动清除 proxy_disabled
+        // 这里再次检查,确保不会加载仍然被禁用的账号
         if account
             .get("proxy_disabled")
             .and_then(|v| v.as_bool())
@@ -191,6 +214,7 @@ impl TokenManager {
             );
             return Ok(None);
         }
+
 
         let account_id = account["id"].as_str()
             .ok_or("缺少 id 字段")?
@@ -284,7 +308,7 @@ impl TokenManager {
             None => return false, // 无配额信息，跳过
         };
 
-        // 3. 检查是否已经被账号级或模型级配额保护禁用
+        // 3. [兼容性 #621] 检查是否被旧版账号级配额保护禁用,尝试恢复并转为模型级
         let is_proxy_disabled = account_json.get("proxy_disabled")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
@@ -293,13 +317,12 @@ impl TokenManager {
             .and_then(|v| v.as_str())
             .unwrap_or("");
         
-        if is_proxy_disabled {
-            if reason == "quota_protection" {
-                // [兼容性 #621] 如果是被旧版账号级保护禁用的，尝试恢复并转为模型级
-                return self.check_and_restore_quota(account_json, account_path, &quota, &config).await;
-            }
-            return true; // 其他原因禁用，跳过加载
+        if is_proxy_disabled && reason == "quota_protection" {
+            // 如果是被旧版账号级保护禁用的,尝试恢复并转为模型级
+            return self.check_and_restore_quota(account_json, account_path, &quota, &config).await;
         }
+        
+        // [修复 #1344] 不再处理其他禁用原因,让调用方负责检查手动禁用
         
         // 4. 获取模型列表
         let models = match quota.get("models").and_then(|m| m.as_array()) {
