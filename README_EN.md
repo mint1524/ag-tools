@@ -253,6 +253,12 @@ print(response.choices[0].message.content)
             -   **Real-time Updates**: Fixed the issue where manual enabling/disabling, reordering, or bulk operations required an app restart. Changes now take effect immediately.
         -   **[Core Fix] Quota Protection Logic Optimization (Issue #1344 Patch)**:
             -   Refined the differentiation between "Disabled" status and "Quota Protected" status in the quota protection logic, ensuring accurate logging and real-time state synchronization.
+        -   **[Core Fix] Restore Health Check Endpoint (Issue #1364)**:
+            -   **Route Restoration**: Fixed the missing `/health` and `/healthz` routes that were lost during the 4.0.0 architecture migration.
+            -   **Enhanced Response**: The endpoint now returns a JSON containing `"status": "ok"` and the current application version, facilitating version matching and liveness checks for monitoring systems.
+        -   **[Core Fix] Fix Gemini Flash Thinking Budget Limit (Fix Issue #1355)**:
+            -   **Automatic Capping**: Resolved an issue where the default or upstream `thinking_budget` (e.g., 32k) exceeded the limit (24k) for Gemini Flash thinking models (e.g., `gemini-2.0-flash-thinking`), resulting in `400 Bad Request` errors.
+            -   **Smart Truncation**: The system now automatically detects Flash series models and forcibly caps the thinking budget within safe limits (**24,576**), ensuring successful requests without requiring manual client configuration adjustments.
     *   **v4.0.9 (2026-01-30)**:
         -   **[Core Feature] User-Agent Customization & Version Spoofing (PR #1325)**:
             - **Dynamic Override**: Allows users to customize the `User-Agent` header for upstream requests in "Service Configuration". This enables simulation of any client version (Cheat Mode), effectively bypassing version blocks or risk controls in certain regions.

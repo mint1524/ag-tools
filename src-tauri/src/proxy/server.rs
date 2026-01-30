@@ -260,6 +260,8 @@ impl AxumServer {
 
         // 1. 构建主 AI 代理路由 (遵循 auth_mode 配置)
         let proxy_routes = Router::new()
+            .route("/health", get(health_check_handler))
+            .route("/healthz", get(health_check_handler))
             // OpenAI Protocol
             .route("/v1/models", get(handlers::openai::handle_list_models))
             .route(
@@ -557,7 +559,8 @@ impl AxumServer {
 /// 健康检查处理器
 async fn health_check_handler() -> Response {
     Json(serde_json::json!({
-        "status": "ok"
+        "status": "ok",
+        "version": env!("CARGO_PKG_VERSION")
     }))
     .into_response()
 }
