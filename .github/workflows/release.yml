@@ -52,70 +52,22 @@ jobs:
       - name: Install frontend dependencies
         run: npm install
 
-      # 使用 tauri-action 进行构建，但不在本 Step 发布
-      # 注意：我们这里不需要提供 release token，因为它不会在这里发布
-      # 但我们需要签名 Key，这样打出来的包才是带签名的
-      # 手动运行构建命令，替代 tauri-action以避免 GITHUB_TOKEN 强制要求和自动发布行为
-      # 我们将在后续的 publish-release job 中统一处理发布和 updater.json 合并
       - name: Build the app
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build -- ${{ matrix.args }}
 
-      # 收集构建产物
-      - name: Upload artifacts
+      # 1. 上传 updater.json 到 Artifacts (供后续合并使用)
+      - name: Upload updater json
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts-${{ matrix.platform }}-${{ strategy.job-index }}
-          path: |
-            src-tauri/target/**/release/bundle/dmg/*.dmg
-
-            src-tauri/target/**/release/bundle/deb/*.deb
-            src-tauri/target/**/release/bundle/appimage/*.AppImage
-            src-tauri/target/**/release/bundle/msi/*.msi
-            src-tauri/target/**/release/bundle/nsis/*.exe
-            src-tauri/target/**/release/bundle/updater/*.json
+          name: updater-json-${{ matrix.platform }}-${{ strategy.job-index }}
+          path: src-tauri/target/**/release/bundle/updater/*.json
           if-no-files-found: warn
 
-  publish-release:
-    needs: build-tauri
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: all-artifacts
-
-      - name: Merge updater JSONs
-        run: |
-          echo "Merging updater.json files..."
-          # 创建一个空的 JSON 对象作为起点
-          echo "{}" > merged_updater.json
-          
-          # 查找所有 updater.json 并合并
-          find all-artifacts -name "*.json" -type f | while read json_file; do
-            echo "Processing $json_file..."
-            # 使用 jq 合并对象的 key (platforms)
-            # 需要安装 jq: ubuntu-latest 通常自带
-            jq -s '.[0] * .[1]' merged_updater.json "$json_file" > temp.json && mv temp.json merged_updater.json
-          done
-          
-          echo "Merged JSON content:"
-          cat merged_updater.json
-          
-          # 重命名为标准名称以便上传
-          mv merged_updater.json updater.json
-
-      - name: Display structure of downloaded files
-        run: ls -R all-artifacts
-
-      - name: Create Release and Upload Assets
+      # 2. 直接上传安装包到 GitHub Release (避免 artifact 下载超时)
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         env:
@@ -126,17 +78,56 @@ jobs:
           body: "See the assets to download this version and install."
           draft: false
           prerelease: false
-          # 自动上传所有下载的 artifacts 中的文件
-          # 注意：我们需要过滤掉 json，只上传我们合并后的 updater.json
-          # 以及具体的安装包
           files: |
-            updater.json
-            all-artifacts/**/*.dmg
-            all-artifacts/**/*.deb
-            all-artifacts/**/*.AppImage
-            all-artifacts/**/*.msi
-            all-artifacts/**/*.exe
-            all-artifacts/**/*.rpm
+            src-tauri/target/**/release/bundle/dmg/*.dmg
+            src-tauri/target/**/release/bundle/deb/*.deb
+            src-tauri/target/**/release/bundle/appimage/*.AppImage
+            src-tauri/target/**/release/bundle/msi/*.msi
+            src-tauri/target/**/release/bundle/nsis/*.exe
+            src-tauri/target/**/release/bundle/rpm/*.rpm
+
+  publish-release:
+    needs: build-tauri
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 只下载 updater.json 相关的小文件
+      - name: Download updater artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: updater-json-*
+          path: all-updaters
+          merge-multiple: true
+
+      - name: Merge updater JSONs
+        run: |
+          echo "Merging updater.json files..."
+          echo "{}" > merged_updater.json
+          
+          # 查找所有下载下来的 json 并合并
+          find all-updaters -name "*.json" -type f | while read json_file; do
+            echo "Processing $json_file..."
+            jq -s '.[0] * .[1]' merged_updater.json "$json_file" > temp.json && mv temp.json merged_updater.json
+          done
+          
+          echo "Merged JSON content:"
+          cat merged_updater.json
+          
+          mv merged_updater.json updater.json
+
+      - name: Upload merged updater.json
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: updater.json
+          # 确保不覆盖已存在的其他 assets (softprops/action-gh-release 默认是追加)
 
   docker-build-amd64:
     runs-on: ubuntu-latest
