@@ -248,6 +248,8 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.0.8 (2026-01-30)**:
+        -   **[Core Feature] Window State Persistence (PR #1322)**: Automatically restores the window size and position from the previous session.
+        -   **[Core Fix] Graceful Shutdown for Admin Server (PR #1323)**: Fixed the port 8045 binding failure issue on Windows when restarting the app after exit.
         -   **[Core Feature] Implement Full-link Debug Logging (PR #1308)**:
             - **Backend Integration**: Introduced `debug_logger.rs` to capture and record raw request, transformed payload, and complete streaming response for OpenAI, Claude, and Gemini handlers.
             - **Dynamic Configuration**: Supports hot-reloading for logging settings; enable/disable logging or change output directory without restarting the service.
