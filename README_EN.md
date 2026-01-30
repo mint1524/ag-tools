@@ -258,6 +258,7 @@ print(response.choices[0].message.content)
             -   **Enhanced Response**: The endpoint now returns a JSON containing `"status": "ok"` and the current application version, facilitating version matching and liveness checks for monitoring systems.
         -   **[Core Fix] Fix Gemini Flash Thinking Budget Limit (Fix Issue #1355)**:
             -   **Automatic Capping**: Resolved an issue where the default or upstream `thinking_budget` (e.g., 32k) exceeded the limit (24k) for Gemini Flash thinking models (e.g., `gemini-2.0-flash-thinking`), resulting in `400 Bad Request` errors.
+            -   **Multi-Protocol Coverage**: This protection now covers **OpenAI, Claude, and Native Gemini protocols**, ensuring comprehensive safety against invalid budget configurations.
             -   **Smart Truncation**: The system now automatically detects Flash series models and forcibly caps the thinking budget within safe limits (**24,576**), ensuring successful requests without requiring manual client configuration adjustments.
     *   **v4.0.9 (2026-01-30)**:
         -   **[Core Feature] User-Agent Customization & Version Spoofing (PR #1325)**:

@@ -1618,9 +1618,9 @@ fn build_generation_config(
 
             if let Some(budget_tokens) = thinking.budget_tokens {
                 let mut budget = budget_tokens;
-                // gemini-2.5-flash 上限 24576
+                // [FIX] Broaden check to support all Flash thinking models (e.g. gemini-2.0-flash-thinking)
                 let is_flash_model =
-                    has_web_search || claude_req.model.contains("gemini-2.5-flash");
+                    has_web_search || claude_req.model.to_lowercase().contains("flash");
                 if is_flash_model {
                     budget = budget.min(24576);
                 }
@@ -2388,6 +2388,66 @@ mod tests {
         // when max_tokens is None and thinking is disabled
         let gen_config = &result["request"]["generationConfig"];
         assert!(gen_config.get("maxOutputTokens").is_none(), "maxOutputTokens should not be set when max_tokens is None");
+    }
+    #[test]
+    fn test_claude_flash_thinking_budget_capping() {
+        // Use full path or ensure import of ThinkingConfig
+        // transform_claude_request and models are needed.
+        // Assuming models are available via super imports, but let's be explicit if needed.
+        
+        // Setup request with high budget
+        let req = ClaudeRequest {
+            model: "gemini-2.0-flash-thinking-exp".to_string(), // Contains "flash"
+            messages: vec![],
+            thinking: Some(ThinkingConfig {
+                type_: "enabled".to_string(),
+                budget_tokens: Some(32000),
+            }),
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            top_k: None, // Added missing field
+            stream: false,
+            system: None,
+            tools: None,
+            metadata: None,
+            output_config: None,
+            size: None,
+            quality: None,
+        };
+
+        // Should cap at 24576
+        let result = transform_claude_request_in(&req, "proj", false).unwrap();
+        
+        let gen_config = &result["request"]["generationConfig"]; // Corrected path
+        let budget = gen_config["thinkingConfig"]["thinkingBudget"].as_u64().unwrap();
+        assert_eq!(budget, 24576);
+
+        // Setup request for Pro model
+        let req_pro = ClaudeRequest {
+            model: "gemini-2.0-pro-exp".to_string(),
+            messages: vec![],
+            thinking: Some(ThinkingConfig {
+                type_: "enabled".to_string(),
+                budget_tokens: Some(32000),
+            }),
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            top_k: None, // Added missing field
+            stream: false,
+            system: None,
+            tools: None,
+            metadata: None,
+            output_config: None,
+            size: None,
+            quality: None,
+        };
+
+        // Should NOT cap
+        let result_pro = transform_claude_request_in(&req_pro, "proj", false).unwrap();
+        let budget_pro = result_pro["request"]["generationConfig"]["thinkingConfig"]["thinkingBudget"].as_u64().unwrap();
+        assert_eq!(budget_pro, 32000);
     }
 }
 

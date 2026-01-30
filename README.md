@@ -370,6 +370,7 @@ response = client.chat.completions.create(
             -   **响应增强**: 接口现在会返回包含 `"status": "ok"` 和当前应用版本号的 JSON，方便监控系统进行版本匹配和存活检查。
         -   **[核心修复] 修复 Gemini Flash 模型思考预算超限 (Fix Issue #1355)**:
             -   **自动限额**: 修复了在 Gemini Flash 思考模型（如 `gemini-2.0-flash-thinking`）中，默认或上游传入的 `thinking_budget` (例如 32k) 超过模型上限 (24k) 导致 API 报错 `400 Bad Request` 的问题。
+            -   **多协议覆盖**: 此防护已扩展至 **OpenAI、Claude 和原生 Gemini 协议**，全方位拦截不安全的预算配置。
             -   **智能截断**: 系统现在会自动检测 Flash 系列模型，并强制将思考预预算限制在安全范围内 (**24,576**)，确保请求始终成功，无需用户手动调整客户端配置。
     *   **v4.0.9 (2026-01-30)**:
         -   **[核心功能] User-Agent 自定义与版本欺骗 (PR #1325)**:
