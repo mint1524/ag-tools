@@ -220,25 +220,27 @@ pub async fn update_security_config(
     config: crate::proxy::config::SecurityMonitorConfig,
     app_state: State<'_, crate::commands::proxy::ProxyServiceState>,
 ) -> Result<(), String> {
-    // 1. 更新内存中的配置 (如果服务正在运行)
+    // 1. 同步保存到配置文件
+    let mut app_config = crate::modules::config::load_app_config()
+        .map_err(|e| format!("Failed to load config: {}", e))?;
+    app_config.proxy.security_monitor = config.clone();
+    crate::modules::config::save_app_config(&app_config)
+        .map_err(|e| format!("Failed to save config: {}", e))?;
+
+    // 2. 更新内存中的配置 (如果服务正在运行)
     {
         let mut instance_lock = app_state.instance.write().await;
         if let Some(instance) = instance_lock.as_mut() {
             instance.config.security_monitor = config.clone();
-            // 注意: 这里只更新了配置结构体，对于需要实时生效的中间件，
-            // 依赖于它们是每次读取 config 还是持有 Arc/RwLock。
-            // 目前架构可能需要重启服务才能完全应用某些更改，但黑白名单通常是动态查库或查配置的
+            // [FIX] 调用 update_security 热更新运行中的中间件配置
+            // 这是关键步骤！中间件读取的是 AppState.security (Arc<RwLock<ProxySecurityConfig>>)
+            // 必须调用 update_security() 才能使黑白名单配置实时生效
+            instance.axum_server.update_security(&instance.config).await;
+            tracing::info!("[Security] Runtime security config hot-reloaded");
         }
     }
 
-    // 2. 同步保存到配置文件
-    let mut app_config = crate::modules::config::load_app_config()
-        .map_err(|e| format!("Failed to load config: {}", e))?;
-    app_config.proxy.security_monitor = config;
-    crate::modules::config::save_app_config(&app_config)
-        .map_err(|e| format!("Failed to save config: {}", e))?;
-
-    tracing::info!("[Security] Security monitor config updated");
+    tracing::info!("[Security] Security monitor config updated and saved");
     Ok(())
 }
 

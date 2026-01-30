@@ -449,6 +449,11 @@ pub fn get_blacklist() -> Result<Vec<IpBlacklistEntry>, String> {
 
 /// 检查 IP 是否在黑名单中
 pub fn is_ip_in_blacklist(ip: &str) -> Result<bool, String> {
+    get_blacklist_entry_for_ip(ip).map(|entry| entry.is_some())
+}
+
+/// 获取 IP 对应的黑名单条目（如果存在）
+pub fn get_blacklist_entry_for_ip(ip: &str) -> Result<Option<IpBlacklistEntry>, String> {
     let conn = connect_db()?;
     let now = chrono::Utc::now().timestamp();
 
@@ -459,24 +464,33 @@ pub fn is_ip_in_blacklist(ip: &str) -> Result<bool, String> {
     );
 
     // 精确匹配
-    let count: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM ip_blacklist WHERE ip_pattern = ?1",
-            [ip],
-            |row| row.get(0),
-        )
-        .map_err(|e| e.to_string())?;
+    let entry_result = conn.query_row(
+        "SELECT id, ip_pattern, reason, created_at, expires_at, created_by, hit_count
+         FROM ip_blacklist WHERE ip_pattern = ?1",
+        [ip],
+        |row| {
+            Ok(IpBlacklistEntry {
+                id: row.get(0)?,
+                ip_pattern: row.get(1)?,
+                reason: row.get(2)?,
+                created_at: row.get(3)?,
+                expires_at: row.get(4)?,
+                created_by: row.get(5)?,
+                hit_count: row.get(6)?,
+            })
+        },
+    );
 
-    if count > 0 {
+    if let Ok(entry) = entry_result {
         // 增加命中计数
         let _ = conn.execute(
             "UPDATE ip_blacklist SET hit_count = hit_count + 1 WHERE ip_pattern = ?1",
             [ip],
         );
-        return Ok(true);
+        return Ok(Some(entry));
     }
 
-    // CIDR 匹配 (简单实现，仅支持 /24, /16, /8)
+    // CIDR 匹配
     let entries = get_blacklist()?;
     for entry in entries {
         if entry.ip_pattern.contains('/') {
@@ -486,12 +500,12 @@ pub fn is_ip_in_blacklist(ip: &str) -> Result<bool, String> {
                     "UPDATE ip_blacklist SET hit_count = hit_count + 1 WHERE id = ?1",
                     [&entry.id],
                 );
-                return Ok(true);
+                return Ok(Some(entry));
             }
         }
     }
 
-    Ok(false)
+    Ok(None)
 }
 
 /// 简单的 CIDR 匹配

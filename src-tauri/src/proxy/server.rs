@@ -493,9 +493,18 @@ impl AxumServer {
                 tokio::select! {
                     res = listener.accept() => {
                         match res {
-                            Ok((stream, _)) => {
+                            Ok((stream, remote_addr)) => {
                                 let io = TokioIo::new(stream);
-                                let service = TowerToHyperService::new(app.clone());
+                                
+                                // 注入 ConnectInfo (用于获取真实 IP)
+                                use tower::ServiceExt;
+                                use hyper::body::Incoming;
+                                let app_with_info = app.clone().map_request(move |mut req: axum::http::Request<Incoming>| {
+                                    req.extensions_mut().insert(axum::extract::ConnectInfo(remote_addr));
+                                    req
+                                });
+
+                                let service = TowerToHyperService::new(app_with_info);
 
                                 tokio::task::spawn(async move {
                                     if let Err(err) = http1::Builder::new()

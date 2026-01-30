@@ -34,8 +34,7 @@ pub async fn ip_filter_middleware(
                     tracing::warn!("[IP Filter] IP {} not in whitelist, blocking", ip);
                     return create_blocked_response(
                         ip,
-                        "IP not in whitelist",
-                        &security_config.security_monitor.blacklist.block_message,
+                        "Access denied. Your IP is not in the whitelist.",
                     );
                 }
                 Err(e) => {
@@ -62,9 +61,40 @@ pub async fn ip_filter_middleware(
 
         // 2. 检查黑名单
         if security_config.security_monitor.blacklist.enabled {
-            match security_db::is_ip_in_blacklist(ip) {
-                Ok(true) => {
+            match security_db::get_blacklist_entry_for_ip(ip) {
+                Ok(Some(entry)) => {
                     tracing::warn!("[IP Filter] IP {} is in blacklist, blocking", ip);
+                    
+                    // 构建详细的封禁消息
+                    let reason = entry.reason.as_deref().unwrap_or("Malicious activity detected");
+                    let ban_type = if let Some(expires_at) = entry.expires_at {
+                        let now = chrono::Utc::now().timestamp();
+                        let remaining_seconds = expires_at - now;
+                        
+                        if remaining_seconds > 0 {
+                            let hours = remaining_seconds / 3600;
+                            let minutes = (remaining_seconds % 3600) / 60;
+                            
+                            if hours > 24 {
+                                let days = hours / 24;
+                                format!("Temporary ban. Please try again after {} day(s).", days)
+                            } else if hours > 0 {
+                                format!("Temporary ban. Please try again after {} hour(s) and {} minute(s).", hours, minutes)
+                            } else {
+                                format!("Temporary ban. Please try again after {} minute(s).", minutes)
+                            }
+                        } else {
+                            "Temporary ban (expired, will be removed soon).".to_string()
+                        }
+                    } else {
+                        "Permanent ban.".to_string()
+                    };
+                    
+                    let detailed_message = format!(
+                        "Access denied. Reason: {}. {}",
+                        reason,
+                        ban_type
+                    );
                     
                     // 记录被封禁的访问日志
                     let log = security_db::IpAccessLog {
@@ -82,7 +112,7 @@ pub async fn ip_filter_middleware(
                         duration: Some(0),
                         api_key_hash: None,
                         blocked: true,
-                        block_reason: Some("IP in blacklist".to_string()),
+                        block_reason: Some(format!("IP in blacklist: {}", reason)),
                     };
                     
                     tokio::spawn(async move {
@@ -91,14 +121,12 @@ pub async fn ip_filter_middleware(
                         }
                     });
                     
-                    let block_message = security_config.security_monitor.blacklist.block_message.clone();
                     return create_blocked_response(
                         ip,
-                        "IP in blacklist",
-                        &block_message,
+                        &detailed_message,
                     );
                 }
-                Ok(false) => {
+                Ok(None) => {
                     // 不在黑名单中,放行
                     tracing::debug!("[IP Filter] IP {} not in blacklist, allowing", ip);
                 }
@@ -117,44 +145,45 @@ pub async fn ip_filter_middleware(
 
 /// 从请求中提取客户端 IP
 fn extract_client_ip(request: &Request) -> Option<String> {
-    // 优先从 X-Forwarded-For 提取 (取第一个 IP)
+    // 1. 优先从 X-Forwarded-For 提取 (取第一个 IP)
     request
         .headers()
         .get("x-forwarded-for")
         .and_then(|v| v.to_str().ok())
         .map(|s| s.split(',').next().unwrap_or(s).trim().to_string())
         .or_else(|| {
-            // 备选从 X-Real-IP 提取
+            // 2. 备选从 X-Real-IP 提取
             request
                 .headers()
                 .get("x-real-ip")
                 .and_then(|v| v.to_str().ok())
                 .map(|s| s.to_string())
         })
+        .or_else(|| {
+            // 3. 最后尝试从 ConnectInfo 获取 (TCP 连接 IP)
+            // 这可以解决本地开发/测试时没有代理头导致 IP 获取失败的问题
+            request
+                .extensions()
+                .get::<axum::extract::ConnectInfo<std::net::SocketAddr>>()
+                .map(|info| info.0.ip().to_string())
+        })
 }
 
 /// 创建被封禁的响应
-fn create_blocked_response(ip: &str, reason: &str, custom_message: &str) -> Response {
-    let message = if custom_message.is_empty() {
-        format!("Access denied for IP: {}", ip)
-    } else {
-        custom_message.to_string()
-    };
-    
+fn create_blocked_response(ip: &str, message: &str) -> Response {
     let body = serde_json::json!({
         "error": {
             "message": message,
             "type": "ip_blocked",
             "code": "ip_blocked",
             "ip": ip,
-            "reason": reason,
         }
     });
     
     (
         StatusCode::FORBIDDEN,
         [(axum::http::header::CONTENT_TYPE, "application/json")],
-        serde_json::to_string(&body).unwrap_or_else(|_| message),
+        serde_json::to_string(&body).unwrap_or_else(|_| message.to_string()),
     )
         .into_response()
 }
