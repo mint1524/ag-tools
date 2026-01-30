@@ -262,6 +262,10 @@ print(response.choices[0].message.content)
             - Added complete translation support for **Spanish (es)** and **Malay (my)**.
         -   **[i18n] Full Language Coverage**:
             - Added complete translation support for the new feature across 10 languages including En, Zh, Zh-TW, Ar, Ja, Ko, Pt, Ru, Tr, Vi.
+        -   **[i18n] Localize remaining UI strings (PR #1350)**:
+            - **Full Coverage**: Localized the remaining hardcoded strings and untranslated items in the UI, achieving full localization of the interface.
+            - **Removed Redundancy**: Removed all English fallbacks from the code, forcing all components to use i18n keys for localization.
+            - **Language Enhancement**: Improved translation accuracy for Japanese (ja) and ensured consistent display of new UI components across multiple languages.
     *   **v4.0.8 (2026-01-30)**:
         -   **[Core Feature] Window State Persistence (PR #1322)**: Automatically restores the window size and position from the previous session.
         -   **[Core Fix] Graceful Shutdown for Admin Server (PR #1323)**: Fixed the port 8045 binding failure issue on Windows when restarting the app after exit.
