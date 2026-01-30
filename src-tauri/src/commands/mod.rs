@@ -87,12 +87,19 @@ pub async fn delete_accounts(
 /// 重新排序账号列表
 /// 根据传入的账号ID数组顺序更新账号排列
 #[tauri::command]
-pub async fn reorder_accounts(account_ids: Vec<String>) -> Result<(), String> {
+pub async fn reorder_accounts(
+    proxy_state: tauri::State<'_, crate::commands::proxy::ProxyServiceState>,
+    account_ids: Vec<String>,
+) -> Result<(), String> {
     modules::logger::log_info(&format!("收到账号重排序请求，共 {} 个账号", account_ids.len()));
     modules::account::reorder_accounts(&account_ids).map_err(|e| {
         modules::logger::log_error(&format!("账号重排序失败: {}", e));
         e
-    })
+    })?;
+
+    // Reload pool to reflect new order if running
+    let _ = crate::commands::proxy::reload_proxy_accounts(proxy_state).await;
+    Ok(())
 }
 
 /// 切换账号
@@ -418,7 +425,10 @@ pub async fn submit_oauth_code(code: String, state: Option<String>) -> Result<()
 // --- 导入命令 ---
 
 #[tauri::command]
-pub async fn import_v1_accounts(app: tauri::AppHandle) -> Result<Vec<Account>, String> {
+pub async fn import_v1_accounts(
+    app: tauri::AppHandle,
+    proxy_state: tauri::State<'_, crate::commands::proxy::ProxyServiceState>,
+) -> Result<Vec<Account>, String> {
     let accounts = modules::migration::import_from_v1().await?;
 
     // 对导入的账号尝试刷新一波
@@ -426,11 +436,17 @@ pub async fn import_v1_accounts(app: tauri::AppHandle) -> Result<Vec<Account>, S
         let _ = internal_refresh_account_quota(&app, &mut account).await;
     }
 
+    // Reload token pool
+    let _ = crate::commands::proxy::reload_proxy_accounts(proxy_state).await;
+
     Ok(accounts)
 }
 
 #[tauri::command]
-pub async fn import_from_db(app: tauri::AppHandle) -> Result<Account, String> {
+pub async fn import_from_db(
+    app: tauri::AppHandle,
+    proxy_state: tauri::State<'_, crate::commands::proxy::ProxyServiceState>,
+) -> Result<Account, String> {
     // 同步函数包装为 async
     let mut account = modules::migration::import_from_db().await?;
 
@@ -444,12 +460,19 @@ pub async fn import_from_db(app: tauri::AppHandle) -> Result<Account, String> {
     // 刷新托盘图标展示
     crate::modules::tray::update_tray_menus(&app);
 
+    // Reload token pool
+    let _ = crate::commands::proxy::reload_proxy_accounts(proxy_state).await;
+
     Ok(account)
 }
 
 #[tauri::command]
 #[allow(dead_code)]
-pub async fn import_custom_db(app: tauri::AppHandle, path: String) -> Result<Account, String> {
+pub async fn import_custom_db(
+    app: tauri::AppHandle,
+    proxy_state: tauri::State<'_, crate::commands::proxy::ProxyServiceState>,
+    path: String,
+) -> Result<Account, String> {
     // 调用重构后的自定义导入函数
     let mut account = modules::migration::import_from_custom_db_path(path).await?;
 
@@ -463,11 +486,17 @@ pub async fn import_custom_db(app: tauri::AppHandle, path: String) -> Result<Acc
     // 刷新托盘图标展示
     crate::modules::tray::update_tray_menus(&app);
 
+    // Reload token pool
+    let _ = crate::commands::proxy::reload_proxy_accounts(proxy_state).await;
+
     Ok(account)
 }
 
 #[tauri::command]
-pub async fn sync_account_from_db(app: tauri::AppHandle) -> Result<Option<Account>, String> {
+pub async fn sync_account_from_db(
+    app: tauri::AppHandle,
+    proxy_state: tauri::State<'_, crate::commands::proxy::ProxyServiceState>,
+) -> Result<Option<Account>, String> {
     // 1. 获取 DB 中的 Refresh Token
     let db_refresh_token = match modules::migration::get_refresh_token_from_db() {
         Ok(token) => token,
@@ -496,7 +525,7 @@ pub async fn sync_account_from_db(app: tauri::AppHandle) -> Result<Option<Accoun
     }
 
     // 4. 执行完整导入
-    let account = import_from_db(app).await?;
+    let account = import_from_db(app, proxy_state).await?;
     Ok(Some(account))
 }
 

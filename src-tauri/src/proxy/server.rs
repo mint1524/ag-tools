@@ -135,6 +135,7 @@ pub struct AxumServer {
     debug_logging: Arc<RwLock<crate::proxy::config::DebugLoggingConfig>>,
     pub cloudflared_state: Arc<crate::commands::cloudflared::CloudflaredState>,
     pub is_running: Arc<RwLock<bool>>,
+    pub token_manager: Arc<TokenManager>, // [NEW] 暴露出 TokenManager 供反代服务复用
 }
 
 impl AxumServer {
@@ -495,6 +496,7 @@ impl AxumServer {
             debug_logging: debug_logging_state.clone(),
             cloudflared_state,
             is_running: is_running_state,
+            token_manager: token_manager.clone(),
         };
 
         // 在新任务中启动服务器
