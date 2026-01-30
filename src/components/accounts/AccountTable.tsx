@@ -239,7 +239,7 @@ function SortableAccountRow({
             )}
         >
             {/* 拖拽手柄 */}
-            <td className="pl-2 py-1 w-8">
+            <td className="pl-2 py-1 w-8 align-middle">
                 <div
                     {...attributes}
                     {...listeners}
@@ -250,7 +250,7 @@ function SortableAccountRow({
                 </div>
             </td>
             {/* 复选框 */}
-            <td className="px-2 py-1 w-10">
+            <td className="px-2 py-1 w-10 align-middle">
                 <input
                     type="checkbox"
                     className="checkbox checkbox-xs rounded border-2 border-gray-400 dark:border-gray-500 checked:border-blue-600 checked:bg-blue-600 [--chkbg:theme(colors.blue.600)] [--chkfg:white]"
@@ -296,7 +296,7 @@ function AccountRowContent({
     onWarmup,
 }: AccountRowContentProps) {
     const { t } = useTranslation();
-    const { config } = useConfigStore();
+    const { config, showAllQuotas } = useConfigStore();
 
     // 模型配置映射：model_id -> { label, protectedKey }
     const MODEL_CONFIG: Record<string, { label: string; protectedKey: string }> = {
@@ -308,15 +308,31 @@ function AccountRowContent({
 
     // 获取要显示的模型列表
     const pinnedModels = config?.pinned_quota_models?.models || Object.keys(MODEL_CONFIG);
+
+    // 根据 show_all 状态决定显示哪些模型
+    const displayModels = showAllQuotas
+        ? (account.quota?.models || []).map(m => ({
+            id: m.name.toLowerCase(),
+            label: MODEL_CONFIG[m.name.toLowerCase()]?.label || m.name,
+            protectedKey: MODEL_CONFIG[m.name.toLowerCase()]?.protectedKey || m.name.toLowerCase(),
+            data: m
+        }))
+        : pinnedModels.filter(modelId => MODEL_CONFIG[modelId]).map(modelId => ({
+            id: modelId,
+            label: MODEL_CONFIG[modelId].label,
+            protectedKey: MODEL_CONFIG[modelId].protectedKey,
+            data: account.quota?.models.find(m => m.name.toLowerCase() === modelId)
+        }));
+
     const isDisabled = Boolean(account.disabled);
 
     return (
         <>
             {/* 邮箱列 */}
-            <td className="px-4 py-1">
-                <div className="flex items-center gap-3">
+            <td className="px-2 py-1 align-middle">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span className={cn(
-                        "font-medium text-sm truncate max-w-[180px] xl:max-w-none transition-colors",
+                        "font-medium text-sm break-all transition-colors",
                         isCurrent ? "text-blue-700 dark:text-blue-400" : "text-gray-900 dark:text-base-content"
                     )} title={account.email}>
                         {account.email}
@@ -387,7 +403,7 @@ function AccountRowContent({
             </td>
 
             {/* 模型配额列 */}
-            <td className="px-4 py-1">
+            <td className="px-2 py-1 align-middle">
                 {account.quota?.is_forbidden ? (
                     <div className="flex items-center gap-2 text-xs text-red-500 dark:text-red-400 bg-red-50/50 dark:bg-red-900/10 p-1.5 rounded-lg border border-red-100 dark:border-red-900/30">
                         <Ban className="w-4 h-4 shrink-0" />
@@ -396,39 +412,38 @@ function AccountRowContent({
                 ) : (
                     <div className={cn(
                         "grid gap-x-4 gap-y-1 py-0",
-                        pinnedModels.length === 1 ? "grid-cols-1" : "grid-cols-2"
+                        displayModels.length === 1 ? "grid-cols-1" : "grid-cols-2"
                     )}>
-                        {pinnedModels.filter(modelId => MODEL_CONFIG[modelId]).map((modelId) => {
-                            const modelConfig = MODEL_CONFIG[modelId];
-                            const modelData = account.quota?.models.find(m => m.name.toLowerCase() === modelId);
+                        {displayModels.map((model) => {
+                            const modelData = model.data;
 
                             return (
-                                <div key={modelId} className="relative h-[22px] flex items-center px-1.5 rounded-md overflow-hidden border border-gray-100/50 dark:border-white/5 bg-gray-50/30 dark:bg-white/5 group/quota">
+                                <div key={model.id} className="relative h-[22px] flex items-center px-1.5 rounded-md overflow-hidden border border-gray-100/50 dark:border-white/5 bg-gray-50/30 dark:bg-white/5 group/quota">
                                     {modelData && (
                                         <div
                                             className={`absolute inset-y-0 left-0 transition-all duration-700 ease-out opacity-15 dark:opacity-20 ${getColorClass(modelData.percentage)}`}
                                             style={{ width: `${modelData.percentage}%` }}
                                         />
                                     )}
-                                    <div className="relative z-10 w-full flex items-center text-[10px] font-mono leading-none">
-                                        <span className="min-w-[54px] max-w-[72px] text-gray-500 dark:text-gray-400 font-bold truncate pr-1" title={modelId}>
-                                            {modelConfig.label}
+                                    <div className="relative z-10 w-full flex items-center text-[10px] font-mono leading-none gap-1.5">
+                                        <span className="flex-1 min-w-0 text-gray-500 dark:text-gray-400 font-bold truncate text-left" title={model.id}>
+                                            {model.label}
                                         </span>
-                                        <div className="flex-1 flex justify-center">
+                                        <div className="w-[58px] flex justify-start shrink-0">
                                             {modelData?.reset_time ? (
-                                                <span className={cn("flex items-center gap-0.5 font-medium transition-colors", getTimeColorClass(modelData.reset_time))}>
-                                                    <Clock className="w-2.5 h-2.5" />
+                                                <span className={cn("flex items-center gap-0.5 font-medium transition-colors truncate", getTimeColorClass(modelData.reset_time))}>
+                                                    <Clock className="w-2.5 h-2.5 shrink-0" />
                                                     {formatTimeRemaining(modelData.reset_time)}
                                                 </span>
                                             ) : (
                                                 <span className="text-gray-300 dark:text-gray-600 italic scale-90">N/A</span>
                                             )}
                                         </div>
-                                        <span className={cn("w-[36px] text-right font-bold transition-colors flex items-center justify-end gap-0.5",
+                                        <span className={cn("w-[28px] text-right font-bold transition-colors flex items-center justify-end gap-0.5 shrink-0",
                                             getQuotaColor(modelData?.percentage || 0) === 'success' ? 'text-emerald-600 dark:text-emerald-400' :
                                                 getQuotaColor(modelData?.percentage || 0) === 'warning' ? 'text-amber-600 dark:text-amber-400' : 'text-rose-600 dark:text-rose-400'
                                         )}>
-                                            {isModelProtected(account.protected_models, modelConfig.protectedKey) && (
+                                            {isModelProtected(account.protected_models, model.protectedKey) && (
                                                 <span title={t('accounts.quota_protected')}><Lock className="w-2.5 h-2.5 text-amber-500" /></span>
                                             )}
                                             {modelData ? `${modelData.percentage}%` : '-'}
@@ -442,7 +457,7 @@ function AccountRowContent({
             </td>
 
             {/* 最后使用时间列 */}
-            <td className="px-4 py-1">
+            <td className="px-2 py-1 align-middle">
                 <div className="flex flex-col">
                     <span className="text-xs font-medium text-gray-600 dark:text-gray-400 font-mono whitespace-nowrap">
                         {new Date(account.last_used * 1000).toLocaleDateString()}
@@ -455,14 +470,14 @@ function AccountRowContent({
 
             {/* 操作列 */}
             <td className={cn(
-                "px-4 py-1 sticky right-0 z-10 shadow-[-12px_0_12px_-12px_rgba(0,0,0,0.1)] dark:shadow-[-12px_0_12px_-12px_rgba(255,255,255,0.05)] text-center",
+                "px-1 py-1 sticky right-0 z-10 shadow-[-12px_0_12px_-12px_rgba(0,0,0,0.1)] dark:shadow-[-12px_0_12px_-12px_rgba(255,255,255,0.05)] text-center align-middle",
                 // 动态背景色处理
                 isCurrent
                     ? "bg-[#f1f6ff] dark:bg-[#1e2330]" // 接近 blue-50/50 的实色
                     : "bg-white dark:bg-base-100",
                 !isCurrent && "group-hover:bg-gray-50 dark:group-hover:bg-base-200"
             )}>
-                <div className="flex items-center justify-center gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                <div className="flex flex-wrap items-center justify-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity max-w-[125px] mx-auto">
                     <button
                         className="p-1.5 text-gray-500 dark:text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/30 rounded-lg transition-all"
                         onClick={(e) => { e.stopPropagation(); onViewDetails(); }}
@@ -565,7 +580,9 @@ function AccountTable({
     onReorder,
 }: AccountTableProps) {
     const { t } = useTranslation();
+
     const [activeId, setActiveId] = useState<string | null>(null);
+    // showAllQuotas 已经在 useConfigStore 中解构获取
 
     // 配置拖拽传感器
     const sensors = useSensors(
@@ -629,12 +646,14 @@ function AccountTable({
                                     onChange={onToggleAll}
                                 />
                             </th>
-                            <th className="px-4 py-1 text-left rtl:text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">{t('accounts.table.email')}</th>
-                            <th className="px-4 py-1 text-left rtl:text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[440px] min-w-[360px] whitespace-nowrap">{t('accounts.table.quota')}</th>
-                            <th className="px-4 py-1 text-left rtl:text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">{t('accounts.table.last_used')}</th>
-                            <th className="px-4 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap sticky right-0 bg-gray-50 dark:bg-base-200 z-20 shadow-[-12px_0_12px_-12px_rgba(0,0,0,0.1)] dark:shadow-[-12px_0_12px_-12px_rgba(255,255,255,0.05)] text-center">{t('accounts.table.actions')}</th>
-                        </tr>
-                    </thead>
+                            <th className="px-2 py-1 text-left rtl:text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[220px] whitespace-nowrap">{t('accounts.table.email')}</th>
+                            <th className="px-2 py-1 text-left rtl:text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[440px] whitespace-nowrap">
+                                {t('accounts.table.quota')}
+                            </th>
+                            <th className="px-2 py-1 text-left rtl:text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[90px] whitespace-nowrap">{t('accounts.table.last_used')}</th>
+                            <th className="px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap sticky right-0 w-[125px] bg-gray-50 dark:bg-base-200 z-20 shadow-[-12px_0_12px_-12px_rgba(0,0,0,0.1)] dark:shadow-[-12px_0_12px_-12px_rgba(255,255,255,0.05)] text-center">{t('accounts.table.actions')}</th>
+                        </tr >
+                    </thead >
                     <SortableContext items={accountIds} strategy={verticalListSortingStrategy}>
                         <tbody className="divide-y divide-gray-100 dark:divide-base-200">
                             {accounts.map((account) => (
@@ -658,45 +677,47 @@ function AccountTable({
                             ))}
                         </tbody>
                     </SortableContext>
-                </table>
-            </div>
+                </table >
+            </div >
 
             {/* 拖拽悬浮预览层 */}
             <DragOverlay>
-                {activeAccount ? (
-                    <table className="w-full bg-white dark:bg-base-100 shadow-2xl rounded-lg border border-blue-200 dark:border-blue-800">
-                        <tbody>
-                            <tr className="bg-blue-50 dark:bg-blue-900/30">
-                                <td className="pl-2 py-1 w-8">
-                                    <div className="flex items-center justify-center w-6 h-6 text-blue-500">
-                                        <GripVertical className="w-4 h-4" />
-                                    </div>
-                                </td>
-                                <td className="px-2 py-1 w-10">
-                                    <input
-                                        type="checkbox"
-                                        className="checkbox checkbox-xs rounded border-2"
-                                        checked={selectedIds.has(activeAccount.id)}
-                                        readOnly
+                {
+                    activeAccount ? (
+                        <table className="w-full bg-white dark:bg-base-100 shadow-2xl rounded-lg border border-blue-200 dark:border-blue-800">
+                            <tbody>
+                                <tr className="bg-blue-50 dark:bg-blue-900/30">
+                                    <td className="pl-2 py-1 w-8">
+                                        <div className="flex items-center justify-center w-6 h-6 text-blue-500">
+                                            <GripVertical className="w-4 h-4" />
+                                        </div>
+                                    </td>
+                                    <td className="px-2 py-1 w-10">
+                                        <input
+                                            type="checkbox"
+                                            className="checkbox checkbox-xs rounded border-2"
+                                            checked={selectedIds.has(activeAccount.id)}
+                                            readOnly
+                                        />
+                                    </td>
+                                    <AccountRowContent
+                                        account={activeAccount}
+                                        isCurrent={activeAccount.id === currentAccountId}
+                                        isRefreshing={refreshingIds.has(activeAccount.id)}
+                                        isSwitching={activeAccount.id === switchingAccountId}
+                                        onSwitch={() => { }}
+                                        onRefresh={() => { }}
+                                        onViewDevice={() => { }}
+                                        onViewDetails={() => { }}
+                                        onExport={() => { }}
+                                        onDelete={() => { }}
+                                        onToggleProxy={() => { }}
                                     />
-                                </td>
-                                <AccountRowContent
-                                    account={activeAccount}
-                                    isCurrent={activeAccount.id === currentAccountId}
-                                    isRefreshing={refreshingIds.has(activeAccount.id)}
-                                    isSwitching={activeAccount.id === switchingAccountId}
-                                    onSwitch={() => { }}
-                                    onRefresh={() => { }}
-                                    onViewDevice={() => { }}
-                                    onViewDetails={() => { }}
-                                    onExport={() => { }}
-                                    onDelete={() => { }}
-                                    onToggleProxy={() => { }}
-                                />
-                            </tr>
-                        </tbody>
-                    </table>
-                ) : null}
+                                </tr>
+                            </tbody>
+                        </table>
+                    ) : null
+                }
             </DragOverlay>
         </DndContext>
     );

@@ -42,7 +42,7 @@ function Accounts() {
         warmUpAccounts,
         warmUpAccount,
     } = useAccountStore();
-    const { config } = useConfigStore();
+    const { config, showAllQuotas, toggleShowAllQuotas } = useConfigStore();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState<FilterType>('all');
@@ -832,6 +832,19 @@ function Accounts() {
                             {isWarmuping ? t('common.loading') : (selectedIds.size > 0 ? t('accounts.warmup_selected', { count: selectedIds.size }) : t('accounts.warmup_all', '一键预热'))}
                         </span>
                     </button>
+
+                    <label className="flex items-center gap-2 cursor-pointer select-none px-2 py-2 border border-transparent hover:bg-gray-100 dark:hover:bg-base-200 rounded-lg transition-colors" title={t('accounts.show_all_quotas', '显示所有配额')}>
+                        <span className="text-xs font-medium text-gray-600 dark:text-gray-300 hidden xl:inline">
+                            {t('accounts.show_all_quotas', '显示所有配额')}
+                        </span>
+                        <input
+                            type="checkbox"
+                            className="toggle toggle-xs toggle-primary"
+                            checked={showAllQuotas}
+                            onChange={toggleShowAllQuotas}
+                        />
+                    </label>
+                    <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 self-center mx-1 shrink-0"></div>
 
                     <button
                         className="px-2.5 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5"
