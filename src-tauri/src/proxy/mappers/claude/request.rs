@@ -1618,10 +1618,13 @@ fn build_generation_config(
 
             if let Some(budget_tokens) = thinking.budget_tokens {
                 let mut budget = budget_tokens;
-                // [FIX] Broaden check to support all Flash thinking models (e.g. gemini-2.0-flash-thinking)
-                let is_flash_model =
-                    has_web_search || claude_req.model.to_lowercase().contains("flash");
-                if is_flash_model {
+                // [FIX] 所有转发到 Gemini 的 thinking 模型都受 24576 上限约束
+                // 包括: flash 模型、claude-*-thinking 模型、带 web_search 的请求
+                let model_lower = claude_req.model.to_lowercase();
+                let is_gemini_limited = has_web_search 
+                    || model_lower.contains("flash")
+                    || model_lower.ends_with("-thinking");  // claude-opus-4-5-thinking 等
+                if is_gemini_limited {
                     budget = budget.min(24576);
                 }
                 thinking_config["thinkingBudget"] = json!(budget);
