@@ -2423,9 +2423,9 @@ mod tests {
         let budget = gen_config["thinkingConfig"]["thinkingBudget"].as_u64().unwrap();
         assert_eq!(budget, 24576);
 
-        // Setup request for Pro model
+        // Setup request for Pro thinking model (mock name for testing)
         let req_pro = ClaudeRequest {
-            model: "gemini-2.0-pro-exp".to_string(),
+            model: "gemini-2.0-pro-thinking-exp".to_string(), // Contains "thinking" but not "flash"
             messages: vec![],
             thinking: Some(ThinkingConfig {
                 type_: "enabled".to_string(),
