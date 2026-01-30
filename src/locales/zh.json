@@ -22,6 +22,7 @@
         "warning": "警告",
         "info": "提示",
         "details": "详情",
+        "example": "示例",
         "clear": "清除",
         "prev_page": "上一页",
         "next_page": "下一页",
@@ -418,6 +419,12 @@
         },
         "config": {
             "title": "服务配置",
+            "request": {
+                "user_agent": "User-Agent 覆盖",
+                "user_agent_tooltip": "自定义发送给上游 API 的 User-Agent 请求头。留空则使用默认值。",
+                "user_agent_hint": "当前默认值: antigravity/<version> <os>/<arch>",
+                "user_agent_placeholder": "输入自定义 User-Agent 字符串..."
+            },
             "port": "监听端口",
             "port_tooltip": "本地 API 代理监听的端口。需要先停止服务再修改，修改后需重启生效。",
             "port_hint": "默认 8045，修改端口需重启服务",

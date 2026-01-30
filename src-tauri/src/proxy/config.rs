@@ -249,6 +249,10 @@ pub struct ProxyConfig {
     #[serde(default)]
     pub zai: ZaiConfig,
 
+    /// 自定义 User-Agent 请求头 (可选覆盖)
+    #[serde(default)]
+    pub user_agent_override: Option<String>,
+
     /// 账号调度配置 (粘性会话/限流重试)
     #[serde(default)]
     pub scheduling: crate::proxy::sticky_config::StickySessionConfig,
@@ -262,6 +266,10 @@ pub struct ProxyConfig {
     /// - Some(account_id): 固定使用指定账号
     #[serde(default)]
     pub preferred_account_id: Option<String>,
+
+    /// Saved User-Agent string (persisted even when override is disabled)
+    #[serde(default)]
+    pub saved_user_agent: Option<String>,
 }
 
 /// 上游代理配置
@@ -292,6 +300,8 @@ impl Default for ProxyConfig {
             scheduling: crate::proxy::sticky_config::StickySessionConfig::default(),
             experimental: ExperimentalConfig::default(),
             preferred_account_id: None, // 默认使用轮询模式
+            user_agent_override: None,
+            saved_user_agent: None,
         }
     }
 }

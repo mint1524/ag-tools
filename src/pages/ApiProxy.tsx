@@ -167,9 +167,10 @@ export default function ApiProxy() {
     const [isEditingApiKey, setIsEditingApiKey] = useState(false);
     const [tempApiKey, setTempApiKey] = useState('');
 
-    // Admin Password editing states
     const [isEditingAdminPassword, setIsEditingAdminPassword] = useState(false);
     const [tempAdminPassword, setTempAdminPassword] = useState('');
+
+    // Modal states
 
     // Modal states
     const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
@@ -224,6 +225,8 @@ export default function ApiProxy() {
             clearInterval(cfInterval);
         };
     }, []);
+
+
 
     // [FIX #820] Load available accounts for fixed account mode
     const loadAccounts = async () => {
@@ -1253,6 +1256,57 @@ print(response.text)`;
                                 <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
                                     {t('proxy.config.admin_password_hint', { defaultValue: 'For safety in Docker/Browser environments, you can set a separate login password from your API Key.' })}
                                 </p>
+                            </div>
+
+                            {/* User-Agent Overrides */}
+                            <div className="border-t border-gray-200 dark:border-base-300 pt-3 mt-3">
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="text-xs font-medium text-gray-700 dark:text-gray-300 inline-flex items-center gap-1">
+                                        {t('proxy.config.request.user_agent', { defaultValue: 'User-Agent Override' })}
+                                        <HelpTooltip text={t('proxy.config.request.user_agent_tooltip', { defaultValue: 'Override the User-Agent header sent to upstream APIs.' })} />
+                                    </label>
+                                    <input
+                                        type="checkbox"
+                                        className="toggle toggle-sm bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-600 checked:bg-blue-500 checked:border-blue-500"
+                                        checked={!!appConfig.proxy.user_agent_override}
+                                        onChange={(e) => {
+                                            const enabled = e.target.checked;
+                                            if (enabled) {
+                                                // Restore saved override from config or use default
+                                                const restoredValue = appConfig.proxy.saved_user_agent || 'antigravity/1.15.8 darwin/arm64';
+                                                updateProxyConfig({
+                                                    user_agent_override: restoredValue,
+                                                    saved_user_agent: restoredValue
+                                                });
+                                            } else {
+                                                // Disable active override but keep saved value
+                                                updateProxyConfig({ user_agent_override: undefined });
+                                            }
+                                        }}
+                                    />
+                                </div>
+
+                                {!!appConfig.proxy.user_agent_override && (
+                                    <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                                        <input
+                                            type="text"
+                                            value={appConfig.proxy.user_agent_override}
+                                            onChange={(e) => {
+                                                const newValue = e.target.value;
+                                                updateProxyConfig({
+                                                    user_agent_override: newValue,
+                                                    saved_user_agent: newValue
+                                                });
+                                            }}
+                                            className="w-full px-2.5 py-1.5 border border-gray-300 dark:border-base-200 rounded-lg bg-white dark:bg-base-200 text-xs font-mono text-gray-900 dark:text-base-content focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            placeholder={t('proxy.config.request.user_agent_placeholder', { defaultValue: 'Enter custom User-Agent string...' })}
+                                        />
+                                        <div className="bg-gray-50 dark:bg-base-300 rounded p-2 text-[10px] text-gray-500 font-mono break-all">
+                                            <span className="font-bold select-none mr-2">{t('common.example', { defaultValue: 'Example' })}:</span>
+                                            antigravity/1.15.8 darwin/arm64
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
 

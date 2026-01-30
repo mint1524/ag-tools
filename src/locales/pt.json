@@ -22,6 +22,7 @@
         "warning": "Aviso",
         "info": "Informação",
         "details": "Detalhes",
+        "example": "Example",
         "clear": "Limpar",
         "prev_page": "Anterior",
         "next_page": "Próxima",
@@ -410,6 +411,12 @@
         },
         "config": {
             "title": "Configuração do Serviço",
+            "request": {
+                "user_agent": "User-Agent Override",
+                "user_agent_tooltip": "Override the User-Agent header sent to upstream APIs. Leave empty to use default.",
+                "user_agent_hint": "Current Default: antigravity/<version> <os>/<arch>",
+                "user_agent_placeholder": "Enter custom User-Agent string..."
+            },
             "port": "Porta de Escuta",
             "port_tooltip": "Porta TCP que o Proxy da API local escuta. Pare o serviço para alterá-la, depois reinicie para aplicar.",
             "port_hint": "Padrão 8045, reinício necessário para aplicar alterações",

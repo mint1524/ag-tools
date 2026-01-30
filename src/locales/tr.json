@@ -22,6 +22,7 @@
         "warning": "Uyarı",
         "info": "Bilgi",
         "details": "Detaylar",
+        "example": "Example",
         "clear": "Temizle",
         "prev_page": "Önceki",
         "next_page": "Sonraki",
@@ -378,6 +379,12 @@
         },
         "config": {
             "title": "Hizmet Yapılandırması",
+            "request": {
+                "user_agent": "User-Agent Override",
+                "user_agent_tooltip": "Override the User-Agent header sent to upstream APIs. Leave empty to use default.",
+                "user_agent_hint": "Current Default: antigravity/<version> <os>/<arch>",
+                "user_agent_placeholder": "Enter custom User-Agent string..."
+            },
             "port": "Dinleme Portu",
             "port_tooltip": "Yerel API Proxy'nin dinlediği TCP portu. Değiştirmek için hizmeti durdurun, ardından uygulamak için yeniden başlatın.",
             "port_hint": "Varsayılan 8045, değişiklikleri uygulamak için yeniden başlatma gerekir",

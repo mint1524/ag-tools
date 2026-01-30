@@ -14,7 +14,7 @@ use std::sync::atomic::AtomicUsize;
 use futures::TryFutureExt;
 use serde::{Deserialize, Serialize};
 use crate::modules::{account, logger, proxy_db, config, token_stats, migration};
-use crate::models::{Account, AppConfig, QuotaData, DeviceProfile};
+use crate::models::AppConfig;
 
 /// Axum 应用状态
 #[derive(Clone)]
@@ -128,6 +128,7 @@ pub struct AxumServer {
     shutdown_tx: Arc<tokio::sync::Mutex<Option<oneshot::Sender<()>>>>,
     custom_mapping: Arc<tokio::sync::RwLock<std::collections::HashMap<String, String>>>,
     proxy_state: Arc<tokio::sync::RwLock<crate::proxy::config::UpstreamProxyConfig>>,
+    upstream: Arc<crate::proxy::upstream::client::UpstreamClient>,
     security_state: Arc<RwLock<crate::proxy::ProxySecurityConfig>>,
     zai_state: Arc<RwLock<crate::proxy::ZaiConfig>>,
     experimental: Arc<RwLock<crate::proxy::config::ExperimentalConfig>>,
@@ -176,6 +177,11 @@ impl AxumServer {
         tracing::info!("调试日志配置已热更新");
     }
 
+    pub async fn update_user_agent(&self, config: &crate::proxy::config::ProxyConfig) {
+        self.upstream.set_user_agent_override(config.user_agent_override.clone()).await;
+        tracing::info!("User-Agent 配置已热更新: {:?}", config.user_agent_override);
+    }
+
     pub async fn set_running(&self, running: bool) {
         let mut r = self.is_running.write().await;
         *r = running;
@@ -190,6 +196,7 @@ impl AxumServer {
         custom_mapping: std::collections::HashMap<String, String>,
         _request_timeout: u64,
         upstream_proxy: crate::proxy::config::UpstreamProxyConfig,
+        user_agent_override: Option<String>,
         security_config: crate::proxy::ProxySecurityConfig,
         zai_config: crate::proxy::ZaiConfig,
         monitor: Arc<crate::proxy::monitor::ProxyMonitor>,
@@ -217,9 +224,16 @@ impl AxumServer {
                 std::collections::HashMap::new(),
             )),
             upstream_proxy: proxy_state.clone(),
-            upstream: Arc::new(crate::proxy::upstream::client::UpstreamClient::new(Some(
-                upstream_proxy.clone(),
-            ))),
+            upstream: {
+                let u = Arc::new(crate::proxy::upstream::client::UpstreamClient::new(Some(
+                    upstream_proxy.clone(),
+                )));
+                // 初始化 User-Agent 覆盖
+                if user_agent_override.is_some() {
+                    u.set_user_agent_override(user_agent_override).await;
+                }
+                u
+            },
             zai: zai_state.clone(),
             provider_rr: provider_rr.clone(),
             zai_vision_mcp: zai_vision_mcp_state,
@@ -474,6 +488,7 @@ impl AxumServer {
             shutdown_tx: Arc::new(tokio::sync::Mutex::new(Some(shutdown_tx))),
             custom_mapping: custom_mapping_state.clone(),
             proxy_state,
+            upstream: state.upstream.clone(),
             security_state,
             zai_state,
             experimental: experimental_state.clone(),

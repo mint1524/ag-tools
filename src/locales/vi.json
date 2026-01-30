@@ -23,6 +23,7 @@
         "warning": "Cảnh báo",
         "info": "Thông tin",
         "details": "Chi tiết",
+        "example": "Example",
         "clear": "Xóa",
         "prev_page": "Trang trước",
         "next_page": "Trang sau",
@@ -411,6 +412,12 @@
         },
         "config": {
             "title": "Cấu hình Dịch vụ",
+            "request": {
+                "user_agent": "User-Agent Override",
+                "user_agent_tooltip": "Override the User-Agent header sent to upstream APIs. Leave empty to use default.",
+                "user_agent_hint": "Current Default: antigravity/<version> <os>/<arch>",
+                "user_agent_placeholder": "Enter custom User-Agent string..."
+            },
             "port": "Cổng lắng nghe (Port)",
             "port_tooltip": "Cổng TCP mà API Proxy cục bộ sẽ lắng nghe. Dừng dịch vụ để thay đổi, sau đó khởi động lại để áp dụng.",
             "port_hint": "Mặc định 8045, cần khởi động lại để áp dụng",

@@ -19,6 +19,8 @@ export interface ProxyConfig {
     zai?: ZaiConfig;
     scheduling?: StickySessionConfig;
     experimental?: ExperimentalConfig;
+    user_agent_override?: string;
+    saved_user_agent?: string;
 }
 
 export interface DebugLoggingConfig {

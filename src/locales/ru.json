@@ -23,6 +23,7 @@
         "warning": "Предупреждение",
         "info": "Информация",
         "details": "Детали",
+        "example": "Example",
         "clear": "Очистить",
         "prev_page": "Предыдущая",
         "next_page": "Следующая",
@@ -403,6 +404,12 @@
         },
         "config": {
             "title": "Конфигурация сервиса",
+            "request": {
+                "user_agent": "User-Agent Override",
+                "user_agent_tooltip": "Override the User-Agent header sent to upstream APIs. Leave empty to use default.",
+                "user_agent_hint": "Current Default: antigravity/<version> <os>/<arch>",
+                "user_agent_placeholder": "Enter custom User-Agent string..."
+            },
             "port": "Порт прослушивания",
             "port_tooltip": "TCP порт, на котором локальный API Прокси слушает. Остановите сервис для изменения, затем перезапустите для применения.",
             "port_hint": "По умолчанию 8045, требуется перезапуск для применения изменений",

@@ -22,6 +22,7 @@
         "warning": "警告",
         "info": "情報",
         "details": "詳細",
+        "example": "Example",
         "clear": "クリア",
         "prev_page": "前へ",
         "next_page": "次へ",
@@ -426,6 +427,12 @@
         },
         "config": {
             "title": "サービス構成",
+            "request": {
+                "user_agent": "User-Agent Override",
+                "user_agent_tooltip": "Override the User-Agent header sent to upstream APIs. Leave empty to use default.",
+                "user_agent_hint": "Current Default: antigravity/<version> <os>/<arch>",
+                "user_agent_placeholder": "Enter custom User-Agent string..."
+            },
             "port": "リスニングポート",
             "port_tooltip": "ローカルAPIプロキシがリッスンするTCPポート。変更するにはサービスを停止し、再起動して適用してください。",
             "port_hint": "デフォルト 8045、適用には再起動が必要",

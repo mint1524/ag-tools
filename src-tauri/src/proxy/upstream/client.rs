@@ -4,6 +4,7 @@
 use reqwest::{header, Client, Response, StatusCode};
 use serde_json::Value;
 use tokio::time::Duration;
+use tokio::sync::RwLock;
 
 // Cloud Code v1internal endpoints (fallback order: Sandbox → Daily → Prod)
 // 优先使用 Sandbox/Daily 环境以避免 Prod环境的 429 错误 (Ref: Issue #1176)
@@ -19,6 +20,7 @@ const V1_INTERNAL_BASE_URL_FALLBACKS: [&str; 3] = [
 
 pub struct UpstreamClient {
     http_client: Client,
+    user_agent_override: RwLock<Option<String>>,
 }
 
 impl UpstreamClient {
@@ -43,7 +45,23 @@ impl UpstreamClient {
 
         let http_client = builder.build().expect("Failed to create HTTP client");
 
-        Self { http_client }
+        Self { 
+            http_client,
+            user_agent_override: RwLock::new(None),
+        }
+    }
+
+    /// 设置动态 User-Agent 覆盖
+    pub async fn set_user_agent_override(&self, ua: Option<String>) {
+        let mut lock = self.user_agent_override.write().await;
+        *lock = ua;
+        tracing::debug!("UpstreamClient User-Agent override updated: {:?}", lock);
+    }
+
+    /// 获取当前生效的 User-Agent
+    pub async fn get_user_agent(&self) -> String {
+        let ua_override = self.user_agent_override.read().await;
+        ua_override.as_ref().cloned().unwrap_or_else(|| crate::constants::USER_AGENT.clone())
     }
 
     /// 构建 v1internal URL
@@ -104,9 +122,11 @@ impl UpstreamClient {
             header::HeaderValue::from_str(&format!("Bearer {}", access_token))
                 .map_err(|e| e.to_string())?,
         );
+
+        // [NEW] 支持自定义 User-Agent 覆盖
         headers.insert(
             header::USER_AGENT,
-            header::HeaderValue::from_str(crate::constants::USER_AGENT.as_str())
+            header::HeaderValue::from_str(&self.get_user_agent().await)
                 .unwrap_or_else(|e| {
                     tracing::warn!("Invalid User-Agent header value, using fallback: {}", e);
                     header::HeaderValue::from_static("antigravity")
@@ -143,11 +163,10 @@ impl UpstreamClient {
                     if status.is_success() {
                         if idx > 0 {
                             tracing::info!(
-                                "✓ Upstream fallback succeeded | Endpoint: {} | Status: {} | Attempt: {}/{}",
+                                "✓ Upstream fallback succeeded | Endpoint: {} | Status: {} | Next endpoints available: {}",
                                 base_url,
                                 status,
-                                idx + 1,
-                                V1_INTERNAL_BASE_URL_FALLBACKS.len()
+                                V1_INTERNAL_BASE_URL_FALLBACKS.len() - idx - 1
                             );
                         } else {
                             tracing::debug!("✓ Upstream request succeeded | Endpoint: {} | Status: {}", base_url, status);
@@ -221,9 +240,11 @@ impl UpstreamClient {
             header::HeaderValue::from_str(&format!("Bearer {}", access_token))
                 .map_err(|e| e.to_string())?,
         );
+
+        // [NEW] 支持自定义 User-Agent 覆盖
         headers.insert(
             header::USER_AGENT,
-            header::HeaderValue::from_str(crate::constants::USER_AGENT.as_str())
+            header::HeaderValue::from_str(&self.get_user_agent().await)
                 .unwrap_or_else(|e| {
                     tracing::warn!("Invalid User-Agent header value, using fallback: {}", e);
                     header::HeaderValue::from_static("antigravity")

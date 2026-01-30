@@ -22,6 +22,7 @@
         "warning": "تحذير",
         "info": "معلومات",
         "details": "التفاصيل",
+        "example": "Example",
         "clear": "مسح",
         "prev_page": "السابق",
         "next_page": "التالي",
@@ -418,6 +419,12 @@
         },
         "config": {
             "title": "تكوين الخدمة",
+            "request": {
+                "user_agent": "User-Agent Override",
+                "user_agent_tooltip": "Override the User-Agent header sent to upstream APIs. Leave empty to use default.",
+                "user_agent_hint": "Current Default: antigravity/<version> <os>/<arch>",
+                "user_agent_placeholder": "Enter custom User-Agent string..."
+            },
             "port": "منفذ الاستماع",
             "port_tooltip": "منفذ TCP الذي يستمع إليه وكيل API المحلي. أوقف الخدمة لتغييره، ثم أعد التشغيل للتطبيق.",
             "port_hint": "الافتراضي 8045، مطلوب إعادة التشغيل لتطبيق التغييرات",

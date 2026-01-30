@@ -247,6 +247,13 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.0.9 (2026-01-30)**:
+        -   **[Core Feature] User-Agent Customization & Version Spoofing (PR #1325)**:
+            - **Dynamic Override**: Allows users to customize the `User-Agent` header for upstream requests in "Service Configuration". This enables simulation of any client version (Cheat Mode), effectively bypassing version blocks or risk controls in certain regions.
+            - **Smart Fallback**: Implemented a three-tier version fetching mechanism (Remote Fetch -> Cargo Version -> Hardcoded). When the primary version API is unavailable, the system automatically parses the official Changelog page to retrieve the latest version, ensuring the UA always masquerades as the latest client.
+            - **Hot Reload**: UA configuration changes take effect immediately without requiring a service restart.
+        -   **[i18n] Full Language Coverage**:
+            - Added complete translation support for the new feature across 10 languages including En, Zh, Zh-TW, Ar, Ja, Ko, Pt, Ru, Tr, Vi.
     *   **v4.0.8 (2026-01-30)**:
         -   **[Core Feature] Window State Persistence (PR #1322)**: Automatically restores the window size and position from the previous session.
         -   **[Core Fix] Graceful Shutdown for Admin Server (PR #1323)**: Fixed the port 8045 binding failure issue on Windows when restarting the app after exit.
