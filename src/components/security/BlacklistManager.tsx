@@ -102,7 +102,7 @@ export const BlacklistManager: React.FC<Props> = ({ refreshKey }) => {
             <div className="p-5 border-b border-gray-100 dark:border-base-200 flex items-center gap-4">
                 <button
                     onClick={() => setIsAddOpen(true)}
-                    className="btn btn-sm btn-primary gap-2"
+                    className="px-4 py-2 bg-white dark:bg-base-100 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-2 shadow-sm border border-gray-200/50 dark:border-base-300"
                 >
                     <Plus size={16} /> {t('security.blacklist.add_ip')}
                 </button>
@@ -200,9 +200,20 @@ export const BlacklistManager: React.FC<Props> = ({ refreshKey }) => {
                                 />
                             </div>
 
-                            <div className="flex justify-end gap-2 mt-6">
-                                <button className="btn btn-ghost" onClick={() => setIsAddOpen(false)}>{t('security.blacklist.cancel')}</button>
-                                <button className="btn btn-primary" onClick={handleAdd} disabled={!newIp}>{t('security.blacklist.add_btn')}</button>
+                            <div className="flex justify-end gap-3 mt-6">
+                                <button
+                                    className="px-4 py-2 bg-gray-100 dark:bg-base-200 text-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-base-300 transition-colors"
+                                    onClick={() => setIsAddOpen(false)}
+                                >
+                                    {t('security.blacklist.cancel')}
+                                </button>
+                                <button
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={handleAdd}
+                                    disabled={!newIp}
+                                >
+                                    {t('security.blacklist.add_btn')}
+                                </button>
                             </div>
                         </div>
                     </div>
