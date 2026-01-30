@@ -226,6 +226,7 @@ pub async fn ensure_admin_server(
             config.zai.clone(),
             monitor,
             config.experimental.clone(),
+            config.debug_logging.clone(),
             integration.clone(),
             cloudflared_state,
         ).await {
