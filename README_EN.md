@@ -255,6 +255,11 @@ print(response.choices[0].message.content)
         -   **[Core Fix] Resolve Quota Protection State Sync Defect (Issue #1344)**:
             - **Real-time State Sync**: Fixed a logic defect where `check_and_protect_quota()` would exit early when processing disabled accounts. Now, even if an account is disabled, the system still scans and updates its `protected_models` (model-level protection list) in real-time, ensuring accounts with insufficient quota cannot bypass protection mechanisms after being re-enabled.
             - **Log Path Separation**: Extracted manual disable checks from the quota protection function to the caller, logging accurate messages based on different skip reasons (manual disable/quota protection) to eliminate user confusion.
+        -   **[Core Feature] Cache Management & One-click Clearing (PR #1346)**:
+            - **Backend Integration**: Introduced `src-tauri/src/modules/cache.rs` to calculate and manage temporary file distributions (e.g., translation cache, log fingerprints).
+            - **UI Implementation**: Added a "Clear Cache" feature in "System Settings". Users can view real-time cache size and perform one-click cleanup to reclaim disk space.
+        -   **[i18n] New Language Support (PR #1346)**:
+            - Added complete translation support for **Spanish (es)** and **Malay (my)**.
         -   **[i18n] Full Language Coverage**:
             - Added complete translation support for the new feature across 10 languages including En, Zh, Zh-TW, Ar, Ja, Ko, Pt, Ru, Tr, Vi.
     *   **v4.0.8 (2026-01-30)**:
