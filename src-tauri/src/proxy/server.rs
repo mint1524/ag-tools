@@ -40,6 +40,7 @@ pub struct AppState {
     pub security: Arc<RwLock<crate::proxy::ProxySecurityConfig>>, // [NEW] 安全配置状态
     pub cloudflared_state: Arc<crate::commands::cloudflared::CloudflaredState>, // [NEW] Cloudflared 插件状态
     pub is_running: Arc<RwLock<bool>>, // [NEW] 运行状态标识
+    pub port: u16, // [NEW] 本地监听端口 (v4.0.8 修复)
 }
 
 // 为 AppState 实现 FromRef，以便中间件提取 security 状态
@@ -231,6 +232,7 @@ impl AxumServer {
             security: security_state.clone(),
             cloudflared_state: cloudflared_state.clone(),
             is_running: is_running_state.clone(),
+            port,
         };
 
 
@@ -957,14 +959,13 @@ async fn admin_get_proxy_status(
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // 在 Headless/Axum 模式下，AxumServer 既然在运行，通常就是 running
-    let proxy_cfg = state.upstream_proxy.read().await;
-    let url = &proxy_cfg.url;
     let active_accounts = state.token_manager.len();
 
     let is_running = { *state.is_running.read().await };
     Ok(Json(serde_json::json!({
         "running": is_running,
-        "url": url,
+        "port": state.port,
+        "base_url": format!("http://127.0.0.1:{}", state.port),
         "active_accounts": active_accounts,
     })))
 }
