@@ -17,6 +17,7 @@ function Navbar() {
         { path: '/api-proxy', label: t('nav.proxy') },
         { path: '/monitor', label: t('nav.call_records') },
         { path: '/token-stats', label: t('nav.token_stats', 'Token 统计') },
+        { path: '/security', label: t('nav.security') },
         { path: '/settings', label: t('nav.settings') },
     ];
 

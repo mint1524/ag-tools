@@ -19,6 +19,7 @@ pub mod integration;
 pub mod account_service;
 pub mod http_api;
 pub mod cache;
+pub mod security_db;
 
 use crate::models;
 
