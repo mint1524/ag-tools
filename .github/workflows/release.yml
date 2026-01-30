@@ -55,32 +55,13 @@ jobs:
       # 使用 tauri-action 进行构建，但不在本 Step 发布
       # 注意：我们这里不需要提供 release token，因为它不会在这里发布
       # 但我们需要签名 Key，这样打出来的包才是带签名的
+      # 手动运行构建命令，替代 tauri-action以避免 GITHUB_TOKEN 强制要求和自动发布行为
+      # 我们将在后续的 publish-release job 中统一处理发布和 updater.json 合并
       - name: Build the app
-        uses: tauri-apps/tauri-action@v0
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "Antigravity Tools ${{ github.ref_name }}"
-          releaseBody: "See the assets to download this version and install."
-          releaseDraft: false
-          prerelease: false
-          args: ${{ matrix.args }}
-          tauriScript: npm run tauri
-          updaterJsonKeepUniversal: true
-          # 关键修改：禁用 tauri-action 的自动发布功能，只让它负责构建和生成 artifacts
-          # 通过不提供 GITHUB_TOKEN，tauri-action 通常会跳过 Release 步骤，但我们需要确保它输出了文件
-          # 或者，由于我们后续要自己收集，我们可以让它正常运行，但我们主要关心它产生的文件
-          # 实际上 tauri-action v0 很难完全禁用发布但保留签名和 updater json 生成。
-          # 更好的策略是：让它以为自己在构建，但不给它 release 权限，或者接受它只能“Build”
-          # 实际上，如果不给 GITHUB_TOKEN，tauri-action 会报错吗？
-          # 替代方案：我们直接手动运行 npm run tauri build，自己处理签名。
-          # 为了稳妥和兼容现有逻辑，我们这里依然使用 tauri-action，但我们后续自己收集文件。
-          # 如果它尝试发布失败也没关系，只要文件生成了就行。
-          # 但为了避免 CI 变红，我们这里只用它来 Setup 环境？不，它封装了构建逻辑。
-          # 让我们尝试不传递 GITHUB_TOKEN，看看是否只 Build。
-          # 如果不行，我们手动 upload artifacts。
+        run: npm run tauri build -- ${{ matrix.args }}
 
       # 收集构建产物
       - name: Upload artifacts
