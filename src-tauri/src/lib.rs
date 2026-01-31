@@ -199,6 +199,9 @@ pub fn run() {
         .setup(|app| {
             info!("Setup starting...");
 
+            // Initialize log bridge with app handle for debug console
+            modules::log_bridge::init_log_bridge(app.handle().clone());
+
             // Linux: Workaround for transparent window crash/freeze
             // The transparent window feature is unstable on Linux with WebKitGTK
             // We disable the visual alpha channel to prevent softbuffer-related crashes
@@ -410,6 +413,12 @@ pub fn run() {
             commands::cloudflared::cloudflared_start,
             commands::cloudflared::cloudflared_stop,
             commands::cloudflared::cloudflared_get_status,
+            // Debug console commands
+            modules::log_bridge::enable_debug_console,
+            modules::log_bridge::disable_debug_console,
+            modules::log_bridge::is_debug_console_enabled,
+            modules::log_bridge::get_debug_console_logs,
+            modules::log_bridge::clear_debug_console_logs,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Sun, Moon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useConfigStore } from '../../stores/useConfigStore';
+import DebugConsoleButton from '../debug/DebugConsoleButton';
 
 import { isTauri, isLinux } from '../../utils/env';
 
@@ -164,6 +165,8 @@ function Navbar() {
 
                     {/* 右侧快捷设置按钮 */}
                     <div className="flex items-center gap-2">
+                        <DebugConsoleButton />
+
                         {/* 主题切换按钮 */}
                         <button
                             onClick={toggleTheme}
