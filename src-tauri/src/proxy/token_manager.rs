@@ -1997,6 +1997,8 @@ impl TokenManager {
         }
 
         earliest_ts
+    }
+
     /// Helper to find account ID by email
     pub fn get_account_id_by_email(&self, email: &str) -> Option<String> {
         for entry in self.tokens.iter() {
