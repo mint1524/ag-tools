@@ -6,16 +6,21 @@ import { cn } from '../../utils/cn';
 
 const DebugConsoleButton: React.FC = () => {
     const { t } = useTranslation();
-    const { isEnabled, isOpen, toggle, logs } = useDebugConsole();
+    const { isEnabled, isOpen, toggle, enable, logs } = useDebugConsole();
 
-    if (!isEnabled) return null;
+    const handleClick = () => {
+        if (!isEnabled) {
+            enable();
+        }
+        toggle();
+    };
 
     const errorCount = logs.filter(l => l.level === 'ERROR').length;
     const warnCount = logs.filter(l => l.level === 'WARN').length;
 
     return (
         <button
-            onClick={toggle}
+            onClick={handleClick}
             className={cn(
                 "relative flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium transition-all",
                 isOpen

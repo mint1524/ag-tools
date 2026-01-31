@@ -62,7 +62,7 @@ const DebugConsole: React.FC = () => {
         filter, setFilter,
         searchTerm, setSearchTerm,
         autoScroll, setAutoScroll,
-        checkEnabled, isEnabled
+        checkEnabled
     } = useDebugConsole();
 
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -130,8 +130,6 @@ const DebugConsole: React.FC = () => {
             !log.target.toLowerCase().includes(searchTerm.toLowerCase())) return false;
         return true;
     });
-
-    if (!isEnabled) return null;
 
     return (
         <AnimatePresence>
