@@ -283,6 +283,7 @@
             "account": "账号",
             "proxy": "代理设置",
             "advanced": "高级",
+            "debug": "调试",
             "about": "关于"
         },
         "general": {
@@ -384,6 +385,13 @@
             "http_api_port_invalid": "端口号无效（范围：1024-65535）",
             "http_api_settings_saved": "HTTP API 设置已保存，重启应用后生效",
             "http_api_restart_required": "⚠️ 需要重启应用后生效"
+        },
+        "debug": {
+            "title": "调试设置",
+            "console_title": "调试控制台",
+            "console_desc": "查看实时应用日志，用于排查问题。",
+            "enable_desc": "开启后将捕获并显示后端日志。",
+            "open_btn": "打开控制台"
         },
         "about": {
             "title": "关于",

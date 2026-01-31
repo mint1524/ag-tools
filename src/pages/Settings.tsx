@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Github, User, MessageCircle, ExternalLink, RefreshCw, Sparkles, Heart, Coffee } from 'lucide-react';
+import { Save, Github, User, MessageCircle, ExternalLink, RefreshCw, Sparkles, Heart, Coffee, Terminal } from 'lucide-react';
 import { request as invoke } from '../utils/request';
 import { open } from '@tauri-apps/plugin-dialog';
 import { useConfigStore } from '../stores/useConfigStore';
@@ -9,6 +9,7 @@ import { showToast } from '../components/common/ToastContainer';
 import QuotaProtection from '../components/settings/QuotaProtection';
 import SmartWarmup from '../components/settings/SmartWarmup';
 import PinnedQuotaModels from '../components/settings/PinnedQuotaModels';
+import { useDebugConsole } from '../stores/useDebugConsole';
 
 import { useTranslation } from 'react-i18next';
 import { isTauri } from '../utils/env';
@@ -17,7 +18,8 @@ import { isTauri } from '../utils/env';
 function Settings() {
     const { t, i18n } = useTranslation();
     const { config, loadConfig, saveConfig, updateLanguage, updateTheme } = useConfigStore();
-    const [activeTab, setActiveTab] = useState<'general' | 'account' | 'proxy' | 'advanced' | 'about'>('general');
+    const { enable, toggle, isOpen } = useDebugConsole();
+    const [activeTab, setActiveTab] = useState<'general' | 'account' | 'proxy' | 'advanced' | 'debug' | 'about'>('general');
     const [formData, setFormData] = useState<AppConfig>({
         language: 'zh',
         theme: 'system',
@@ -333,6 +335,15 @@ function Settings() {
                             onClick={() => setActiveTab('advanced')}
                         >
                             {t('settings.tabs.advanced')}
+                        </button>
+                        <button
+                            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'debug'
+                                ? 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
+                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                                }`}
+                            onClick={() => setActiveTab('debug')}
+                        >
+                            {t('settings.tabs.debug')}
                         </button>
                         <button
                             className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${activeTab === 'about'
@@ -791,7 +802,8 @@ function Settings() {
                                     </div>
                                 </div>
 
-                                {/* 调试日志 */}
+
+
                                 <div className="border-t border-gray-200 dark:border-base-200 pt-4">
                                     <div className="space-y-3">
                                         <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-base-200 rounded-lg border border-gray-100 dark:border-base-300">
@@ -869,6 +881,42 @@ function Settings() {
                                 </div>
                             </div>
                         </>
+                    )}
+
+
+                    {/* 调试设置 */}
+                    {activeTab === 'debug' && (
+                        <div className="space-y-4 animate-in fade-in duration-500">
+                            <div className="group bg-white dark:bg-base-100 rounded-xl p-5 border border-gray-100 dark:border-base-200 hover:border-green-200 transition-all duration-300 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center text-green-500 group-hover:bg-green-500 group-hover:text-white transition-all duration-300">
+                                            <Terminal size={20} />
+                                        </div>
+                                        <div>
+                                            <div className="font-bold text-gray-900 dark:text-gray-100">{t('settings.debug.console_title')}</div>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{t('settings.debug.console_desc')}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            enable(); // Ensure enabled
+                                            if (!isOpen) toggle(); // Open if closed
+                                        }}
+                                        className="px-4 py-2 bg-green-500 text-white text-sm font-medium rounded-lg hover:bg-green-600 transition-colors shadow-sm flex items-center gap-2"
+                                    >
+                                        <Terminal size={16} />
+                                        {t('settings.debug.open_btn')}
+                                    </button>
+                                </div>
+                                <div className="mt-4 pt-4 border-t border-gray-50 dark:border-base-300">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                                        {t('settings.debug.enable_desc')}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     )}
 
                     {/* 代理设置 */}
