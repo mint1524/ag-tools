@@ -271,6 +271,11 @@ print(response.choices[0].message.content)
         -   **[UI Optimization] Premium Visual Experience**:
             -   **Dialog Polish**: Completely upgraded button styles in IP Security module dialogs, adopting solid colors and shadow designs for clearer operation guidance.
             -   **Layout Fixes**: Resolved scrollbar anomalies and layout misalignments in the Security Config page, optimizing the tab switching experience.
+        -   **[Core Feature] Debug Console (PR #1385)**:
+            -   **Real-time Log Streaming**: Introduced a full-featured debug console for real-time capture and display of backend logs.
+            -   **Filtering & Searching**: Supports filtering by log levels (Info, Debug, Warn, Error) and global keyword search.
+            -   **Interaction Polish**: Features one-click log clearing, auto-scroll toggle, and full support for both light and dark modes.
+            -   **Backend Bridge**: Implemented a high-performance log bridge to ensure log capture without impacting proxy performance.
     *   **v4.0.9 (2026-01-30)**:
         -   **[Core Feature] User-Agent Customization & Version Spoofing (PR #1325)**:
             - **Dynamic Override**: Allows users to customize the `User-Agent` header for upstream requests in "Service Configuration". This enables simulation of any client version (Cheat Mode), effectively bypassing version blocks or risk controls in certain regions.
