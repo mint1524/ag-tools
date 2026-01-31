@@ -396,10 +396,13 @@ pub fn transform_openai_request(
         // [NEW] 优先使用用户指定的 budget，否则使用默认值
         // [FIX #1355] Detect Gemini Flash models and cap thinking budget to 24576
         // Flash thinking models strictly enforce range [1, 24576]
+        // [FIX] Claude thinking 模型 (如 claude-opus-4-5-thinking) 转发到 Gemini 时也受此限制
         let mut budget: i64 = user_thinking_budget.map(|b| b as i64).unwrap_or(32000);
         
-        let is_flash = mapped_model_lower.contains("flash") || mapped_model_lower.contains("gemini-1.5");
-        if is_flash && budget > 24576 {
+        let is_gemini_limited = mapped_model_lower.contains("flash") 
+            || mapped_model_lower.contains("gemini-1.5")
+            || is_claude_thinking;  // Claude thinking 模型转发到 Gemini，同样需要限流
+        if is_gemini_limited && budget > 24576 {
              tracing::info!(
                 "[OpenAI-Request] Capping thinking budget from {} to 24576 for Flash model: {}", 
                 budget, mapped_model
