@@ -23,6 +23,8 @@ pub struct ProxyToken {
     pub protected_models: HashSet<String>, // [NEW #621]
     pub health_score: f32,                 // [NEW] 健康分数 (0.0 - 1.0)
     pub reset_time: Option<i64>,           // [NEW] 配额刷新时间戳（用于排序优化）
+    pub validation_blocked: bool,          // [NEW] Check for validation block (VALIDATION_REQUIRED temporary block)
+    pub validation_blocked_until: i64,     // [NEW] Timestamp until which the account is blocked
 }
 
 pub struct TokenManager {
@@ -216,6 +218,48 @@ impl TokenManager {
             return Ok(None);
         }
 
+        // [NEW] Check for validation block (VALIDATION_REQUIRED temporary block)
+        if account
+            .get("validation_blocked")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
+            let block_until = account
+                .get("validation_blocked_until")
+                .and_then(|v| v.as_i64())
+                .unwrap_or(0);
+            
+            let now = chrono::Utc::now().timestamp();
+            
+            if now < block_until {
+                // Still blocked
+                tracing::debug!(
+                    "Skipping validation-blocked account: {:?} (email={}, blocked until {})",
+                    path,
+                    account.get("email").and_then(|v| v.as_str()).unwrap_or("<unknown>"),
+                    chrono::DateTime::from_timestamp(block_until, 0)
+                        .map(|dt| dt.format("%H:%M:%S").to_string())
+                        .unwrap_or_else(|| block_until.to_string())
+                );
+                return Ok(None);
+            } else {
+                // Block expired - clear it
+                tracing::info!(
+                    "Validation block expired for account: {:?} (email={}), clearing...",
+                    path,
+                    account.get("email").and_then(|v| v.as_str()).unwrap_or("<unknown>")
+                );
+                account["validation_blocked"] = serde_json::Value::Bool(false);
+                account["validation_blocked_until"] = serde_json::Value::Null;
+                account["validation_blocked_reason"] = serde_json::Value::Null;
+                
+                // Save cleared state
+                if let Ok(json_str) = serde_json::to_string_pretty(&account) {
+                    let _ = std::fs::write(path, json_str);
+                }
+            }
+        }
+
         // [兼容性] 检查旧版 proxy_disabled 标记(已被配额保护恢复的情况)
         // 如果账号被旧版配额保护禁用,但配额已恢复,上面的检查会自动清除 proxy_disabled
         // 这里再次检查,确保不会加载仍然被禁用的账号
@@ -312,6 +356,8 @@ impl TokenManager {
             protected_models,
             health_score,
             reset_time,
+            validation_blocked: account.get("validation_blocked").and_then(|v| v.as_bool()).unwrap_or(false),
+            validation_blocked_until: account.get("validation_blocked_until").and_then(|v| v.as_i64()).unwrap_or(0),
         }))
     }
 
@@ -1951,6 +1997,62 @@ impl TokenManager {
         }
 
         earliest_ts
+    /// Helper to find account ID by email
+    pub fn get_account_id_by_email(&self, email: &str) -> Option<String> {
+        for entry in self.tokens.iter() {
+            if entry.value().email == email {
+                return Some(entry.key().clone());
+            }
+        }
+        None
+    }
+
+    /// Set validation blocked status for an account (internal)
+    pub async fn set_validation_block(&self, account_id: &str, block_until: i64, reason: &str) -> Result<(), String> {
+        // 1. Update memory
+        if let Some(mut token) = self.tokens.get_mut(account_id) {
+             token.validation_blocked = true;
+             token.validation_blocked_until = block_until;
+        }
+
+        // 2. Persist to disk
+        let path = self.data_dir.join("accounts").join(format!("{}.json", account_id));
+        if !path.exists() {
+             return Err(format!("Account file not found: {:?}", path));
+        }
+
+        let content = std::fs::read_to_string(&path)
+             .map_err(|e| format!("Failed to read account file: {}", e))?;
+        
+        let mut account: serde_json::Value = serde_json::from_str(&content)
+             .map_err(|e| format!("Failed to parse account JSON: {}", e))?;
+        
+        account["validation_blocked"] = serde_json::Value::Bool(true);
+        account["validation_blocked_until"] = serde_json::Value::Number(serde_json::Number::from(block_until));
+        account["validation_blocked_reason"] = serde_json::Value::String(reason.to_string());
+        
+        // Clear sticky session if blocked
+        self.session_accounts.retain(|_, v| *v != account_id);
+
+        let json_str = serde_json::to_string_pretty(&account)
+             .map_err(|e| format!("Failed to serialize account JSON: {}", e))?;
+             
+        std::fs::write(&path, json_str)
+             .map_err(|e| format!("Failed to write account file: {}", e))?;
+             
+        tracing::info!(
+             "🚫 Account {} validation blocked until {} (reason: {})", 
+             account_id, 
+             block_until,
+             reason
+        );
+        
+        Ok(())
+    }
+
+    /// Public method to set validation block (called from handlers)
+    pub async fn set_validation_block_public(&self, account_id: &str, block_until: i64, reason: &str) -> Result<(), String> {
+        self.set_validation_block(account_id, block_until, reason).await
     }
 }
 
