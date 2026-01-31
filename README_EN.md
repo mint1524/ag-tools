@@ -1,6 +1,6 @@
 # Antigravity Tools 🚀
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.0.10)
+> Professional AI Account Management & Protocol Proxy System (v4.0.11)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -10,7 +10,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.0.10-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.0.11-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -252,7 +252,6 @@ print(response.choices[0].message.content)
             -   **Endpoint Optimization**: Prioritized API endpoints as `Sandbox -> Daily -> Prod`. Using lenient environments first to reduce the occurrence of 403 errors.
             -   **Smart Blocking**: Upon detecting `VALIDATION_REQUIRED` (403), the system temporarily blocks the account for 10 minutes. Requests will skip this account during the block period to prevent further flagging.
             -   **Auto-Recovery**: The system automatically attempts to restore the account after the block period expires.
-    *   **v4.0.10 (2026-01-30)**:
         -   **[Core Fix] Account Hot-Reloading**:
             -   **Unified Architecture**: Eliminated duplicate `TokenManager` instances, ensuring the Admin Dashboard and Proxy Service share a single account manager.
             -   **Real-time Updates**: Fixed the issue where manual enabling/disabling, reordering, or bulk operations required an app restart. Changes now take effect immediately.
