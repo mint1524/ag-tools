@@ -22,6 +22,7 @@ pub struct ProxyToken {
     pub remaining_quota: Option<i32>,      // [FIX #563] Remaining quota for priority sorting
     pub protected_models: HashSet<String>, // [NEW #621]
     pub health_score: f32,                 // [NEW] 健康分数 (0.0 - 1.0)
+    pub reset_time: Option<i64>,           // [NEW] 配额刷新时间戳（用于排序优化）
 }
 
 pub struct TokenManager {
@@ -296,6 +297,9 @@ impl TokenManager {
             .map(|v| *v)
             .unwrap_or(1.0);
 
+        // [NEW] 提取最近的配额刷新时间（用于排序优化：刷新时间越近优先级越高）
+        let reset_time = self.extract_earliest_reset_time(&account);
+
         Ok(Some(ProxyToken {
             account_id,
             access_token,
@@ -309,6 +313,7 @@ impl TokenManager {
             remaining_quota,
             protected_models,
             health_score,
+            reset_time,
         }))
     }
 
@@ -369,7 +374,6 @@ impl TokenManager {
 
         for model in models {
             let name = model.get("name").and_then(|v| v.as_str()).unwrap_or("");
-
             // [FIX] 先归一化模型名，再检查是否在监控列表中
             // 这样 claude-opus-4-5-thinking 会被归一化为 claude-sonnet-4-5 进行匹配
             let standard_id = crate::proxy::common::model_mapping::normalize_to_standard_id(name)
@@ -656,10 +660,11 @@ impl TokenManager {
             return Err("Token pool is empty".to_string());
         }
 
-        // ===== 【优化】根据订阅等级和剩余配额排序 =====
-        // [FIX #563] 优先级: ULTRA > PRO > FREE, 同tier内优先高配额账号
-        // 理由: ULTRA/PRO 重置快，优先消耗；FREE 重置慢，用于兜底
-        //       高配額账号优先使用，避免低配额账号被用光
+        // ===== 【优化】根据订阅等级、健康分、刷新时间、剩余配额排序 =====
+        // 优先级: 订阅等级 > 健康分 > 刷新时间（越近越优先）> 剩余配额
+        // 刷新时间差异 < 10 分钟视为相同优先级
+        const RESET_TIME_THRESHOLD_SECS: i64 = 600; // 10 分钟阈值
+
         tokens_snapshot.sort_by(|a, b| {
             let tier_priority = |tier: &Option<String>| match tier.as_deref() {
                 Some("ULTRA") => 0,
@@ -676,20 +681,33 @@ impl TokenManager {
                 return tier_cmp;
             }
 
-            // [FIX #563] Second: compare by remaining quota percentage (higher is better)
-            // Accounts with unknown/zero percentage go last within their tier
-            let quota_a = a.remaining_quota.unwrap_or(0);
-            let quota_b = b.remaining_quota.unwrap_or(0);
-            let quota_cmp = quota_b.cmp(&quota_a);
+            // Second: compare by health score (higher is better)
+            let health_cmp = b
+                .health_score
+                .partial_cmp(&a.health_score)
+                .unwrap_or(std::cmp::Ordering::Equal);
 
-            if quota_cmp != std::cmp::Ordering::Equal {
-                return quota_cmp;
+            if health_cmp != std::cmp::Ordering::Equal {
+                return health_cmp;
             }
 
-            // [NEW] Third: compare by health score (higher is better)
-            b.health_score
-                .partial_cmp(&a.health_score)
-                .unwrap_or(std::cmp::Ordering::Equal)
+            // Third: compare by reset time (earlier/closer is better)
+            // 差异 < 10 分钟视为相同优先级，避免频繁切换
+            let reset_a = a.reset_time.unwrap_or(i64::MAX);
+            let reset_b = b.reset_time.unwrap_or(i64::MAX);
+            let reset_diff = (reset_a - reset_b).abs();
+
+            if reset_diff >= RESET_TIME_THRESHOLD_SECS {
+                let reset_cmp = reset_a.cmp(&reset_b);
+                if reset_cmp != std::cmp::Ordering::Equal {
+                    return reset_cmp;
+                }
+            }
+
+            // Fourth: compare by remaining quota percentage (higher is better)
+            let quota_a = a.remaining_quota.unwrap_or(0);
+            let quota_b = b.remaining_quota.unwrap_or(0);
+            quota_b.cmp(&quota_a)
         });
 
         // 【调试日志】打印排序后的账号顺序
@@ -697,7 +715,22 @@ impl TokenManager {
             "🔄 [Token Rotation] Accounts: {:?}",
             tokens_snapshot
                 .iter()
-                .map(|t| format!("{}(protected={:?})", t.email, t.protected_models))
+                .map(|t| format!(
+                    "{}(reset={:?}, quota={:?}, health={:.2}, protected={:?})",
+                    t.email,
+                    t.reset_time.map(|ts| {
+                        let now = chrono::Utc::now().timestamp();
+                        let diff_secs = ts - now;
+                        if diff_secs > 0 {
+                            format!("{}m", diff_secs / 60)
+                        } else {
+                            "now".to_string()
+                        }
+                    }),
+                    t.remaining_quota,
+                    t.health_score,
+                    t.protected_models
+                ))
                 .collect::<Vec<_>>()
         );
 
@@ -1923,6 +1956,59 @@ impl TokenManager {
             .or_insert(0.8);
         tracing::warn!("📉 Health score decreased for account {}", account_id);
     }
+
+    /// [NEW] 从账号配额信息中提取最近的刷新时间戳
+    ///
+    /// Claude 模型（sonnet/opus）共用同一个刷新时间，只需取 claude 系列的 reset_time
+    /// 返回 Unix 时间戳（秒），用于排序时比较
+    fn extract_earliest_reset_time(&self, account: &serde_json::Value) -> Option<i64> {
+        let models = account
+            .get("quota")
+            .and_then(|q| q.get("models"))
+            .and_then(|m| m.as_array())?;
+
+        let mut earliest_ts: Option<i64> = None;
+
+        for model in models {
+            // 优先取 claude 系列的 reset_time（sonnet/opus 共用）
+            let model_name = model.get("name").and_then(|n| n.as_str()).unwrap_or("");
+            if !model_name.contains("claude") {
+                continue;
+            }
+
+            if let Some(reset_time_str) = model.get("reset_time").and_then(|r| r.as_str()) {
+                if reset_time_str.is_empty() {
+                    continue;
+                }
+                // 解析 ISO 8601 时间字符串为时间戳
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(reset_time_str) {
+                    let ts = dt.timestamp();
+                    if earliest_ts.is_none() || ts < earliest_ts.unwrap() {
+                        earliest_ts = Some(ts);
+                    }
+                }
+            }
+        }
+
+        // 如果没有 claude 模型的时间，尝试取任意模型的最近时间
+        if earliest_ts.is_none() {
+            for model in models {
+                if let Some(reset_time_str) = model.get("reset_time").and_then(|r| r.as_str()) {
+                    if reset_time_str.is_empty() {
+                        continue;
+                    }
+                    if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(reset_time_str) {
+                        let ts = dt.timestamp();
+                        if earliest_ts.is_none() || ts < earliest_ts.unwrap() {
+                            earliest_ts = Some(ts);
+                        }
+                    }
+                }
+            }
+        }
+
+        earliest_ts
+    }
 }
 
 /// 截断过长的原因字符串
@@ -1931,5 +2017,263 @@ fn truncate_reason(reason: &str, max_len: usize) -> String {
         reason.to_string()
     } else {
         format!("{}...", &reason[..max_len - 3])
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cmp::Ordering;
+
+    /// 创建测试用的 ProxyToken
+    fn create_test_token(
+        email: &str,
+        tier: Option<&str>,
+        health_score: f32,
+        reset_time: Option<i64>,
+        remaining_quota: Option<i32>,
+    ) -> ProxyToken {
+        ProxyToken {
+            account_id: email.to_string(),
+            access_token: "test_token".to_string(),
+            refresh_token: "test_refresh".to_string(),
+            expires_in: 3600,
+            timestamp: chrono::Utc::now().timestamp() + 3600,
+            email: email.to_string(),
+            account_path: PathBuf::from("/tmp/test"),
+            project_id: None,
+            subscription_tier: tier.map(|s| s.to_string()),
+            remaining_quota,
+            protected_models: HashSet::new(),
+            health_score,
+            reset_time,
+        }
+    }
+
+    /// 测试排序比较函数（与 get_token_internal 中的逻辑一致）
+    fn compare_tokens(a: &ProxyToken, b: &ProxyToken) -> Ordering {
+        const RESET_TIME_THRESHOLD_SECS: i64 = 600; // 10 分钟阈值
+
+        let tier_priority = |tier: &Option<String>| match tier.as_deref() {
+            Some("ULTRA") => 0,
+            Some("PRO") => 1,
+            Some("FREE") => 2,
+            _ => 3,
+        };
+
+        // First: compare by subscription tier
+        let tier_cmp = tier_priority(&a.subscription_tier).cmp(&tier_priority(&b.subscription_tier));
+        if tier_cmp != Ordering::Equal {
+            return tier_cmp;
+        }
+
+        // Second: compare by health score (higher is better)
+        let health_cmp = b.health_score.partial_cmp(&a.health_score).unwrap_or(Ordering::Equal);
+        if health_cmp != Ordering::Equal {
+            return health_cmp;
+        }
+
+        // Third: compare by reset time (earlier/closer is better)
+        let reset_a = a.reset_time.unwrap_or(i64::MAX);
+        let reset_b = b.reset_time.unwrap_or(i64::MAX);
+        let reset_diff = (reset_a - reset_b).abs();
+
+        if reset_diff >= RESET_TIME_THRESHOLD_SECS {
+            let reset_cmp = reset_a.cmp(&reset_b);
+            if reset_cmp != Ordering::Equal {
+                return reset_cmp;
+            }
+        }
+
+        // Fourth: compare by remaining quota percentage (higher is better)
+        let quota_a = a.remaining_quota.unwrap_or(0);
+        let quota_b = b.remaining_quota.unwrap_or(0);
+        quota_b.cmp(&quota_a)
+    }
+
+    #[test]
+    fn test_sorting_tier_priority() {
+        // ULTRA > PRO > FREE
+        let ultra = create_test_token("ultra@test.com", Some("ULTRA"), 1.0, None, Some(50));
+        let pro = create_test_token("pro@test.com", Some("PRO"), 1.0, None, Some(50));
+        let free = create_test_token("free@test.com", Some("FREE"), 1.0, None, Some(50));
+
+        assert_eq!(compare_tokens(&ultra, &pro), Ordering::Less);
+        assert_eq!(compare_tokens(&pro, &free), Ordering::Less);
+        assert_eq!(compare_tokens(&ultra, &free), Ordering::Less);
+        assert_eq!(compare_tokens(&free, &ultra), Ordering::Greater);
+    }
+
+    #[test]
+    fn test_sorting_health_score_priority() {
+        // 同等级下，健康分高的优先
+        let high_health = create_test_token("high@test.com", Some("PRO"), 1.0, None, Some(50));
+        let low_health = create_test_token("low@test.com", Some("PRO"), 0.5, None, Some(50));
+
+        assert_eq!(compare_tokens(&high_health, &low_health), Ordering::Less);
+        assert_eq!(compare_tokens(&low_health, &high_health), Ordering::Greater);
+    }
+
+    #[test]
+    fn test_sorting_reset_time_priority() {
+        let now = chrono::Utc::now().timestamp();
+
+        // 刷新时间更近（30分钟后）的优先于更远（5小时后）的
+        let soon_reset = create_test_token("soon@test.com", Some("PRO"), 1.0, Some(now + 1800), Some(50));  // 30分钟后
+        let late_reset = create_test_token("late@test.com", Some("PRO"), 1.0, Some(now + 18000), Some(50)); // 5小时后
+
+        assert_eq!(compare_tokens(&soon_reset, &late_reset), Ordering::Less);
+        assert_eq!(compare_tokens(&late_reset, &soon_reset), Ordering::Greater);
+    }
+
+    #[test]
+    fn test_sorting_reset_time_threshold() {
+        let now = chrono::Utc::now().timestamp();
+
+        // 差异小于10分钟（600秒）视为相同优先级，此时按配额排序
+        let reset_a = create_test_token("a@test.com", Some("PRO"), 1.0, Some(now + 1800), Some(80));  // 30分钟后, 80%配额
+        let reset_b = create_test_token("b@test.com", Some("PRO"), 1.0, Some(now + 2100), Some(50));  // 35分钟后, 50%配额
+
+        // 差5分钟 < 10分钟阈值，视为相同，按配额排序（80% > 50%）
+        assert_eq!(compare_tokens(&reset_a, &reset_b), Ordering::Less);
+    }
+
+    #[test]
+    fn test_sorting_reset_time_beyond_threshold() {
+        let now = chrono::Utc::now().timestamp();
+
+        // 差异超过10分钟，按刷新时间排序（忽略配额）
+        let soon_low_quota = create_test_token("soon@test.com", Some("PRO"), 1.0, Some(now + 1800), Some(20));   // 30分钟后, 20%
+        let late_high_quota = create_test_token("late@test.com", Some("PRO"), 1.0, Some(now + 18000), Some(90)); // 5小时后, 90%
+
+        // 差4.5小时 > 10分钟，刷新时间优先，30分钟 < 5小时
+        assert_eq!(compare_tokens(&soon_low_quota, &late_high_quota), Ordering::Less);
+    }
+
+    #[test]
+    fn test_sorting_quota_fallback() {
+        // 其他条件相同时，配额高的优先
+        let high_quota = create_test_token("high@test.com", Some("PRO"), 1.0, None, Some(80));
+        let low_quota = create_test_token("low@test.com", Some("PRO"), 1.0, None, Some(20));
+
+        assert_eq!(compare_tokens(&high_quota, &low_quota), Ordering::Less);
+        assert_eq!(compare_tokens(&low_quota, &high_quota), Ordering::Greater);
+    }
+
+    #[test]
+    fn test_sorting_missing_reset_time() {
+        let now = chrono::Utc::now().timestamp();
+
+        // 没有 reset_time 的账号应该排在有 reset_time 的后面
+        let with_reset = create_test_token("with@test.com", Some("PRO"), 1.0, Some(now + 1800), Some(50));
+        let without_reset = create_test_token("without@test.com", Some("PRO"), 1.0, None, Some(50));
+
+        assert_eq!(compare_tokens(&with_reset, &without_reset), Ordering::Less);
+    }
+
+    #[test]
+    fn test_full_sorting_integration() {
+        let now = chrono::Utc::now().timestamp();
+
+        let mut tokens = vec![
+            create_test_token("free_high@test.com", Some("FREE"), 1.0, Some(now + 1800), Some(90)),
+            create_test_token("pro_low_health@test.com", Some("PRO"), 0.5, Some(now + 1800), Some(90)),
+            create_test_token("pro_soon@test.com", Some("PRO"), 1.0, Some(now + 1800), Some(50)),   // 30分钟后
+            create_test_token("pro_late@test.com", Some("PRO"), 1.0, Some(now + 18000), Some(90)),  // 5小时后
+            create_test_token("ultra@test.com", Some("ULTRA"), 1.0, Some(now + 36000), Some(10)),
+        ];
+
+        tokens.sort_by(compare_tokens);
+
+        // 预期顺序:
+        // 1. ULTRA (最高等级，即使刷新时间最远)
+        // 2. PRO + 高健康分 + 30分钟后刷新
+        // 3. PRO + 高健康分 + 5小时后刷新
+        // 4. PRO + 低健康分
+        // 5. FREE (最低等级，即使配额最高)
+        assert_eq!(tokens[0].email, "ultra@test.com");
+        assert_eq!(tokens[1].email, "pro_soon@test.com");
+        assert_eq!(tokens[2].email, "pro_late@test.com");
+        assert_eq!(tokens[3].email, "pro_low_health@test.com");
+        assert_eq!(tokens[4].email, "free_high@test.com");
+    }
+
+    #[test]
+    fn test_realistic_scenario() {
+        // 模拟用户描述的场景:
+        // a 账号 claude 4h55m 后刷新
+        // b 账号 claude 31m 后刷新
+        // 应该优先使用 b（31分钟后刷新）
+        let now = chrono::Utc::now().timestamp();
+
+        let account_a = create_test_token("a@test.com", Some("PRO"), 1.0, Some(now + 295 * 60), Some(80)); // 4h55m
+        let account_b = create_test_token("b@test.com", Some("PRO"), 1.0, Some(now + 31 * 60), Some(30));  // 31m
+
+        // b 应该排在 a 前面（刷新时间更近）
+        assert_eq!(compare_tokens(&account_b, &account_a), Ordering::Less);
+
+        let mut tokens = vec![account_a.clone(), account_b.clone()];
+        tokens.sort_by(compare_tokens);
+
+        assert_eq!(tokens[0].email, "b@test.com");
+        assert_eq!(tokens[1].email, "a@test.com");
+    }
+
+    #[test]
+    fn test_extract_earliest_reset_time() {
+        let manager = TokenManager::new(PathBuf::from("/tmp/test"));
+
+        // 测试包含 claude 模型的 reset_time 提取
+        let account_with_claude = serde_json::json!({
+            "quota": {
+                "models": [
+                    {"name": "gemini-flash", "reset_time": "2025-01-31T10:00:00Z"},
+                    {"name": "claude-sonnet", "reset_time": "2025-01-31T08:00:00Z"},
+                    {"name": "claude-opus", "reset_time": "2025-01-31T08:00:00Z"}
+                ]
+            }
+        });
+
+        let result = manager.extract_earliest_reset_time(&account_with_claude);
+        assert!(result.is_some());
+        // 应该返回 claude 的时间（08:00）而不是 gemini 的（10:00）
+        let expected_ts = chrono::DateTime::parse_from_rfc3339("2025-01-31T08:00:00Z")
+            .unwrap()
+            .timestamp();
+        assert_eq!(result.unwrap(), expected_ts);
+    }
+
+    #[test]
+    fn test_extract_reset_time_no_claude() {
+        let manager = TokenManager::new(PathBuf::from("/tmp/test"));
+
+        // 没有 claude 模型时，应该取任意模型的最近时间
+        let account_no_claude = serde_json::json!({
+            "quota": {
+                "models": [
+                    {"name": "gemini-flash", "reset_time": "2025-01-31T10:00:00Z"},
+                    {"name": "gemini-pro", "reset_time": "2025-01-31T08:00:00Z"}
+                ]
+            }
+        });
+
+        let result = manager.extract_earliest_reset_time(&account_no_claude);
+        assert!(result.is_some());
+        let expected_ts = chrono::DateTime::parse_from_rfc3339("2025-01-31T08:00:00Z")
+            .unwrap()
+            .timestamp();
+        assert_eq!(result.unwrap(), expected_ts);
+    }
+
+    #[test]
+    fn test_extract_reset_time_missing_quota() {
+        let manager = TokenManager::new(PathBuf::from("/tmp/test"));
+
+        // 没有 quota 字段时应返回 None
+        let account_no_quota = serde_json::json!({
+            "email": "test@test.com"
+        });
+
+        assert!(manager.extract_earliest_reset_time(&account_no_quota).is_none());
     }
 }
