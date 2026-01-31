@@ -255,12 +255,12 @@ print(response.choices[0].message.content)
         -   **[Core Fix] Account Hot-Reloading**:
             -   **Unified Architecture**: Eliminated duplicate `TokenManager` instances, ensuring the Admin Dashboard and Proxy Service share a single account manager.
             -   **Real-time Updates**: Fixed the issue where manual enabling/disabling, reordering, or bulk operations required an app restart. Changes now take effect immediately.
-        -   **[Core Fix] Quota Protection Logic Optimization (Issue #1344 Patch)**:
+        -   **[Core Fix] Quota Protection Logic Optimization (PR #1344 Patch)**:
             -   Refined the differentiation between "Disabled" status and "Quota Protected" status in the quota protection logic, ensuring accurate logging and real-time state synchronization.
-        -   **[Core Fix] Restore Health Check Endpoint (Issue #1364)**:
+        -   **[Core Fix] Restore Health Check Endpoint (PR #1364)**:
             -   **Route Restoration**: Fixed the missing `/health` and `/healthz` routes that were lost during the 4.0.0 architecture migration.
             -   **Enhanced Response**: The endpoint now returns a JSON containing `"status": "ok"` and the current application version, facilitating version matching and liveness checks for monitoring systems.
-        -   **[Core Fix] Fix Gemini Flash Thinking Budget Limit (Fix Issue #1355)**:
+        -   **[Core Fix] Fix Gemini Flash Thinking Budget Limit (Fix PR #1355)**:
             -   **Automatic Capping**: Resolved an issue where the default or upstream `thinking_budget` (e.g., 32k) exceeded the limit (24k) for Gemini Flash thinking models (e.g., `gemini-2.0-flash-thinking`), resulting in `400 Bad Request` errors.
             -   **Multi-Protocol Coverage**: This protection now covers **OpenAI, Claude, and Native Gemini protocols**, ensuring comprehensive safety against invalid budget configurations.
             -   **Smart Truncation**: The system now automatically detects Flash series models and forcibly caps the thinking budget within safe limits (**24,576**), ensuring successful requests without requiring manual client configuration adjustments.
