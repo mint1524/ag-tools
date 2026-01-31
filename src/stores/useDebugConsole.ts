@@ -85,11 +85,13 @@ export const useDebugConsole = create<DebugConsoleState>((set, get) => ({
     },
 
     clearLogs: async () => {
+        console.log('[DebugConsole] Clearing logs...');
+        set({ logs: [] }); // Clear immediately in frontend
         try {
             await invoke('clear_debug_console_logs');
-            set({ logs: [] });
+            console.log('[DebugConsole] Backend log buffer cleared');
         } catch (error) {
-            console.error('Failed to clear logs:', error);
+            console.error('[DebugConsole] Failed to clear background logs:', error);
         }
     },
 
