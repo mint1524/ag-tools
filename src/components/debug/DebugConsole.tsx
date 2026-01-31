@@ -55,7 +55,11 @@ const LogRow = React.memo(({ log }: { log: LogEntry }) => {
     );
 });
 
-const DebugConsole: React.FC = () => {
+interface DebugConsoleProps {
+    embedded?: boolean;
+}
+
+const DebugConsole: React.FC<DebugConsoleProps> = ({ embedded = false }) => {
     const { t } = useTranslation();
     const {
         isOpen, close, logs, clearLogs,
@@ -131,6 +135,156 @@ const DebugConsole: React.FC = () => {
         return true;
     });
 
+    const content = (
+        <div
+            className={cn(
+                "flex flex-col font-sans bg-[#0c0c0c]",
+                embedded ? "h-full w-full rounded-xl border border-zinc-800 shadow-sm" : "fixed bottom-0 left-0 right-0 border-t border-zinc-800 shadow-2xl z-[9999]"
+            )}
+            style={embedded ? undefined : { height }}
+        >
+            {/* Resize Handle (only for non-embedded) */}
+            {!embedded && (
+                <div
+                    className="h-1 bg-zinc-800 hover:bg-blue-500 cursor-ns-resize transition-colors w-full"
+                    onMouseDown={startResizing}
+                />
+            )}
+
+            {/* Toolbar */}
+            <div className={cn(
+                "flex items-center justify-between px-2 py-1.5 bg-zinc-900 border-b border-zinc-800 select-none",
+                embedded && "rounded-t-xl"
+            )}>
+                <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-2 text-zinc-400 font-medium px-2 text-xs">
+                        <Terminal size={14} />
+                        Debug Console
+                    </span>
+                    <div className="h-4 w-px bg-zinc-800 mx-1" />
+
+                    {/* Filter Toggles */}
+                    <div className="flex bg-zinc-950 rounded p-0.5 border border-zinc-800">
+                        {(Object.keys(LEVEL_CONFIG) as LogLevel[]).map(level => (
+                            <button
+                                key={level}
+                                onClick={() => toggleLevel(level)}
+                                className={cn(
+                                    "px-2 py-0.5 text-[10px] rounded transition-colors",
+                                    filter.includes(level)
+                                        ? LEVEL_CONFIG[level].color + " bg-white/5"
+                                        : "text-zinc-600 hover:text-zinc-500"
+                                )}
+                            >
+                                {level}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative group">
+                        <Search size={12} className="absolute left-2 top-1.5 text-zinc-500 group-focus-within:text-zinc-300" />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                            placeholder="Filter logs..."
+                            className="bg-zinc-950 border border-zinc-800 rounded pl-7 pr-2 py-0.5 text-xs text-zinc-300 w-32 focus:w-48 transition-all focus:outline-none focus:border-zinc-700 placeholder:text-zinc-700"
+                        />
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-1">
+                    <button
+                        onClick={() => setAutoScroll(!autoScroll)}
+                        className={cn(
+                            "p-1.5 rounded transition-colors",
+                            autoScroll ? "text-green-400 bg-green-500/10" : "text-zinc-500 hover:text-zinc-300"
+                        )}
+                        title={autoScroll ? t('debug_console.pause_scroll', { defaultValue: 'Pause scroll' }) : t('debug_console.resume_scroll', { defaultValue: 'Resume scroll' })}
+                    >
+                        {autoScroll ? <Pause size={14} /> : <Play size={14} />}
+                    </button>
+
+                    <button
+                        onClick={clearLogs}
+                        className="p-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 transition-colors"
+                        title={t('debug_console.clear', { defaultValue: 'Clear' })}
+                    >
+                        <Trash2 size={14} />
+                    </button>
+
+                    {!embedded && (
+                        <button
+                            onClick={close}
+                            className="p-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
+                        >
+                            <X size={14} />
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Log content */}
+            <div
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className={cn(
+                    "flex-1 overflow-y-auto overflow-x-hidden bg-zinc-950",
+                    embedded && "rounded-b-none" // If footer follows
+                )}
+            >
+                {filteredLogs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-zinc-600">
+                        <Terminal size={48} className="mb-4 opacity-50" />
+                        <p className="text-sm">{t('debug_console.no_logs', { defaultValue: 'No logs to display' })}</p>
+                        <p className="text-xs mt-1">{t('debug_console.no_logs_hint', { defaultValue: 'Logs will appear here in real-time' })}</p>
+                    </div>
+                ) : (
+                    filteredLogs.map(log => <LogRow key={log.id} log={log} />)
+                )}
+            </div>
+
+            {/* Footer */}
+            <div className={cn(
+                "flex items-center justify-between px-4 py-2 border-t border-white/10 bg-zinc-800/50",
+                embedded && "rounded-b-xl"
+            )}>
+                <div className="flex items-center gap-3">
+                    {/* Level stats */}
+                    {(Object.keys(LEVEL_CONFIG) as LogLevel[]).map(level => {
+                        const count = logs.filter(l => l.level === level).length;
+                        if (count === 0) return null;
+                        return (
+                            <span
+                                key={level}
+                                className={cn("text-[10px] font-mono flex items-center gap-1", LEVEL_CONFIG[level].color)}
+                            >
+                                {LEVEL_CONFIG[level].icon}
+                                {count}
+                            </span>
+                        );
+                    })}
+                </div>
+
+                {/* Auto-scroll indicator */}
+                {!autoScroll && (
+                    <button
+                        onClick={scrollToBottom}
+                        className="flex items-center gap-1 px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-xs font-medium hover:bg-blue-500/30 transition-colors"
+                    >
+                        <ArrowDownToLine size={12} />
+                        {t('debug_console.scroll_to_bottom', { defaultValue: 'Scroll to bottom' })}
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+
+    if (embedded) {
+        return content;
+    }
+
     return (
         <AnimatePresence>
             {isOpen && (
@@ -144,137 +298,15 @@ const DebugConsole: React.FC = () => {
                         onClick={close}
                     />
 
-                    {/* Console Panel */}
+                    {/* Animated Panel */}
                     <motion.div
                         initial={{ y: "100%" }}
                         animate={{ y: 0 }}
                         exit={{ y: "100%" }}
                         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                        style={{ height }}
-                        className="fixed bottom-0 left-0 right-0 bg-[#0c0c0c] border-t border-zinc-800 shadow-2xl z-[9999] flex flex-col font-sans"
+                        className="fixed inset-x-0 bottom-0 z-[9999]"
                     >
-                        {/* Resize Handle */}
-                        <div
-                            className="h-1 bg-zinc-800 hover:bg-blue-500 cursor-ns-resize transition-colors w-full"
-                            onMouseDown={startResizing}
-                        />
-
-                        {/* Toolbar */}
-                        <div className="flex items-center justify-between px-2 py-1.5 bg-zinc-900 border-b border-zinc-800 select-none">
-                            <div className="flex items-center gap-2">
-                                <span className="flex items-center gap-2 text-zinc-400 font-medium px-2 text-xs">
-                                    <Terminal size={14} />
-                                    Debug Console
-                                </span>
-                                <div className="h-4 w-px bg-zinc-800 mx-1" />
-
-                                {/* Filter Toggles */}
-                                <div className="flex bg-zinc-950 rounded p-0.5 border border-zinc-800">
-                                    {(Object.keys(LEVEL_CONFIG) as LogLevel[]).map(level => (
-                                        <button
-                                            key={level}
-                                            onClick={() => toggleLevel(level)}
-                                            className={cn(
-                                                "px-2 py-0.5 text-[10px] rounded transition-colors",
-                                                filter.includes(level)
-                                                    ? LEVEL_CONFIG[level].color + " bg-white/5"
-                                                    : "text-zinc-600 hover:text-zinc-500"
-                                            )}
-                                        >
-                                            {level}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Search */}
-                                <div className="relative group">
-                                    <Search size={12} className="absolute left-2 top-1.5 text-zinc-500 group-focus-within:text-zinc-300" />
-                                    <input
-                                        type="text"
-                                        value={searchTerm}
-                                        onChange={e => setSearchTerm(e.target.value)}
-                                        placeholder="Filter logs..."
-                                        className="bg-zinc-950 border border-zinc-800 rounded pl-7 pr-2 py-0.5 text-xs text-zinc-300 w-32 focus:w-48 transition-all focus:outline-none focus:border-zinc-700 placeholder:text-zinc-700"
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-1">
-                                <button
-                                    onClick={() => setAutoScroll(!autoScroll)}
-                                    className={cn(
-                                        "p-1.5 rounded transition-colors",
-                                        autoScroll ? "text-green-400 bg-green-500/10" : "text-zinc-500 hover:text-zinc-300"
-                                    )}
-                                    title={autoScroll ? t('debug_console.pause_scroll', { defaultValue: 'Pause scroll' }) : t('debug_console.resume_scroll', { defaultValue: 'Resume scroll' })}
-                                >
-                                    {autoScroll ? <Pause size={14} /> : <Play size={14} />}
-                                </button>
-
-                                <button
-                                    onClick={clearLogs}
-                                    className="p-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-red-400 hover:bg-zinc-700 transition-colors"
-                                    title={t('debug_console.clear', { defaultValue: 'Clear' })}
-                                >
-                                    <Trash2 size={14} />
-                                </button>
-
-                                <button
-                                    onClick={close}
-                                    className="p-1.5 rounded bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
-                                >
-                                    <X size={14} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Log content */}
-                        <div
-                            ref={scrollRef}
-                            onScroll={handleScroll}
-                            className="flex-1 overflow-y-auto overflow-x-hidden bg-zinc-950"
-                        >
-                            {filteredLogs.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center h-full text-zinc-600">
-                                    <Terminal size={48} className="mb-4 opacity-50" />
-                                    <p className="text-sm">{t('debug_console.no_logs', { defaultValue: 'No logs to display' })}</p>
-                                    <p className="text-xs mt-1">{t('debug_console.no_logs_hint', { defaultValue: 'Logs will appear here in real-time' })}</p>
-                                </div>
-                            ) : (
-                                filteredLogs.map(log => <LogRow key={log.id} log={log} />)
-                            )}
-                        </div>
-
-                        {/* Footer */}
-                        <div className="flex items-center justify-between px-4 py-2 border-t border-white/10 bg-zinc-800/50">
-                            <div className="flex items-center gap-3">
-                                {/* Level stats */}
-                                {(Object.keys(LEVEL_CONFIG) as LogLevel[]).map(level => {
-                                    const count = logs.filter(l => l.level === level).length;
-                                    if (count === 0) return null;
-                                    return (
-                                        <span
-                                            key={level}
-                                            className={cn("text-[10px] font-mono flex items-center gap-1", LEVEL_CONFIG[level].color)}
-                                        >
-                                            {LEVEL_CONFIG[level].icon}
-                                            {count}
-                                        </span>
-                                    );
-                                })}
-                            </div>
-
-                            {/* Auto-scroll indicator */}
-                            {!autoScroll && (
-                                <button
-                                    onClick={scrollToBottom}
-                                    className="flex items-center gap-1 px-2 py-1 rounded bg-blue-500/20 text-blue-400 text-xs font-medium hover:bg-blue-500/30 transition-colors"
-                                >
-                                    <ArrowDownToLine size={12} />
-                                    {t('debug_console.scroll_to_bottom', { defaultValue: 'Scroll to bottom' })}
-                                </button>
-                            )}
-                        </div>
+                        {content}
                     </motion.div>
                 </>
             )}
