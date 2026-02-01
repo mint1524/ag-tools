@@ -30,10 +30,13 @@ const DEFAULT_MODELS = [
     { id: 'claude-sonnet-4-5-thinking', label: 'Claude 4.5', protectedKey: 'claude' }
 ];
 
-function AccountCard({ account, selected, onSelect, isCurrent, isRefreshing, isSwitching = false, onSwitch, onRefresh, onViewDetails, onExport, onDelete, onToggleProxy, onViewDevice, onWarmup }: AccountCardProps) {
+function AccountCard({ account, selected, onSelect, isCurrent: propIsCurrent, isRefreshing, isSwitching = false, onSwitch, onRefresh, onViewDetails, onExport, onDelete, onToggleProxy, onViewDevice, onWarmup }: AccountCardProps) {
     const { t } = useTranslation();
     const { config, showAllQuotas } = useConfigStore();
     const isDisabled = Boolean(account.disabled);
+
+    // Use the prop directly from parent component
+    const isCurrent = propIsCurrent;
 
     const displayModels = useMemo(() => {
         // Build map of friendly labels from DEFAULT_MODELS
@@ -120,6 +123,7 @@ function AccountCard({ account, selected, onSelect, isCurrent, isRefreshing, isS
                                     {t('accounts.forbidden').toUpperCase()}
                                 </span>
                             )}
+                            {/* 订阅类型徽章 */}
                             {account.quota?.subscription_tier && (() => {
                                 const tier = account.quota.subscription_tier.toLowerCase();
                                 if (tier.includes('ultra')) {
