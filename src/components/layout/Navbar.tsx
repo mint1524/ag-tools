@@ -235,6 +235,7 @@ function Navbar() {
                     <div className="flex items-center">
                         <Link to="/" className="text-xl font-semibold text-gray-900 dark:text-base-content flex items-center gap-2">
                             <img src={LogoIcon} alt="Logo" className="w-8 h-8" />
+                            <span className="hidden md:inline">Antigravity Tools</span>
                         </Link>
                     </div>
 

@@ -46,6 +46,8 @@ function Accounts() {
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState<FilterType>('all');
+    const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+    const searchInputRef = useRef<HTMLInputElement>(null);
     const [viewMode, setViewMode] = useState<ViewMode>(() => {
         const saved = localStorage.getItem('accounts_view_mode');
         return (saved === 'list' || saved === 'grid') ? saved : 'list';
@@ -647,10 +649,10 @@ function Accounts() {
                 onChange={handleFileChange}
             />
 
-            {/* 顶部工具栏：搜索、过滤和操作按钮 */}
+            {/* 顶部工具栏:搜索、过滤和操作按钮 */}
             <div className="flex-none flex items-center gap-2">
-                {/* 搜索框 */}
-                <div className="flex-none w-40 relative transition-all focus-within:w-48">
+                {/* 搜索框 - 响应式:大屏显示输入框,小屏显示图标 */}
+                <div className="hidden lg:block flex-none w-40 relative transition-all focus-within:w-48">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                         type="text"
@@ -659,6 +661,37 @@ function Accounts() {
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
+                </div>
+
+                {/* 搜索按钮 - 小屏显示 */}
+                <div className="lg:hidden relative">
+                    {!isSearchExpanded ? (
+                        <button
+                            onClick={() => {
+                                setIsSearchExpanded(true);
+                                setTimeout(() => searchInputRef.current?.focus(), 100);
+                            }}
+                            className="p-2 bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 rounded-lg transition-colors"
+                            title={t('accounts.search_placeholder')}
+                        >
+                            <Search className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                        </button>
+                    ) : (
+                        <div className="absolute left-0 top-0 z-10 w-64 flex items-center gap-1">
+                            <div className="flex-1 relative">
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                    ref={searchInputRef}
+                                    type="text"
+                                    placeholder={t('accounts.search_placeholder')}
+                                    className="w-full pl-9 pr-4 py-2 bg-white dark:bg-base-100 text-sm text-gray-900 dark:text-base-content border border-gray-200 dark:border-base-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500 shadow-lg"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onBlur={() => setIsSearchExpanded(false)}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* 视图切换按钮组 */}
@@ -689,18 +722,20 @@ function Accounts() {
                     </button>
                 </div>
 
-                {/* 过滤按钮组 */}
-                <div className="flex gap-0.5 bg-gray-100/80 dark:bg-base-200 p-1 rounded-xl border border-gray-200/50 dark:border-white/5 overflow-x-auto no-scrollbar">
+                {/* 过滤按钮组 - 图标化响应式 */}
+                <div className="flex gap-0.5 bg-gray-100/80 dark:bg-base-200 p-1 rounded-xl border border-gray-200/50 dark:border-white/5 shrink-0">
+                    {/* 全部 */}
                     <button
                         className={cn(
-                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                            "px-2 md:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 md:gap-1.5 whitespace-nowrap shrink-0",
                             filter === 'all'
                                 ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
                                 : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
                         )}
                         onClick={() => setFilter('all')}
+                        title={`${t('accounts.all')} (${filterCounts.all})`}
                     >
-                        {t('accounts.all')}
+                        <span className="hidden md:inline">{t('accounts.all')}</span>
                         <span className={cn(
                             "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
                             filter === 'all'
@@ -711,18 +746,18 @@ function Accounts() {
                         </span>
                     </button>
 
-                    <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 self-center mx-1 shrink-0"></div>
-
+                    {/* PRO */}
                     <button
                         className={cn(
-                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                            "px-2 md:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 md:gap-1.5 whitespace-nowrap shrink-0",
                             filter === 'pro'
                                 ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
                                 : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
                         )}
                         onClick={() => setFilter('pro')}
+                        title={`${t('accounts.pro')} (${filterCounts.pro})`}
                     >
-                        {t('accounts.pro')}
+                        <span className="hidden md:inline">{t('accounts.pro')}</span>
                         <span className={cn(
                             "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
                             filter === 'pro'
@@ -733,16 +768,18 @@ function Accounts() {
                         </span>
                     </button>
 
+                    {/* ULTRA - 在中屏以下隐藏 */}
                     <button
                         className={cn(
-                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                            "flex px-2 lg:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all items-center gap-1 lg:gap-1.5 whitespace-nowrap shrink-0",
                             filter === 'ultra'
                                 ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
                                 : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
                         )}
                         onClick={() => setFilter('ultra')}
+                        title={`${t('accounts.ultra')} (${filterCounts.ultra})`}
                     >
-                        {t('accounts.ultra')}
+                        <span className="hidden md:inline">{t('accounts.ultra')}</span>
                         <span className={cn(
                             "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
                             filter === 'ultra'
@@ -753,16 +790,18 @@ function Accounts() {
                         </span>
                     </button>
 
+                    {/* FREE - 在大屏以下隐藏 */}
                     <button
                         className={cn(
-                            "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
+                            "flex px-2 lg:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all items-center gap-1 lg:gap-1.5 whitespace-nowrap shrink-0",
                             filter === 'free'
                                 ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
                                 : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
                         )}
                         onClick={() => setFilter('free')}
+                        title={`${t('accounts.free')} (${filterCounts.free})`}
                     >
-                        {t('accounts.free')}
+                        <span className="hidden md:inline">{t('accounts.free')}</span>
                         <span className={cn(
                             "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
                             filter === 'free'
@@ -778,7 +817,7 @@ function Accounts() {
 
                 {/* 操作按钮组 */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                    <AddAccountDialog onAdd={handleAddAccount} />
+                    <AddAccountDialog onAdd={handleAddAccount} showText={false} />
 
                     {selectedIds.size > 0 && (
                         <>
