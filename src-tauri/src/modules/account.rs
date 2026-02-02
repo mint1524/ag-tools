@@ -1065,10 +1065,49 @@ pub async fn refresh_all_quotas_logic() -> Result<RefreshStats, String> {
         elapsed.as_millis()
     ));
 
+    // After quota refresh, immediately check and trigger warmup for recovered models
+    tokio::spawn(async {
+        check_and_trigger_warmup_for_recovered_models().await;
+    });
+
     Ok(RefreshStats {
         total,
         success,
         failed,
         details,
     })
+}
+
+/// Check and trigger warmup for models that have recovered to 100%
+/// Called automatically after quota refresh to enable immediate warmup
+pub async fn check_and_trigger_warmup_for_recovered_models() {
+    let accounts = match list_accounts() {
+        Ok(acc) => acc,
+        Err(_) => return,
+    };
+
+    // Load config to check if scheduled warmup is enabled
+    let app_config = match crate::modules::config::load_app_config() {
+        Ok(cfg) => cfg,
+        Err(_) => return,
+    };
+
+    if !app_config.scheduled_warmup.enabled {
+        return;
+    }
+
+    crate::modules::logger::log_info(&format!(
+        "[Warmup] Checking {} accounts for recovered models after quota refresh...",
+        accounts.len()
+    ));
+
+    for account in accounts {
+        // Skip disabled accounts
+        if account.disabled || account.proxy_disabled {
+            continue;
+        }
+
+        // Trigger warmup check for this account
+        crate::modules::scheduler::trigger_warmup_for_account(&account).await;
+    }
 }

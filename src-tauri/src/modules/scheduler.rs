@@ -263,7 +263,6 @@ pub fn start_scheduler(app_handle: Option<tauri::AppHandle>, proxy_state: crate:
 }
 
 /// Trigger immediate smart warmup check for a single account
-#[allow(dead_code)]
 pub async fn trigger_warmup_for_account(account: &Account) {
     // Get valid token
     let Ok((token, pid)) = quota::get_valid_token_for_warmup(account).await else {
@@ -275,17 +274,29 @@ pub async fn trigger_warmup_for_account(account: &Account) {
         return;
     };
 
+    // Load config once at the beginning
+    let Ok(app_config) = config::load_app_config() else {
+        logger::log_warn("[Scheduler] Failed to load app config, skipping warmup check");
+        return;
+    };
+
     let now_ts = Utc::now().timestamp();
     let mut tasks_to_run = Vec::new();
 
     for model in fresh_quota.models {
-        let history_key = format!("{}:{}:100", account.email, model.name);
-        
+        let model_name = model.name.clone();
+        let history_key = format!("{}:{}:100", account.email, model_name);
+
         if model.percentage == 100 {
-            // Check history to avoid repeated warmup (with cooldown)
+            // First check if model is in user's monitored list
+            if !app_config.scheduled_warmup.monitored_models.contains(&model_name) {
+                continue;
+            }
+
+            // Then check cooldown history
             {
-                let mut history = WARMUP_HISTORY.lock().unwrap();
-                
+                let history = WARMUP_HISTORY.lock().unwrap();
+
                 // 4 hour cooldown (Pro account resets every 5h, 1h margin)
                 if let Some(&last_warmup_ts) = history.get(&history_key) {
                     let cooldown_seconds = 14400;
@@ -294,36 +305,38 @@ pub async fn trigger_warmup_for_account(account: &Account) {
                         continue;
                     }
                 }
-                
-                history.insert(history_key, now_ts);
-                save_warmup_history(&history);
             }
+            // Note: Don't write history here - only write after successful warmup
 
-            let model_to_ping = model.name.clone();
-
-            // Only warmup models selected by user
-            let Ok(app_config) = config::load_app_config() else {
-                continue;
-            };
-
-            if app_config.scheduled_warmup.monitored_models.contains(&model_to_ping) {
-                tasks_to_run.push((model_to_ping, model.percentage));
-            }
+            tasks_to_run.push((model_name, model.percentage, history_key));
         } else if model.percentage < 100 {
             // Quota not full, clear history, allow warmup next time it's 100%
             let mut history = WARMUP_HISTORY.lock().unwrap();
-            history.remove(&history_key);
+            if history.remove(&history_key).is_some() {
+                save_warmup_history(&history);
+            }
         }
     }
 
-    // Execute warmup
+    // Execute warmup and record history only on success
     if !tasks_to_run.is_empty() {
-        for (model, pct) in tasks_to_run {
+        logger::log_info(&format!(
+            "[Scheduler] Found {} models ready for warmup on {}",
+            tasks_to_run.len(), account.email
+        ));
+
+        for (model, pct, history_key) in tasks_to_run {
             logger::log_info(&format!(
                 "[Scheduler] 🔥 Triggering individual warmup: {} @ {} (Sync)",
                 model, account.email
             ));
-            quota::warmup_model_directly(&token, &model, &pid, &account.email, pct).await;
+
+            let success = quota::warmup_model_directly(&token, &model, &pid, &account.email, pct).await;
+
+            // Only record history if warmup was successful
+            if success {
+                record_warmup_history(&history_key, now_ts);
+            }
         }
     }
 }

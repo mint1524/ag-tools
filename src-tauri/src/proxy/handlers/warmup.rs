@@ -15,6 +15,7 @@ use serde_json::{json, Value};
 use tracing::{info, warn};
 
 use crate::proxy::mappers::gemini::wrapper::wrap_request;
+use crate::proxy::monitor::ProxyRequestLog;
 use crate::proxy::server::AppState;
 
 /// 预热请求体
@@ -44,6 +45,26 @@ pub async fn handle_warmup(
     State(state): State<AppState>,
     Json(req): Json<WarmupRequest>,
 ) -> Response {
+    let start_time = std::time::Instant::now();
+
+    // ===== 前置检查：跳过 gemini-2.5-* 家族模型 =====
+    let model_lower = req.model.to_lowercase();
+    if model_lower.contains("2.5-") || model_lower.contains("2-5-") {
+        info!(
+            "[Warmup-API] SKIP: gemini-2.5-* model not supported for warmup: {} / {}",
+            req.email, req.model
+        );
+        return (
+            StatusCode::OK,
+            Json(WarmupResponse {
+                success: true,
+                message: format!("Skipped warmup for {} (2.5 models not supported)", req.model),
+                error: None,
+            }),
+        )
+            .into_response();
+    }
+
     info!(
         "[Warmup-API] ========== START: email={}, model={} ==========",
         req.email, req.model
@@ -79,7 +100,7 @@ pub async fn handle_warmup(
 
     let body: Value = if is_claude {
         // Claude 模型：使用 transform_claude_request_in 转换
-        let session_id = format!("warmup_{}_{}", 
+        let session_id = format!("warmup_{}_{}",
             chrono::Utc::now().timestamp_millis(),
             &uuid::Uuid::new_v4().to_string()[..8]
         );
@@ -128,7 +149,7 @@ pub async fn handle_warmup(
         }
     } else {
         // Gemini 模型：使用 wrap_request
-        let session_id = format!("warmup_{}_{}", 
+        let session_id = format!("warmup_{}_{}",
             chrono::Utc::now().timestamp_millis(),
             &uuid::Uuid::new_v4().to_string()[..8]
         );
@@ -181,14 +202,39 @@ pub async fn handle_warmup(
             .await;
     }
 
-    // ===== 步骤 4: 处理响应 =====
+    let duration = start_time.elapsed().as_millis() as u64;
+
+    // ===== 步骤 4: 处理响应并记录流量日志 =====
     match result {
         Ok(response) => {
             let status = response.status();
+            let status_code = status.as_u16();
+
+            // 记录预热请求到流量日志
+            let log = ProxyRequestLog {
+                id: uuid::Uuid::new_v4().to_string(),
+                timestamp: chrono::Utc::now().timestamp_millis(),
+                method: "POST".to_string(),
+                url: format!("/internal/warmup -> {}", req.model),
+                status: status_code,
+                duration,
+                model: Some(req.model.clone()),
+                mapped_model: Some(req.model.clone()),
+                account_email: Some(req.email.clone()),
+                client_ip: Some("127.0.0.1".to_string()),
+                error: if status.is_success() { None } else { Some(format!("HTTP {}", status_code)) },
+                request_body: Some(format!("{{\"type\": \"warmup\", \"model\": \"{}\"}}", req.model)),
+                response_body: None,
+                input_tokens: Some(0),
+                output_tokens: Some(0),
+                protocol: Some("warmup".to_string()),
+            };
+            state.monitor.log_request(log).await;
+
             let mut response = if status.is_success() {
                 info!(
-                    "[Warmup-API] ========== SUCCESS: {} / {} ==========",
-                    req.email, req.model
+                    "[Warmup-API] ========== SUCCESS: {} / {} ({}ms) ==========",
+                    req.email, req.model, duration
                 );
                 (
                     StatusCode::OK,
@@ -200,7 +246,6 @@ pub async fn handle_warmup(
                 )
                     .into_response()
             } else {
-                let status_code = status.as_u16();
                 let error_text = response.text().await.unwrap_or_default();
                 (
                     StatusCode::from_u16(status_code).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
@@ -220,15 +265,36 @@ pub async fn handle_warmup(
             if let Ok(model_val) = axum::http::HeaderValue::from_str(&req.model) {
                 response.headers_mut().insert("X-Mapped-Model", model_val);
             }
-            
+
             response
         }
         Err(e) => {
             warn!(
-                "[Warmup-API] ========== ERROR: {} / {} - {} ==========",
-                req.email, req.model, e
+                "[Warmup-API] ========== ERROR: {} / {} - {} ({}ms) ==========",
+                req.email, req.model, e, duration
             );
-            
+
+            // 记录失败的预热请求到流量日志
+            let log = ProxyRequestLog {
+                id: uuid::Uuid::new_v4().to_string(),
+                timestamp: chrono::Utc::now().timestamp_millis(),
+                method: "POST".to_string(),
+                url: format!("/internal/warmup -> {}", req.model),
+                status: 500,
+                duration,
+                model: Some(req.model.clone()),
+                mapped_model: Some(req.model.clone()),
+                account_email: Some(req.email.clone()),
+                client_ip: Some("127.0.0.1".to_string()),
+                error: Some(e.clone()),
+                request_body: Some(format!("{{\"type\": \"warmup\", \"model\": \"{}\"}}", req.model)),
+                response_body: None,
+                input_tokens: None,
+                output_tokens: None,
+                protocol: Some("warmup".to_string()),
+            };
+            state.monitor.log_request(log).await;
+
             let mut response = (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(WarmupResponse {
@@ -245,7 +311,7 @@ pub async fn handle_warmup(
             if let Ok(model_val) = axum::http::HeaderValue::from_str(&req.model) {
                 response.headers_mut().insert("X-Mapped-Model", model_val);
             }
-            
+
             response
         }
     }
