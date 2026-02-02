@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业的 AI 账号管理与协议反代系统 (v4.0.13)
+> 专业的 AI 账号管理与协议反代系统 (v4.0.14)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.0.13-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.0.14-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -359,6 +359,11 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
+    *   **v4.0.14 (2026-02-02)**:
+        -   **[核心功能] 可配置思考预算 (Thinking Budget) (PR #1456)**:
+            -   **预算控制**: 在系统设置中新增了“思考预算”配置项。
+            -   **智能适配**: 支持为 Claude 3.7+ 和 Gemini 2.0 Flash Thinking 等模型自定义最大思考 token 限制。
+            -   **默认优化**: 默认值设置为智能适配模式，确保在大多数场景下不仅能获得完整思考过程，又能避免触发上游 budget 限制。
     *   **v4.0.13 (2026-02-02)**:
         -   **[核心优化] 负载均衡算法升级 (P2C Algorithm) (PR #1433)**:
             -   **算法升级**: 将原有的 Round-Robin (轮询) 算法升级为 P2C (Power of Two Choices) 负载均衡算法。
