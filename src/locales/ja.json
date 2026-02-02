@@ -297,6 +297,7 @@
             "account": "アカウント",
             "proxy": "プロキシ設定",
             "advanced": "詳細設定",
+            "debug": "デバッグ",
             "about": "情報"
         },
         "general": {
@@ -384,6 +385,18 @@
             "http_api_settings_saved": "HTTP API設定を保存しました。適用するには再起動が必要です",
             "http_api_title": "HTTP APIサービス"
         },
+        "debug": {
+            "title": "デバッグコンソール",
+            "desc": "デバッグやトラブルシューティング用のリアルタイムアプリログを表示",
+            "enabled": "有効",
+            "disabled": "無効",
+            "disabled_hint": "デバッグコンソールはオフです",
+            "disabled_desc": "有効にするとアプリログのリアルタイム記録を開始します",
+            "console_title": "デバッグコンソール",
+            "console_desc": "問題のトラブルシューティング用にリアルタイムアプリログを表示します。",
+            "enable_desc": "有効にするとバックエンドログをキャプチャして表示します。",
+            "open_btn": "コンソールを開く"
+        },
         "about": {
             "title": "情報",
             "version": "アプリバージョン",
@@ -405,6 +418,19 @@
             "support_alipay": "Alipay",
             "support_wechat": "WeChat Pay",
             "support_buymeacoffee": "コーヒーを奢る"
+        },
+        "thinking_budget": {
+            "title": "思考バジェット (Thinking Budget)",
+            "description": "AIモデルの推論深度を制御し、複雑なタスクの解決能力に影響します",
+            "mode_auto": "自動 (推奨)",
+            "mode_auto_desc": "システムがモデルごとに最適な上限を適用",
+            "mode_passthrough": "パススルー",
+            "mode_passthrough_desc": "呼び出し元の値を完全に信頼（リスク管理は自己責任）",
+            "mode_custom": "カスタム",
+            "mode_custom_desc": "固定のカスタムバジェット値を使用",
+            "custom_value_label": "カスタムバジェット値",
+            "custom_value_hint": "範囲: 1024 - 65536 トークン",
+            "warning_passthrough": "⚠️ パススルーモードはクォータの急速消費を招く可能性があります"
         },
         "quota_protection": {
             "auto_restore_info": "クォータがリセットされると、アカウントは自動的に再度有効になります",

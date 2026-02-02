@@ -289,7 +289,8 @@
             "account": "الحساب",
             "proxy": "إعدادات الوكيل",
             "advanced": "متقدم",
-            "about": "حول"
+            "about": "حول",
+            "debug": "تصحيح الأخطاء"
         },
         "general": {
             "title": "الإعدادات العامة",
@@ -412,6 +413,19 @@
             "support_alipay": "Alipay",
             "support_wechat": "WeChat Pay",
             "support_buymeacoffee": "Buy Me a Coffee"
+        },
+        "thinking_budget": {
+            "title": "ميزانية التفكير (Thinking Budget)",
+            "description": "يتحكم في عمق استدلال نموذج الذكاء الاصطناعي، مما يؤثر على قدرته على حل المهام المعقدة",
+            "mode_auto": "تلقائي (موصى به)",
+            "mode_auto_desc": "يطبق النظام الحد الأمثل لكل نموذج",
+            "mode_passthrough": "تمرير مباشر",
+            "mode_passthrough_desc": "الثقة الكاملة بقيمة المتصل (إدارة المخاطر على مسؤوليتك)",
+            "mode_custom": "مخصص",
+            "mode_custom_desc": "استخدام قيمة ميزانية مخصصة ثابتة",
+            "custom_value_label": "قيمة الميزانية المخصصة",
+            "custom_value_hint": "النطاق: 1024 - 65536 رمز",
+            "warning_passthrough": "⚠️ قد يستهلك وضع التمرير المباشر الحصة بسرعة"
         }
     },
     "tray": {

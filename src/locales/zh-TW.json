@@ -286,7 +286,8 @@
             "account": "帳號",
             "proxy": "代理設定",
             "advanced": "進階",
-            "about": "關於"
+            "about": "關於",
+            "debug": "除錯"
         },
         "general": {
             "title": "通用設定",
@@ -409,6 +410,19 @@
             "support_alipay": "Alipay",
             "support_wechat": "Weixin Pay",
             "support_buymeacoffee": "Buy Me a Coffee"
+        },
+        "thinking_budget": {
+            "title": "思考預算 (Thinking Budget)",
+            "description": "控制 AI 模型的推理深度，影響複雜任務的解題能力",
+            "mode_auto": "自動 (推薦)",
+            "mode_auto_desc": "系統自動為不同模型套用最優上限",
+            "mode_passthrough": "直通",
+            "mode_passthrough_desc": "完全信任調用方的值（需自行控制風險）",
+            "mode_custom": "自訂",
+            "mode_custom_desc": "使用固定的自訂預算值",
+            "custom_value_label": "自訂預算值",
+            "custom_value_hint": "範圍: 1024 - 65536 tokens",
+            "warning_passthrough": "⚠️ 直通模式可能導致配額快速消耗"
         }
     },
     "tray": {

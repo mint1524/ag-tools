@@ -241,6 +241,9 @@ pub async fn ensure_admin_server(
         server_handle,
     });
 
+    // [NEW] 初始化全局 Thinking Budget 配置
+    crate::proxy::update_thinking_budget_config(config.thinking_budget.clone());
+
     Ok(())
 }
 

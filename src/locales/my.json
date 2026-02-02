@@ -287,7 +287,8 @@
             "account": "Akaun",
             "proxy": "Tetapan Proksi",
             "advanced": "Lanjutan",
-            "about": "Perihal"
+            "about": "Perihal",
+            "debug": "Nyahpepijat"
         },
         "general": {
             "title": "Tetapan Umum",
@@ -410,6 +411,19 @@
             "support_alipay": "Alipay",
             "support_wechat": "WeChat Pay",
             "support_buymeacoffee": "Buy Me a Coffee"
+        },
+        "thinking_budget": {
+            "title": "Bajet Pemikiran (Thinking Budget)",
+            "description": "Mengawal kedalaman penaakulan model AI, mempengaruhi keupayaannya menyelesaikan tugas kompleks",
+            "mode_auto": "Automatik (Disyorkan)",
+            "mode_auto_desc": "Sistem menggunakan had optimum untuk setiap model",
+            "mode_passthrough": "Laluan terus",
+            "mode_passthrough_desc": "Mempercayai nilai pemanggil sepenuhnya (pengurusan risiko tanggungjawab anda)",
+            "mode_custom": "Tersuai",
+            "mode_custom_desc": "Gunakan nilai bajet tersuai tetap",
+            "custom_value_label": "Nilai bajet tersuai",
+            "custom_value_hint": "Julat: 1024 - 65536 token",
+            "warning_passthrough": "⚠️ Mod laluan terus mungkin menghabiskan kuota dengan cepat"
         }
     },
     "tray": {

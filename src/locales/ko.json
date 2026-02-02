@@ -289,7 +289,8 @@
             "account": "계정",
             "proxy": "프록시 설정",
             "advanced": "고급",
-            "about": "정보"
+            "about": "정보",
+            "debug": "디버그"
         },
         "general": {
             "title": "일반 설정",
@@ -412,6 +413,19 @@
             "support_alipay": "알리페이",
             "support_wechat": "위챗 페이",
             "support_buymeacoffee": "Buy Me a Coffee"
+        },
+        "thinking_budget": {
+            "title": "사고 예산 (Thinking Budget)",
+            "description": "AI 모델의 추론 깊이를 제어하여 복잡한 작업 해결 능력에 영향을 줍니다",
+            "mode_auto": "자동 (권장)",
+            "mode_auto_desc": "시스템이 모델별로 최적의 상한을 적용",
+            "mode_passthrough": "패스스루",
+            "mode_passthrough_desc": "호출자의 값을 완전히 신뢰 (리스크 관리는 사용자 책임)",
+            "mode_custom": "사용자 지정",
+            "mode_custom_desc": "고정된 사용자 지정 예산 값 사용",
+            "custom_value_label": "사용자 지정 예산 값",
+            "custom_value_hint": "범위: 1024 - 65536 토큰",
+            "warning_passthrough": "⚠️ 패스스루 모드는 할당량이 빠르게 소모될 수 있습니다"
         }
     },
     "tray": {

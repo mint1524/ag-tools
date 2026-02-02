@@ -9,6 +9,7 @@ import { showToast } from '../components/common/ToastContainer';
 import QuotaProtection from '../components/settings/QuotaProtection';
 import SmartWarmup from '../components/settings/SmartWarmup';
 import PinnedQuotaModels from '../components/settings/PinnedQuotaModels';
+import ThinkingBudget from '../components/settings/ThinkingBudget';
 import { useDebugConsole } from '../stores/useDebugConsole';
 
 import { useTranslation } from 'react-i18next';
@@ -19,7 +20,7 @@ import DebugConsole from '../components/debug/DebugConsole';
 function Settings() {
     const { t, i18n } = useTranslation();
     const { config, loadConfig, saveConfig, updateLanguage, updateTheme } = useConfigStore();
-    const { enable } = useDebugConsole();
+    const { enable, disable, isEnabled } = useDebugConsole();
     const [activeTab, setActiveTab] = useState<'general' | 'account' | 'proxy' | 'advanced' | 'debug' | 'about'>('general');
     const [formData, setFormData] = useState<AppConfig>({
         language: 'zh',
@@ -117,11 +118,7 @@ function Settings() {
         }
     }, [config]);
 
-    useEffect(() => {
-        if (activeTab === 'debug') {
-            enable();
-        }
-    }, [activeTab]);
+    // 删除自动启用调试控制台的逻辑 - 改为用户手动控制
 
     const handleSave = async () => {
         try {
@@ -886,6 +883,20 @@ function Settings() {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Thinking Budget 设置 */}
+                                <div className="border-t border-gray-200 dark:border-base-200 pt-4">
+                                    <ThinkingBudget
+                                        config={formData.proxy?.thinking_budget || { mode: 'auto', custom_value: 24576 }}
+                                        onChange={(newConfig) => setFormData({
+                                            ...formData,
+                                            proxy: {
+                                                ...formData.proxy,
+                                                thinking_budget: newConfig,
+                                            },
+                                        })}
+                                    />
+                                </div>
                             </div>
                         </>
                     )}
@@ -893,8 +904,48 @@ function Settings() {
 
                     {/* 调试设置 */}
                     {activeTab === 'debug' && (
-                        <div className="space-y-4 animate-in fade-in duration-500 h-[calc(100vh-250px)] min-h-[500px]">
-                            <DebugConsole embedded />
+                        <div className="space-y-4 animate-in fade-in duration-500">
+                            {/* 标题和开关 */}
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-lg font-semibold text-gray-900 dark:text-base-content">
+                                        {t('settings.debug.title', '调试控制台')}
+                                    </h2>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                        {t('settings.debug.desc', '实时查看应用日志，用于调试和问题排查')}
+                                    </p>
+                                </div>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="sr-only peer"
+                                        checked={isEnabled}
+                                        onChange={(e) => e.target.checked ? enable() : disable()}
+                                    />
+                                    <div className="w-11 h-6 bg-gray-200 dark:bg-base-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-500"></div>
+                                    <span className="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        {isEnabled ? t('settings.debug.enabled', '已启用') : t('settings.debug.disabled', '已禁用')}
+                                    </span>
+                                </label>
+                            </div>
+
+                            {/* 控制台或提示 */}
+                            {isEnabled ? (
+                                <div className="h-[calc(100vh-320px)] min-h-[400px]">
+                                    <DebugConsole embedded />
+                                </div>
+                            ) : (
+                                <div className="h-[calc(100vh-320px)] min-h-[400px] flex items-center justify-center bg-gray-50 dark:bg-base-200 rounded-xl border border-gray-200 dark:border-base-300">
+                                    <div className="text-center">
+                                        <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
+                                            {t('settings.debug.disabled_hint', '调试控制台已关闭')}
+                                        </p>
+                                        <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
+                                            {t('settings.debug.disabled_desc', '开启后将实时记录应用日志')}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 

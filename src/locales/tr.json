@@ -275,7 +275,8 @@
             "account": "Hesap",
             "proxy": "Proxy Ayarları",
             "advanced": "Gelişmiş",
-            "about": "Hakkında"
+            "about": "Hakkında",
+            "debug": "Hata Ayıklama"
         },
         "general": {
             "title": "Genel Ayarlar",
@@ -375,6 +376,19 @@
             "support_alipay": "Alipay",
             "support_wechat": "WeChat Pay",
             "support_buymeacoffee": "Buy Me a Coffee"
+        },
+        "thinking_budget": {
+            "title": "Düşünme Bütçesi (Thinking Budget)",
+            "description": "Yapay zeka modelinin akıl yürütme derinliğini kontrol eder, karmaşık görevleri çözme yeteneğini etkiler",
+            "mode_auto": "Otomatik (Önerilen)",
+            "mode_auto_desc": "Sistem her model için en uygun limiti uygular",
+            "mode_passthrough": "Doğrudan geçiş",
+            "mode_passthrough_desc": "Çağıranın değerine tamamen güven (risk yönetimi sizin sorumluluğunuzda)",
+            "mode_custom": "Özel",
+            "mode_custom_desc": "Sabit özel bütçe değeri kullan",
+            "custom_value_label": "Özel bütçe değeri",
+            "custom_value_hint": "Aralık: 1024 - 65536 token",
+            "warning_passthrough": "⚠️ Doğrudan geçiş modu kotayı hızla tüketebilir"
         }
     },
     "tray": {

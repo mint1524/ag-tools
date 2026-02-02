@@ -1,6 +1,44 @@
 use serde::{Deserialize, Serialize};
 // use std::path::PathBuf;
 use std::collections::HashMap;
+use std::sync::{OnceLock, RwLock};
+
+// ============================================================================
+// 全局 Thinking Budget 配置存储
+// 用于在 request transform 函数中访问配置（无需修改函数签名）
+// ============================================================================
+static GLOBAL_THINKING_BUDGET_CONFIG: OnceLock<RwLock<ThinkingBudgetConfig>> = OnceLock::new();
+
+/// 获取当前 Thinking Budget 配置
+pub fn get_thinking_budget_config() -> ThinkingBudgetConfig {
+    GLOBAL_THINKING_BUDGET_CONFIG
+        .get()
+        .and_then(|lock| lock.read().ok())
+        .map(|cfg| cfg.clone())
+        .unwrap_or_default()
+}
+
+/// 更新全局 Thinking Budget 配置
+pub fn update_thinking_budget_config(config: ThinkingBudgetConfig) {
+    if let Some(lock) = GLOBAL_THINKING_BUDGET_CONFIG.get() {
+        if let Ok(mut cfg) = lock.write() {
+            *cfg = config.clone();
+            tracing::info!(
+                "[Thinking-Budget] Global config updated: mode={:?}, custom_value={}",
+                config.mode,
+                config.custom_value
+            );
+        }
+    } else {
+        // 首次初始化
+        let _ = GLOBAL_THINKING_BUDGET_CONFIG.set(RwLock::new(config.clone()));
+        tracing::info!(
+            "[Thinking-Budget] Global config initialized: mode={:?}, custom_value={}",
+            config.mode,
+            config.custom_value
+        );
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -156,7 +194,7 @@ impl Default for ExperimentalConfig {
             enable_signature_cache: true,
             enable_tool_loop_recovery: true,
             enable_cross_model_checks: true,
-            enable_usage_scaling: false,  // 默认关闭,回归透明模式
+            enable_usage_scaling: false, // 默认关闭,回归透明模式
             context_compression_threshold_l1: 0.4,
             context_compression_threshold_l2: 0.55,
             context_compression_threshold_l3: 0.7,
@@ -164,9 +202,58 @@ impl Default for ExperimentalConfig {
     }
 }
 
-fn default_threshold_l1() -> f32 { 0.4 }
-fn default_threshold_l2() -> f32 { 0.55 }
-fn default_threshold_l3() -> f32 { 0.7 }
+fn default_threshold_l1() -> f32 {
+    0.4
+}
+fn default_threshold_l2() -> f32 {
+    0.55
+}
+fn default_threshold_l3() -> f32 {
+    0.7
+}
+
+/// Thinking Budget 模式
+/// 控制如何处理调用方传入的 thinking_budget 参数
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ThinkingBudgetMode {
+    /// 自动限制：对特定模型（Flash/Thinking）应用 24576 上限
+    Auto,
+    /// 透传：完全使用调用方传入的值，不做任何修改
+    Passthrough,
+    /// 自定义：使用用户设定的固定值覆盖所有请求
+    Custom,
+}
+
+impl Default for ThinkingBudgetMode {
+    fn default() -> Self {
+        Self::Auto
+    }
+}
+
+/// Thinking Budget 配置
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThinkingBudgetConfig {
+    /// 模式选择
+    #[serde(default)]
+    pub mode: ThinkingBudgetMode,
+    /// 自定义固定值（仅在 mode=Custom 时生效）
+    #[serde(default = "default_thinking_budget_custom_value")]
+    pub custom_value: u32,
+}
+
+impl Default for ThinkingBudgetConfig {
+    fn default() -> Self {
+        Self {
+            mode: ThinkingBudgetMode::Auto,
+            custom_value: default_thinking_budget_custom_value(),
+        }
+    }
+}
+
+fn default_thinking_budget_custom_value() -> u32 {
+    24576
+}
 
 fn default_true() -> bool {
     true
@@ -199,7 +286,7 @@ pub struct IpBlacklistConfig {
     /// 是否启用黑名单
     #[serde(default)]
     pub enabled: bool,
-    
+
     /// 自定义封禁消息
     #[serde(default = "default_block_message")]
     pub block_message: String,
@@ -224,7 +311,7 @@ pub struct IpWhitelistConfig {
     /// 是否启用白名单模式 (启用后只允许白名单IP访问)
     #[serde(default)]
     pub enabled: bool,
-    
+
     /// 白名单优先模式 (白名单IP跳过黑名单检查)
     #[serde(default = "default_true")]
     pub whitelist_priority: bool,
@@ -245,7 +332,7 @@ pub struct SecurityMonitorConfig {
     /// IP 黑名单配置
     #[serde(default)]
     pub blacklist: IpBlacklistConfig,
-    
+
     /// IP 白名单配置
     #[serde(default)]
     pub whitelist: IpWhitelistConfig,
@@ -285,7 +372,7 @@ pub struct ProxyConfig {
 
     /// API 密钥
     pub api_key: String,
-    
+
     /// Web UI 管理后台密码 (可选，如未设置则使用 api_key)
     pub admin_password: Option<String>,
 
@@ -341,6 +428,11 @@ pub struct ProxyConfig {
     /// Saved User-Agent string (persisted even when override is disabled)
     #[serde(default)]
     pub saved_user_agent: Option<String>,
+
+    /// Thinking Budget 配置
+    /// 控制如何处理 AI 深度思考时的 Token 预算
+    #[serde(default)]
+    pub thinking_budget: ThinkingBudgetConfig,
 }
 
 /// 上游代理配置
@@ -374,6 +466,7 @@ impl Default for ProxyConfig {
             preferred_account_id: None, // 默认使用轮询模式
             user_agent_override: None,
             saved_user_agent: None,
+            thinking_budget: ThinkingBudgetConfig::default(),
         }
     }
 }

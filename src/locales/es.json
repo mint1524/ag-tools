@@ -287,7 +287,8 @@
             "account": "Cuenta",
             "proxy": "Configuración de Proxy",
             "advanced": "Avanzado",
-            "about": "Acerca de"
+            "about": "Acerca de",
+            "debug": "Depuración"
         },
         "general": {
             "title": "Configuración General",
@@ -410,6 +411,19 @@
             "support_alipay": "Alipay",
             "support_wechat": "WeChat Pay",
             "support_buymeacoffee": "Buy Me a Coffee"
+        },
+        "thinking_budget": {
+            "title": "Presupuesto de Pensamiento (Thinking Budget)",
+            "description": "Controla la profundidad de razonamiento del modelo AI, afectando su capacidad para resolver tareas complejas",
+            "mode_auto": "Automático (Recomendado)",
+            "mode_auto_desc": "El sistema aplica el límite óptimo para cada modelo",
+            "mode_passthrough": "Paso directo",
+            "mode_passthrough_desc": "Confía completamente en el valor del llamador (gestión de riesgos bajo su responsabilidad)",
+            "mode_custom": "Personalizado",
+            "mode_custom_desc": "Usar un valor de presupuesto personalizado fijo",
+            "custom_value_label": "Valor de presupuesto personalizado",
+            "custom_value_hint": "Rango: 1024 - 65536 tokens",
+            "warning_passthrough": "⚠️ El modo de paso directo puede consumir la cuota rápidamente"
         }
     },
     "tray": {

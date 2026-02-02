@@ -357,6 +357,8 @@ pub async fn save_config(
         instance.axum_server.update_debug_logging(&config.proxy).await;
         // [NEW] 更新 User-Agent 配置
         instance.axum_server.update_user_agent(&config.proxy).await;
+        // [NEW] 更新 Thinking Budget 配置
+        crate::proxy::update_thinking_budget_config(config.proxy.thinking_budget.clone());
         // 更新熔断配置
         instance.token_manager.update_circuit_breaker_config(config.circuit_breaker.clone()).await;
         tracing::debug!("已同步热更新反代服务配置");
