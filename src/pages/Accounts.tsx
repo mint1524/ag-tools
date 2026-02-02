@@ -28,11 +28,11 @@ import { Account } from "../types/account";
 import { cn } from "../utils/cn";
 import { isTauri } from "../utils/env";
 import { request as invoke } from "../utils/request";
+import { useTranslation } from "react-i18next";
 
 type FilterType = "all" | "pro" | "ultra" | "free";
 type ViewMode = "list" | "grid";
 
-import { useTranslation } from "react-i18next";
 
 function Accounts() {
   const { t } = useTranslation();

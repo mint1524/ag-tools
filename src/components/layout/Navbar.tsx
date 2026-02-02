@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, LayoutDashboard, Users, Network, Activity, BarChart3, Settings } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, Users, Network, Activity, BarChart3, Settings, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useConfigStore } from '../../stores/useConfigStore';
 import LogoIcon from '../../../src-tauri/icons/icon.png';
