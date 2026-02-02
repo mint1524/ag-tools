@@ -399,6 +399,19 @@
             "support_alipay": "Alipay",
             "support_wechat": "WeChat Pay",
             "support_buymeacoffee": "Buy Me a Coffee"
+        },
+        "thinking_budget": {
+            "title": "Бюджет размышлений (Thinking Budget)",
+            "description": "Управляет глубиной рассуждений модели ИИ, влияя на её способность решать сложные задачи",
+            "mode_auto": "Автоматический (Рекомендуется)",
+            "mode_auto_desc": "Система применяет оптимальный лимит для каждой модели",
+            "mode_passthrough": "Сквозной",
+            "mode_passthrough_desc": "Полное доверие значению вызывающей стороны (управление рисками на вашей ответственности)",
+            "mode_custom": "Пользовательский",
+            "mode_custom_desc": "Использовать фиксированное пользовательское значение бюджета",
+            "custom_value_label": "Пользовательское значение бюджета",
+            "custom_value_hint": "Диапазон: 1024 - 65536 токенов",
+            "warning_passthrough": "⚠️ Сквозной режим может быстро израсходовать квоту"
         }
     },
     "tray": {

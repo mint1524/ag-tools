@@ -424,6 +424,25 @@
             "support_wechat": "WeChat Pay",
             "support_buymeacoffee": "Buy Me a Coffee"
         },
+        "thinking_budget": {
+            "title": "Thinking Budget",
+            "description": "Controls the token budget for AI deep thinking. Some models (e.g., Flash, -thinking suffix models) are limited to 24576 by upstream API.",
+            "mode_label": "Processing Mode",
+            "mode": {
+                "auto": "Auto Limit",
+                "auto_desc": "Smart limit",
+                "passthrough": "Passthrough",
+                "passthrough_desc": "No limit",
+                "custom": "Custom",
+                "custom_desc": "Fixed value"
+            },
+            "auto_hint": "Auto mode: Automatically caps budget to 24576 for Flash models, -thinking suffix models, and Web Search requests to avoid API errors. Other models retain original request values.",
+            "passthrough_warning": "Passthrough mode: Uses the caller's thinking_budget value directly without any limits. May cause request failures if upstream API doesn't support high values.",
+            "custom_value_label": "Custom Value",
+            "custom_value_hint": "Range: 1024 - 65536. Recommended: 24576 (Flash limit) or 51200 (standard extended thinking).",
+            "high_value_warning": "Current value exceeds 24576. Some models (Flash, -thinking) may not support this and requests may fail.",
+            "tokens": "tokens"
+        },
         "branding": {
             "title": "Antigravity Tools",
             "subtitle": "Professional Account Management"

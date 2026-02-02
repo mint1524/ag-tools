@@ -9,6 +9,7 @@ import { showToast } from '../components/common/ToastContainer';
 import QuotaProtection from '../components/settings/QuotaProtection';
 import SmartWarmup from '../components/settings/SmartWarmup';
 import PinnedQuotaModels from '../components/settings/PinnedQuotaModels';
+import ThinkingBudget from '../components/settings/ThinkingBudget';
 import { useDebugConsole } from '../stores/useDebugConsole';
 
 import { useTranslation } from 'react-i18next';
@@ -885,6 +886,20 @@ function Settings() {
                                             </>
                                         )}
                                     </div>
+                                </div>
+
+                                {/* Thinking Budget 设置 */}
+                                <div className="border-t border-gray-200 dark:border-base-200 pt-4">
+                                    <ThinkingBudget
+                                        config={formData.proxy?.thinking_budget || { mode: 'auto', custom_value: 24576 }}
+                                        onChange={(newConfig) => setFormData({
+                                            ...formData,
+                                            proxy: {
+                                                ...formData.proxy,
+                                                thinking_budget: newConfig,
+                                            },
+                                        })}
+                                    />
                                 </div>
                             </div>
                         </>
