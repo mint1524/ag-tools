@@ -393,7 +393,12 @@
             "http_api_restart_required": "⚠️ 需要重启应用后生效"
         },
         "debug": {
-            "title": "调试设置",
+            "title": "调试控制台",
+            "desc": "实时查看应用日志，用于调试和问题排查",
+            "enabled": "已启用",
+            "disabled": "已禁用",
+            "disabled_hint": "调试控制台已关闭",
+            "disabled_desc": "开启后将实时记录应用日志",
             "console_title": "调试控制台",
             "console_desc": "查看实时应用日志，用于排查问题。",
             "enable_desc": "开启后将捕获并显示后端日志。",

@@ -396,7 +396,12 @@
             "http_api_restart_required": "⚠️ Restart required to apply"
         },
         "debug": {
-            "title": "Debug Settings",
+            "title": "Debug Console",
+            "desc": "View real-time application logs for debugging",
+            "enabled": "Enabled",
+            "disabled": "Disabled",
+            "disabled_hint": "Debug Console is Off",
+            "disabled_desc": "Enable to start recording application logs",
             "console_title": "Debug Console",
             "console_desc": "View real-time application logs to troubleshoot issues.",
             "enable_desc": "Enable to capture and display backend logs.",
