@@ -275,7 +275,8 @@
             "account": "Hesap",
             "proxy": "Proxy Ayarları",
             "advanced": "Gelişmiş",
-            "about": "Hakkında"
+            "about": "Hakkında",
+            "debug": "Hata Ayıklama"
         },
         "general": {
             "title": "Genel Ayarlar",

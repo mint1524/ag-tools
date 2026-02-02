@@ -297,6 +297,7 @@
             "account": "アカウント",
             "proxy": "プロキシ設定",
             "advanced": "詳細設定",
+            "debug": "デバッグ",
             "about": "情報"
         },
         "general": {
@@ -383,6 +384,18 @@
             "http_api_restart_required": "⚠️ 適用するには再起動が必要です",
             "http_api_settings_saved": "HTTP API設定を保存しました。適用するには再起動が必要です",
             "http_api_title": "HTTP APIサービス"
+        },
+        "debug": {
+            "title": "デバッグコンソール",
+            "desc": "デバッグやトラブルシューティング用のリアルタイムアプリログを表示",
+            "enabled": "有効",
+            "disabled": "無効",
+            "disabled_hint": "デバッグコンソールはオフです",
+            "disabled_desc": "有効にするとアプリログのリアルタイム記録を開始します",
+            "console_title": "デバッグコンソール",
+            "console_desc": "問題のトラブルシューティング用にリアルタイムアプリログを表示します。",
+            "enable_desc": "有効にするとバックエンドログをキャプチャして表示します。",
+            "open_btn": "コンソールを開く"
         },
         "about": {
             "title": "情報",

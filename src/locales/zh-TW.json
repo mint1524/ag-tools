@@ -286,7 +286,8 @@
             "account": "帳號",
             "proxy": "代理設定",
             "advanced": "進階",
-            "about": "關於"
+            "about": "關於",
+            "debug": "除錯"
         },
         "general": {
             "title": "通用設定",

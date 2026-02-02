@@ -287,7 +287,8 @@
             "account": "Cuenta",
             "proxy": "Configuración de Proxy",
             "advanced": "Avanzado",
-            "about": "Acerca de"
+            "about": "Acerca de",
+            "debug": "Depuración"
         },
         "general": {
             "title": "Configuración General",

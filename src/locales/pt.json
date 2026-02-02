@@ -283,7 +283,8 @@
             "account": "Conta",
             "proxy": "Configurações do Proxy",
             "advanced": "Avançado",
-            "about": "Sobre"
+            "about": "Sobre",
+            "debug": "Depuração"
         },
         "general": {
             "title": "Configurações Gerais",

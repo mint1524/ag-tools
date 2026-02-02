@@ -286,7 +286,8 @@
             "account": "Tài khoản",
             "proxy": "Cài đặt Proxy",
             "advanced": "Nâng cao",
-            "about": "Giới thiệu"
+            "about": "Giới thiệu",
+            "debug": "Gỡ lỗi"
         },
         "general": {
             "title": "Cài đặt Chung",

@@ -287,7 +287,8 @@
             "account": "Akaun",
             "proxy": "Tetapan Proksi",
             "advanced": "Lanjutan",
-            "about": "Perihal"
+            "about": "Perihal",
+            "debug": "Nyahpepijat"
         },
         "general": {
             "title": "Tetapan Umum",

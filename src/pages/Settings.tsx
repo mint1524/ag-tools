@@ -937,7 +937,6 @@ function Settings() {
                             ) : (
                                 <div className="h-[calc(100vh-320px)] min-h-[400px] flex items-center justify-center bg-gray-50 dark:bg-base-200 rounded-xl border border-gray-200 dark:border-base-300">
                                     <div className="text-center">
-                                        <div className="text-6xl mb-4">🔇</div>
                                         <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
                                             {t('settings.debug.disabled_hint', '调试控制台已关闭')}
                                         </p>

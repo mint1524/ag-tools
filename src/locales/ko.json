@@ -289,7 +289,8 @@
             "account": "계정",
             "proxy": "프록시 설정",
             "advanced": "고급",
-            "about": "정보"
+            "about": "정보",
+            "debug": "디버그"
         },
         "general": {
             "title": "일반 설정",
