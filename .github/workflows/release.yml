@@ -103,6 +103,29 @@ jobs:
           path: all-updaters
           merge-multiple: true
 
+      - name: Extract Release Notes
+        run: |
+          VERSION="${{ github.ref_name }}"
+          echo "Extracting release notes for version $VERSION"
+          
+          # Extract the section, remove leading 4 spaces dedent
+          awk -v ver="$VERSION" '
+            BEGIN { capture=0 }
+            # Match start line: "    *   **v4.0.13..."
+            $0 ~ "^[[:space:]]*\\*[[:space:]]+\\*\\*" ver { capture=1; next }
+            # Match next version line to stop: "    *   **v..."
+            capture && $0 ~ "^[[:space:]]*\\*[[:space:]]+\\*\\*v" { capture=0; exit }
+            capture { print }
+          ' README.md | sed 's/^    //' > release_notes.md
+          
+          # If no notes found, add a default message
+          if [ ! -s release_notes.md ]; then
+            echo "See the assets to download this version and install." > release_notes.md
+          fi
+          
+          echo "Release Notes Content:"
+          cat release_notes.md
+
       - name: Merge updater JSONs
         run: |
           echo "Merging updater.json files..."
@@ -126,6 +149,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ github.ref_name }}
+          body_path: release_notes.md
           files: updater.json
           # 确保不覆盖已存在的其他 assets (softprops/action-gh-release 默认是追加)
 
