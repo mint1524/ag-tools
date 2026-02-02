@@ -1,16 +1,16 @@
 import { join } from "@tauri-apps/api/path";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import {
-    Download,
-    LayoutGrid,
-    List,
-    RefreshCw,
-    Search,
-    Sparkles,
-    ToggleLeft,
-    ToggleRight,
-    Trash2,
-    Upload,
+  Download,
+  LayoutGrid,
+  List,
+  RefreshCw,
+  Search,
+  Sparkles,
+  ToggleLeft,
+  ToggleRight,
+  Trash2,
+  Upload,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import AccountDetailsDialog from "../components/accounts/AccountDetailsDialog";
@@ -28,13 +28,11 @@ import { Account } from "../types/account";
 import { cn } from "../utils/cn";
 import { isTauri } from "../utils/env";
 import { request as invoke } from "../utils/request";
-
-// ... (省略中间代码)
+import { useTranslation } from "react-i18next";
 
 type FilterType = "all" | "pro" | "ultra" | "free";
 type ViewMode = "list" | "grid";
 
-import { useTranslation } from "react-i18next";
 
 function Accounts() {
   const { t } = useTranslation();
@@ -53,18 +51,20 @@ function Accounts() {
     warmUpAccounts,
     warmUpAccount,
   } = useAccountStore();
-  const { config } = useConfigStore();
+  const { config, showAllQuotas, toggleShowAllQuotas } = useConfigStore();
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filter, setFilter] = useState<FilterType>("all");
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    const saved = localStorage.getItem("accounts_view_mode");
-    return saved === "list" || saved === "grid" ? saved : "list";
+    const saved = localStorage.getItem('accounts_view_mode');
+    return (saved === 'list' || saved === 'grid') ? saved : 'list';
   });
 
   // Save view mode preference
   useEffect(() => {
-    localStorage.setItem("accounts_view_mode", viewMode);
+    localStorage.setItem('accounts_view_mode', viewMode);
   }, [viewMode]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deviceAccount, setDeviceAccount] = useState<Account | null>(null);
@@ -730,18 +730,49 @@ function Accounts() {
         onChange={handleFileChange}
       />
 
-      {/* 顶部工具栏：搜索、过滤和操作按钮 */}
+      {/* 顶部工具栏:搜索、过滤和操作按钮 */}
       <div className="flex-none flex items-center gap-2">
-        {/* 搜索框 */}
-        <div className="flex-none w-40 relative transition-all focus-within:w-48">
+        {/* 搜索框 - 响应式:大屏显示输入框,小屏显示图标 */}
+        <div className="hidden lg:block flex-none w-40 relative transition-all focus-within:w-48">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
-            placeholder={t("accounts.search_placeholder")}
+            placeholder={t('accounts.search_placeholder')}
             className="w-full pl-9 pr-4 py-2 bg-white dark:bg-base-100 text-sm text-gray-900 dark:text-base-content border border-gray-200 dark:border-base-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+        </div>
+
+        {/* 搜索按钮 - 小屏显示 */}
+        <div className="lg:hidden relative">
+          {!isSearchExpanded ? (
+            <button
+              onClick={() => {
+                setIsSearchExpanded(true);
+                setTimeout(() => searchInputRef.current?.focus(), 100);
+              }}
+              className="p-2 bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 rounded-lg transition-colors"
+              title={t('accounts.search_placeholder')}
+            >
+              <Search className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+            </button>
+          ) : (
+            <div className="absolute left-0 top-0 z-10 w-64 flex items-center gap-1">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder={t('accounts.search_placeholder')}
+                  className="w-full pl-9 pr-4 py-2 bg-white dark:bg-base-100 text-sm text-gray-900 dark:text-base-content border border-gray-200 dark:border-base-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400 dark:placeholder:text-gray-500 shadow-lg"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onBlur={() => setIsSearchExpanded(false)}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 视图切换按钮组 */}
@@ -772,94 +803,92 @@ function Accounts() {
           </button>
         </div>
 
-        {/* 过滤按钮组 */}
-        <div className="flex gap-0.5 bg-gray-100/80 dark:bg-base-200 p-1 rounded-xl border border-gray-200/50 dark:border-white/5 overflow-x-auto no-scrollbar">
+        {/* 过滤按钮组 - 图标化响应式 */}
+        <div className="flex gap-0.5 bg-gray-100/80 dark:bg-base-200 p-1 rounded-xl border border-gray-200/50 dark:border-white/5 shrink-0">
+          {/* 全部 */}
           <button
             className={cn(
-              "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
-              filter === "all"
+              "px-2 md:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 md:gap-1.5 whitespace-nowrap shrink-0",
+              filter === 'all'
                 ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40",
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
             )}
-            onClick={() => setFilter("all")}
+            onClick={() => setFilter('all')}
+            title={`${t('accounts.all')} (${filterCounts.all})`}
           >
-            {t("accounts.all")}
-            <span
-              className={cn(
-                "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
-                filter === "all"
-                  ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                  : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
-              )}
-            >
+            <span className="hidden md:inline">{t('accounts.all')}</span>
+            <span className={cn(
+              "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+              filter === 'all'
+                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+            )}>
               {filterCounts.all}
             </span>
           </button>
 
-          <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 self-center mx-1 shrink-0"></div>
-
+          {/* PRO */}
           <button
             className={cn(
-              "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
-              filter === "pro"
+              "px-2 md:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1 md:gap-1.5 whitespace-nowrap shrink-0",
+              filter === 'pro'
                 ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40",
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
             )}
-            onClick={() => setFilter("pro")}
+            onClick={() => setFilter('pro')}
+            title={`${t('accounts.pro')} (${filterCounts.pro})`}
           >
-            {t("accounts.pro")}
-            <span
-              className={cn(
-                "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
-                filter === "pro"
-                  ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                  : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
-              )}
-            >
+            <span className="hidden md:inline">{t('accounts.pro')}</span>
+            <span className={cn(
+              "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+              filter === 'pro'
+                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+            )}>
               {filterCounts.pro}
             </span>
           </button>
 
+          {/* ULTRA */}
           <button
             className={cn(
-              "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
-              filter === "ultra"
+              "flex px-2 lg:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all items-center gap-1 lg:gap-1.5 whitespace-nowrap shrink-0",
+              filter === 'ultra'
                 ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40",
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
             )}
-            onClick={() => setFilter("ultra")}
+            onClick={() => setFilter('ultra')}
+            title={`${t('accounts.ultra')} (${filterCounts.ultra})`}
           >
-            {t("accounts.ultra")}
-            <span
-              className={cn(
-                "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
-                filter === "ultra"
-                  ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                  : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
-              )}
-            >
+            <span className="hidden md:inline">{t('accounts.ultra')}</span>
+            <span className={cn(
+              "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+              filter === 'ultra'
+                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+            )}>
               {filterCounts.ultra}
             </span>
           </button>
 
+          {/* FREE */}
           <button
             className={cn(
-              "px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 whitespace-nowrap shrink-0",
-              filter === "free"
+              "flex px-2 lg:px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all items-center gap-1 lg:gap-1.5 whitespace-nowrap shrink-0",
+              filter === 'free'
                 ? "bg-white dark:bg-base-100 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-black/5"
-                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40",
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-base-content hover:bg-white/40"
             )}
-            onClick={() => setFilter("free")}
+            onClick={() => setFilter('free')}
+            title={`${t('accounts.free')} (${filterCounts.free})`}
           >
-            {t("accounts.free")}
-            <span
-              className={cn(
-                "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
-                filter === "free"
-                  ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
-                  : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400",
-              )}
-            >
+            <span className="hidden md:inline">{t('accounts.free')}</span>
+            <span className={cn(
+              "px-1.5 py-0.5 rounded-md text-[10px] font-bold transition-colors",
+              filter === 'free'
+                ? "bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+            )}>
               {filterCounts.free}
             </span>
           </button>
@@ -869,7 +898,7 @@ function Accounts() {
 
         {/* 操作按钮组 */}
         <div className="flex items-center gap-1.5 shrink-0">
-          <AddAccountDialog onAdd={handleAddAccount} />
+          <AddAccountDialog onAdd={handleAddAccount} showText={false} />
 
           {selectedIds.size > 0 && (
             <>
@@ -959,6 +988,19 @@ function Accounts() {
                   : t("accounts.warmup_all", "一键预热")}
             </span>
           </button>
+
+          <label className="flex items-center gap-2 cursor-pointer select-none px-2 py-2 border border-transparent hover:bg-gray-100 dark:hover:bg-base-200 rounded-lg transition-colors" title={t('accounts.show_all_quotas', '显示所有配额')}>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-300 hidden xl:inline">
+              {t('accounts.show_all_quotas', '显示所有配额')}
+            </span>
+            <input
+              type="checkbox"
+              className="toggle toggle-xs toggle-primary"
+              checked={showAllQuotas}
+              onChange={toggleShowAllQuotas}
+            />
+          </label>
+          <div className="w-px h-4 bg-gray-200 dark:bg-gray-700 self-center mx-1 shrink-0"></div>
 
           <button
             className="px-2.5 py-2 border border-gray-200 dark:border-base-300 text-gray-700 dark:text-gray-300 text-xs font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-base-200 transition-colors flex items-center gap-1.5"
@@ -1106,8 +1148,8 @@ function Accounts() {
         message={
           selectedIds.size > 0
             ? t("accounts.dialog.batch_refresh_msg", {
-                count: selectedIds.size,
-              })
+              count: selectedIds.size,
+            })
             : t("accounts.dialog.refresh_msg")
         }
         type="confirm"
@@ -1145,14 +1187,14 @@ function Accounts() {
         message={
           selectedIds.size > 0
             ? t(
-                "accounts.dialog.batch_warmup_msg",
-                "确定要为选中的 {{count}} 个账号立即触发预热吗？",
-                { count: selectedIds.size },
-              )
+              "accounts.dialog.batch_warmup_msg",
+              "确定要为选中的 {{count}} 个账号立即触发预热吗？",
+              { count: selectedIds.size },
+            )
             : t(
-                "accounts.dialog.warmup_all_msg",
-                "确定要立即为所有符合条件的账号触发预热任务吗？这将向 Google 服务发送极小流量。",
-              )
+              "accounts.dialog.warmup_all_msg",
+              "确定要立即为所有符合条件的账号触发预热任务吗？这将向 Google 服务发送极小流量。",
+            )
         }
         type="confirm"
         confirmText={t("accounts.warmup_now", "立即预热")}
