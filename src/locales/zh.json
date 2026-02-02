@@ -143,6 +143,7 @@
         "switch_to": "切换到此账号",
         "actions": "操作",
         "device_fingerprint": "设备指纹",
+        "show_all_quotas": "显示所有配额",
         "device_fingerprint_dialog": {
             "title": "设备指纹",
             "operations": "设备指纹操作",
@@ -212,7 +213,12 @@
                 "link_click_to_copy": "点击复制",
                 "manual_hint": "浏览器没有自动跳转？请在此处粘贴回调链接或 Authorization Code：",
                 "manual_placeholder": "粘贴回调链接或 Code...",
-                "error_no_flow": "请先点击“开始 OAuth 授权”"
+                "error_no_flow": "请先点击“开始 OAuth 授权”",
+                "web_hint": "将在新窗口中打开 Google 登录页",
+                "error_no_url": "无法获取 OAuth URL",
+                "popup_blocked": "弹窗被拦截，请允许弹出窗口",
+                "manual_submitting": "正在提交认证码...",
+                "manual_submitted": "认证码已提交，后台处理中..."
             },
             "token": {
                 "label": "Refresh Token",

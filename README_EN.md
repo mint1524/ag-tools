@@ -248,9 +248,20 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.0.13 (2026-02-02)**:
-        -   **[Core Optimization] Load Balancing Algorithm Upgrade (P2C Algorithm)**:
+        -   **[Core Optimization] Load Balancing Algorithm Upgrade (P2C Algorithm) (PR #1433)**:
             -   **Algorithm Upgrade**: Upgraded the scheduling algorithm from Round-Robin to P2C (Power of Two Choices).
             -   **Performance Boost**: Significantly reduced request latency in high-concurrency scenarios and optimized load distribution across backend instances, preventing single-node overloads.
+        -   **[UI Upgrade] Responsive Navbar & Layout (PR #1429)**:
+            -   **Mobile Adaptation**: Redesigned responsive navigation bar, perfectly adapting to mobile devices and small screens.
+            -   **Visual Enhancement**: Added intuitive icons to navigation items, improving the overall visual experience and usability.
+        -   **[New Feature] Enhanced Account Quota Visibility (PR #1429)**:
+            -   **Show All Quotas**: Added a "Show all quotas" toggle in the Accounts page. When enabled, it displays real-time quota information for all dimensions (Ultra/Pro/Free/Image), not just the primary quota.
+        -   **[i18n] Comprehensive Language Support Update**:
+            -   **Coverage Boost**: Completed missing translation keys for 10 languages including Traditional Chinese, Japanese, Korean, Spanish, Arabic, etc.
+            -   **Polishing**: Fixed missing translations for "Show all quotas" and OAuth authorization prompts.
+        -   **[Bug Fix] Fix Language Switcher Malfunction (Fix Navbar Interaction)**:
+            -   **Root Cause**: Resolved a `ref` conflict introduced during merge that caused incorrect click detection on mobile/desktop.
+            -   **Outcome**: The language switcher menu now opens and interacts correctly.
     *   **v4.0.12 (2026-02-01)**:
         -   **[Code Refactoring] Connector Service Optimization**:
             -   **Deep Optimization**: Rewrote the core logic of the connector service (`connector.rs`) to eliminate inefficient legacy code.

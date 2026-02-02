@@ -141,6 +141,7 @@
         "switch_to": "Cambiar a esta cuenta",
         "actions": "Acciones",
         "device_fingerprint": "Huella Digital del Dispositivo",
+        "show_all_quotas": "Mostrar todas las cuotas",
         "device_fingerprint_dialog": {
             "title": "Huella Digital del Dispositivo",
             "operations": "Operaciones de Huella Digital",
@@ -210,7 +211,12 @@
                 "link_click_to_copy": "Clic para copiar",
                 "manual_hint": "¿El navegador no redirigió? Pegue la URL de callback completa o el código aquí:",
                 "manual_placeholder": "Pegar URL de callback o código...",
-                "error_no_flow": "Por favor haga clic en 'Iniciar OAuth' primero"
+                "error_no_flow": "Por favor haga clic en 'Iniciar OAuth' primero",
+                "web_hint": "La página de inicio de sesión de Google se abrirá en una nueva ventana",
+                "error_no_url": "No se pudo obtener la URL de OAuth",
+                "popup_blocked": "Ventana emergente bloqueada",
+                "manual_submitting": "Enviando código de autorización...",
+                "manual_submitted": "Código de autorización enviado, procesando en segundo plano..."
             },
             "token": {
                 "label": "Token de Actualización",

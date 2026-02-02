@@ -137,6 +137,7 @@
         "switch_to": "Bu hesaba geç",
         "actions": "İşlemler",
         "device_fingerprint": "Cihaz Parmak İzi",
+        "show_all_quotas": "Tüm kotaları göster",
         "device_fingerprint_dialog": {
             "title": "Cihaz Parmak İzi",
             "operations": "Cihaz Parmak İzi İşlemleri",
@@ -202,7 +203,12 @@
                 "link_click_to_copy": "Kopyalamak için tıklayın",
                 "manual_hint": "Tarayıcı otomatik olarak yönlendirilmedi mi? Lütfen geri dönüş bağlantısını veya Yetkilendirme Kodunu buraya yapıştırın:",
                 "manual_placeholder": "Bağlantıyı veya kodu buraya yapıştırın...",
-                "error_no_flow": "Aktif kimlik doğrulama akışı bulunamadı. Lütfen OAuth'u yeniden başlatın."
+                "error_no_flow": "Aktif kimlik doğrulama akışı bulunamadı. Lütfen OAuth'u yeniden başlatın.",
+                "web_hint": "Google giriş sayfası yeni bir pencerede açılacak",
+                "error_no_url": "OAuth URL'si alınamadı",
+                "popup_blocked": "Açılır pencere engellendi",
+                "manual_submitting": "Yetkilendirme kodu gönderiliyor...",
+                "manual_submitted": "Yetkilendirme kodu gönderildi, arka planda işleniyor..."
             },
             "token": {
                 "label": "Refresh Token",

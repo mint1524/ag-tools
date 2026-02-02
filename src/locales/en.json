@@ -146,6 +146,7 @@
         "switch_to": "Switch to this account",
         "actions": "Actions",
         "device_fingerprint": "Device Fingerprint",
+        "show_all_quotas": "Show All Quotas",
         "device_fingerprint_dialog": {
             "title": "Device Fingerprint",
             "operations": "Device Fingerprint Operations",
@@ -216,6 +217,7 @@
                 "manual_hint": "Browser didn't redirect? Paste the full callback URL or raw Code here:",
                 "manual_placeholder": "Paste callback URL or code...",
                 "error_no_flow": "Please click 'Start OAuth' first",
+                "web_hint": "Google login page will open in a new window",
                 "error_no_url": "Could not obtain OAuth URL",
                 "popup_blocked": "Popup blocked",
                 "manual_submitting": "Submitting authorization code...",

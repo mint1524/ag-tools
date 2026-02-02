@@ -141,6 +141,7 @@
         "switch_to": "Tukar ke akaun ini",
         "actions": "Tindakan",
         "device_fingerprint": "Cap Jari Peranti",
+        "show_all_quotas": "Tunjukkan semua kuota",
         "device_fingerprint_dialog": {
             "title": "Cap Jari Peranti",
             "operations": "Operasi Cap Jari Peranti",
@@ -210,7 +211,12 @@
                 "link_click_to_copy": "Klik untuk salin",
                 "manual_hint": "Pelayar tidak dialihkan? Tampal URL panggil balik penuh atau Kod mentah di sini:",
                 "manual_placeholder": "Tampal URL panggil balik atau kod...",
-                "error_no_flow": "Sila klik 'Mula OAuth' dahulu"
+                "error_no_flow": "Sila klik 'Mula OAuth' dahulu",
+                "web_hint": "Halaman log masuk Google akan dibuka dalam tetingkap baru",
+                "error_no_url": "Gagal mendapatkan URL OAuth",
+                "popup_blocked": "Pop timbul disekat",
+                "manual_submitting": "Menghantar kod pengesahan...",
+                "manual_submitted": "Kod pengesahan dihantar, sedang diproses di latar belakang..."
             },
             "token": {
                 "label": "Token Muat Semula",

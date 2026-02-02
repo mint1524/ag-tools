@@ -143,6 +143,7 @@
         "switch_to": "이 계정으로 전환",
         "actions": "작업",
         "device_fingerprint": "디바이스 지문",
+        "show_all_quotas": "모든 할당량 표시",
         "device_fingerprint_dialog": {
             "title": "디바이스 지문",
             "operations": "디바이스 지문 작업",
@@ -212,7 +213,12 @@
                 "link_click_to_copy": "클릭하여 복사",
                 "manual_hint": "브라우저가 리다이렉트되지 않았나요? 여기에 콜백 URL 또는 코드를 붙여넣으세요:",
                 "manual_placeholder": "콜백 URL 또는 코드 붙여넣기...",
-                "error_no_flow": "먼저 'OAuth 인증 시작'을 클릭하세요"
+                "error_no_flow": "먼저 'OAuth 인증 시작'을 클릭하세요",
+                "web_hint": "Google 로그인 페이지가 새 창에서 열립니다",
+                "error_no_url": "OAuth URL을 가져올 수 없습니다",
+                "popup_blocked": "팝업이 차단되었습니다",
+                "manual_submitting": "인증 코드 제출 중...",
+                "manual_submitted": "인증 코드가 제출되었습니다. 백엔드에서 처리 중입니다..."
             },
             "token": {
                 "label": "Refresh Token",

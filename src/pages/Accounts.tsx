@@ -989,9 +989,9 @@ function Accounts() {
             </span>
           </button>
 
-          <label className="flex items-center gap-2 cursor-pointer select-none px-2 py-2 border border-transparent hover:bg-gray-100 dark:hover:bg-base-200 rounded-lg transition-colors" title={t('accounts.show_all_quotas', '显示所有配额')}>
+          <label className="flex items-center gap-2 cursor-pointer select-none px-2 py-2 border border-transparent hover:bg-gray-100 dark:hover:bg-base-200 rounded-lg transition-colors" title={t('accounts.show_all_quotas')}>
             <span className="text-xs font-medium text-gray-600 dark:text-gray-300 hidden xl:inline">
-              {t('accounts.show_all_quotas', '显示所有配额')}
+              {t('accounts.show_all_quotas')}
             </span>
             <input
               type="checkbox"

@@ -1,5 +1,6 @@
 
 import { Clock, Lock } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '../../utils/cn';
 import { getQuotaColor, formatTimeRemaining, getTimeRemainingColor } from '../../utils/format';
 
@@ -12,6 +13,7 @@ interface QuotaItemProps {
 }
 
 export function QuotaItem({ label, percentage, resetTime, isProtected, className }: QuotaItemProps) {
+    const { t } = useTranslation();
     const getBgColorClass = (p: number) => {
         const color = getQuotaColor(p);
         switch (color) {
@@ -78,7 +80,7 @@ export function QuotaItem({ label, percentage, resetTime, isProtected, className
                 {/* Percentage */}
                 <span className={cn("w-[28px] text-right font-bold transition-colors flex items-center justify-end gap-0.5 shrink-0", getTextColorClass(percentage))}>
                     {isProtected && (
-                        <span title="Protected"><Lock className="w-2.5 h-2.5 text-amber-500" /></span>
+                        <span title={t('accounts.quota_protected')}><Lock className="w-2.5 h-2.5 text-amber-500" /></span>
                     )}
                     {percentage}%
                 </span>

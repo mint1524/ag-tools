@@ -139,6 +139,7 @@
         "switch_to": "切換到此帳號",
         "actions": "操作",
         "device_fingerprint": "裝置指紋",
+        "show_all_quotas": "顯示所有配額",
         "device_fingerprint_dialog": {
             "title": "裝置指紋",
             "operations": "裝置指紋操作",
@@ -209,7 +210,12 @@
                 "link_click_to_copy": "點選複製",
                 "manual_hint": "瀏覽器沒有自動跳轉？請在此處貼上回調連結或 Authorization Code：",
                 "manual_placeholder": "在此處貼上連結或代碼...",
-                "error_no_flow": "未找到活躍的授權流程，請重新開始 OAuth 授權。"
+                "error_no_flow": "未找到活躍的授權流程，請重新開始 OAuth 授權。",
+                "web_hint": "將在新視窗中開啟 Google 登入頁",
+                "error_no_url": "無法獲取 OAuth URL",
+                "popup_blocked": "彈窗被攔截，請允許彈出視窗",
+                "manual_submitting": "正在提交認證碼...",
+                "manual_submitted": "認證碼已提交，後台處理中..."
             },
             "token": {
                 "label": "Refresh Token",

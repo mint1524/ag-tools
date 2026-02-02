@@ -143,6 +143,7 @@
         "switch_to": "التبديل لهذا الحساب",
         "actions": "إجراءات",
         "device_fingerprint": "بصمة الجهاز",
+        "show_all_quotas": "إظهار جميع الحصص",
         "device_fingerprint_dialog": {
             "title": "بصمة الجهاز",
             "operations": "عمليات بصمة الجهاز",
@@ -212,7 +213,12 @@
                 "link_click_to_copy": "انقر للنسخ",
                 "manual_hint": "لـم يععد التوجيه؟ الصق رابط الاستدعاء الكامل أو الكود الخام هنا:",
                 "manual_placeholder": "الصق رابط الاستدعاء أو الكود...",
-                "error_no_flow": "يرجى النقر على 'بدء OAuth' أولاً"
+                "error_no_flow": "يرجى النقر على 'بدء OAuth' أولاً",
+                "web_hint": "ستفتح صفحة تسجيل الدخول إلى Google في نافذة جديدة",
+                "error_no_url": "فشل في الحصول على عنوان URL لـ OAuth",
+                "popup_blocked": "تم حظر النافذة المنبثقة",
+                "manual_submitting": "جارٍ إرسال رمز التحقق...",
+                "manual_submitted": "تم إرسال رمز التحقق، جارٍ المعالجة في الخلفية..."
             },
             "token": {
                 "label": "Refresh Token",

@@ -145,6 +145,7 @@
         "switch_to": "このアカウントに切り替え",
         "actions": "操作",
         "device_fingerprint": "デバイス指紋",
+        "show_all_quotas": "すべてのクォータを表示",
         "device_fingerprint_dialog": {
             "title": "デバイス指紋",
             "operations": "デバイス指紋操作",
@@ -211,6 +212,7 @@
                 "manual_hint": "ブラウザがリダイレクトされませんでしたか？ここにコールバックURLまたはコードを貼り付けてください：",
                 "manual_placeholder": "コールバックURLまたはコードを貼り付け...",
                 "error_no_flow": "まず「OAuth認証を開始」をクリックしてください",
+                "web_hint": "Googleログインページが新しいウィンドウで開きます",
                 "error_no_url": "OAuth URLを取得できませんでした",
                 "popup_blocked": "ポップアップがブロックされました",
                 "manual_submitting": "認可コードを送信中...",

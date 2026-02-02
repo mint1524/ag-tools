@@ -137,6 +137,7 @@
         "switch_to": "Alternar para esta conta",
         "actions": "Ações",
         "device_fingerprint": "Impressão Digital do Dispositivo",
+        "show_all_quotas": "Mostrar todas as cotas",
         "device_fingerprint_dialog": {
             "title": "Impressão Digital do Dispositivo",
             "operations": "Operações de Impressão Digital do Dispositivo",
@@ -206,7 +207,12 @@
                 "link_click_to_copy": "Clique para copiar",
                 "manual_hint": "O navegador não redirecionou automaticamente? Cole o link de retorno ou o Código de Autorização aqui:",
                 "manual_placeholder": "Cole o link ou o código aqui...",
-                "error_no_flow": "Nenhum fluxo de autenticação ativo encontrado. Por favor, reinicie o OAuth."
+                "error_no_flow": "Nenhum fluxo de autenticação ativo encontrado. Por favor, reinicie o OAuth.",
+                "web_hint": "A página de login do Google será aberta em uma nova janela",
+                "error_no_url": "Não foi possível obter a URL OAuth",
+                "popup_blocked": "Popup bloqueado",
+                "manual_submitting": "Enviando código de autorização...",
+                "manual_submitted": "Código de autorização enviado, processando em segundo plano..."
             },
             "token": {
                 "label": "Refresh Token",

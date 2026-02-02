@@ -139,6 +139,7 @@
         "switch_to": "Chuyển sang tài khoản này",
         "actions": "Thao tác",
         "device_fingerprint": "Vân Tay Thiết Bị",
+        "show_all_quotas": "Hiển thị tất cả hạn ngạch",
         "device_fingerprint_dialog": {
             "title": "Vân Tay Thiết Bị",
             "operations": "Các Thao Tác Vân Tay Thiết Bị",
@@ -209,7 +210,12 @@
                 "link_click_to_copy": "Nhấn để sao chép",
                 "manual_hint": "Trình duyệt không tự động chuyển hướng? Vui lòng dán liên kết phản hồi hoặc Mã xác thực tại đây:",
                 "manual_placeholder": "Dán liên kết hoặc mã tại đây...",
-                "error_no_flow": "Không tìm thấy luồng xác thực hoạt động. Vui lòng bắt đầu lại OAuth."
+                "error_no_flow": "Không tìm thấy luồng xác thực hoạt động. Vui lòng bắt đầu lại OAuth.",
+                "web_hint": "Trang đăng nhập Google sẽ mở trong cửa sổ mới",
+                "error_no_url": "Không thể lấy URL OAuth",
+                "popup_blocked": "Cửa sổ bật lên bị chặn",
+                "manual_submitting": "Đang gửi mã xác thực...",
+                "manual_submitted": "Mã xác thực đã gửi, đang xử lý ngầm..."
             },
             "token": {
                 "label": "Refresh Token",

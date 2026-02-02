@@ -84,12 +84,17 @@ function Navbar() {
     };
 
     const [isLangOpen, setIsLangOpen] = useState(false);
-    const langMenuRef = useRef<HTMLDivElement>(null);
+    const desktopLangMenuRef = useRef<HTMLDivElement>(null);
+    const mobileLangMenuRef = useRef<HTMLDivElement>(null);
 
     // Close language menu when clicking outside
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
+            const target = event.target as Node;
+            const isOutsideDesktop = desktopLangMenuRef.current && !desktopLangMenuRef.current.contains(target);
+            const isOutsideMobile = mobileLangMenuRef.current && !mobileLangMenuRef.current.contains(target);
+
+            if (isOutsideDesktop && isOutsideMobile) {
                 setIsLangOpen(false);
             }
         }
@@ -193,7 +198,7 @@ function Navbar() {
                         </button>
 
                         {/* 语言切换下拉菜单 */}
-                        <div className="relative" ref={langMenuRef}>
+                        <div className="relative" ref={desktopLangMenuRef}>
                             <button
                                 onClick={() => setIsLangOpen(!isLangOpen)}
                                 className="w-10 h-10 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 flex items-center justify-center transition-colors"
@@ -287,7 +292,7 @@ function Navbar() {
                         </button>
 
                         {/* 语言切换下拉菜单 */}
-                        <div className="relative" ref={langMenuRef}>
+                        <div className="relative" ref={mobileLangMenuRef}>
                             <button
                                 onClick={() => setIsLangOpen(!isLangOpen)}
                                 className="w-10 h-10 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 flex items-center justify-center transition-colors"
