@@ -41,6 +41,7 @@ async fn auth_middleware_internal(
 
     // 过滤心跳和健康检查请求,避免日志噪音
     let is_health_check = path == "/healthz" || path == "/api/health" || path == "/health";
+    let is_internal_endpoint = path.starts_with("/internal/");
     if !path.contains("event_logging") && !is_health_check {
         tracing::info!("Request: {} {}", method, path);
     } else {
@@ -93,6 +94,12 @@ async fn auth_middleware_internal(
         }
 
         if matches!(effective_mode, ProxyAuthMode::AllExceptHealth) && is_health_check {
+            return Ok(next.run(request).await);
+        }
+
+        // 内部端点 (/internal/*) 豁免鉴权 - 用于 warmup 等内部功能
+        if is_internal_endpoint {
+            tracing::debug!("Internal endpoint bypassed auth: {}", path);
             return Ok(next.run(request).await);
         }
     } else {

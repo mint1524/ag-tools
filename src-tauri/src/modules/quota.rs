@@ -294,7 +294,14 @@ pub async fn warmup_model_directly(
         "project_id": project_id
     });
 
-    let client = create_warmup_client(account_id).await;
+    // Use a no-proxy client for local loopback requests
+    // This prevents Docker environments from routing localhost through external proxies
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(60))
+        .no_proxy()
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
+
     let resp = client
         .post(&warmup_url)
         .header("Content-Type", "application/json")
