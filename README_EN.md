@@ -258,6 +258,11 @@ print(response.choices[0].message.content)
             -   **Scene 1: Full-chain Locking** — Once Account A is bound to Node-01, all requests (Token refresh, Quota sync, AI inference) are forced through Node-01. Google sees a consistent IP for the account.
             -   **Scene 2: Auto-Isolation for Public Pool** — Account B has no binding. Node-01 is automatically excluded from the public rotation as it's exclusively used by A, eliminating association risks.
             -   **Scene 3: Self-healing & Failover** — If Node-01 fails and "Auto failover" is on, Account A temporarily borrows from the public pool for urgent tasks (e.g., Token refresh) with audit logs.
+        -   **[New Feature] UserToken Page & Monitoring Enhancements (PR #1475)**:
+            -   **Page Navigation**: Added dedicated UserToken management page for granular token control.
+            -   **Monitoring**: Enhanced system monitoring and routing integration for better observability.
+        -   **[Core Fix] Warmup API Field Missing Fix**:
+            -   **Compilation Fix**: Resolved compilation error caused by missing `username` field in `ProxyRequestLog` initialization.
     *   **v4.0.15 (2026-02-03)**:
         -   **[Core Optimization] Enhanced Warmup Functionality & False-Positive Fixes (PR #1466)**:
             -   **Logic Optimization**: Removed the hardcoded model whitelist, enabling automatic warmup for all models reaching 100% quota based on account data.
