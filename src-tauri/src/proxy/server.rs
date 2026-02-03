@@ -505,6 +505,12 @@ impl AxumServer {
             .route("/logs/count", get(admin_get_proxy_logs_count_filtered))
             .route("/logs/clear", post(admin_clear_proxy_logs))
             .route("/logs/:logId", get(admin_get_proxy_log_detail))
+            // Debug Console (Log Bridge)
+            .route("/debug/enable", post(admin_enable_debug_console))
+            .route("/debug/disable", post(admin_disable_debug_console))
+            .route("/debug/enabled", get(admin_is_debug_console_enabled))
+            .route("/debug/logs", get(admin_get_debug_console_logs))
+            .route("/debug/logs/clear", post(admin_clear_debug_console_logs))
             .route("/stats/token/clear", post(admin_clear_token_stats))
             .route("/stats/token/hourly", get(admin_get_token_stats_hourly))
             .route("/stats/token/daily", get(admin_get_token_stats_daily))
@@ -2977,8 +2983,33 @@ async fn admin_update_security_config(
         let mut sec = state.security.write().await;
         *sec = crate::proxy::ProxySecurityConfig::from_proxy_config(&app_config.proxy);
         tracing::info!("[Security] Runtime security config hot-reloaded via Web API");
-    }
-
     Ok(StatusCode::OK)
 }
+
+// --- Debug Console Handlers ---
+
+async fn admin_enable_debug_console() -> impl IntoResponse {
+    crate::modules::log_bridge::enable_log_bridge();
+    StatusCode::OK
+}
+
+async fn admin_disable_debug_console() -> impl IntoResponse {
+    crate::modules::log_bridge::disable_log_bridge();
+    StatusCode::OK
+}
+
+async fn admin_is_debug_console_enabled() -> impl IntoResponse {
+    Json(crate::modules::log_bridge::is_log_bridge_enabled())
+}
+
+async fn admin_get_debug_console_logs() -> impl IntoResponse {
+    let logs = crate::modules::log_bridge::get_buffered_logs();
+    Json(logs)
+}
+
+async fn admin_clear_debug_console_logs() -> impl IntoResponse {
+    crate::modules::log_bridge::clear_log_buffer();
+    StatusCode::OK
+}
+
 

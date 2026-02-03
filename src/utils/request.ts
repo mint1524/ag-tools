@@ -55,6 +55,15 @@ const COMMAND_MAPPING: Record<string, { url: string; method: 'GET' | 'POST' | 'D
   'clear_proxy_logs': { url: '/api/logs/clear', method: 'POST' },
   'get_proxy_log_detail': { url: '/api/logs/:logId', method: 'GET' },
 
+
+
+  // Debug Console
+  'enable_debug_console': { url: '/api/proxy/debug/enable', method: 'POST' },
+  'disable_debug_console': { url: '/api/proxy/debug/disable', method: 'POST' },
+  'is_debug_console_enabled': { url: '/api/proxy/debug/enabled', method: 'GET' },
+  'get_debug_console_logs': { url: '/api/proxy/debug/logs', method: 'GET' },
+  'clear_debug_console_logs': { url: '/api/proxy/debug/logs/clear', method: 'POST' },
+
   // CLI Sync
   'get_cli_sync_status': { url: '/api/proxy/cli/status', method: 'POST' },
   'execute_cli_sync': { url: '/api/proxy/cli/sync', method: 'POST' },

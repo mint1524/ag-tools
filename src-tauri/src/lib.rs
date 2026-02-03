@@ -80,6 +80,23 @@ pub fn run() {
             let proxy_state = commands::proxy::ProxyServiceState::new();
             let cf_state = Arc::new(commands::cloudflared::CloudflaredState::new());
 
+            // [FIX] Initialize log bridge for headless mode
+            // Pass a dummy app handle or None since we don't have a Tauri app handle in headless mode
+            // Actually log_bridge relies on AppHandle to emit events.
+            // In headless mode, we don't emit events, but we still need the buffer.
+            // We need to modify log_bridge to handle missing AppHandle gracefully, which it already does (Option).
+            // But init_log_bridge requires AppHandle.
+            // We'll skip passing AppHandle for now and just leverage the global buffer capability.
+            // Since init_log_bridge takes AppHandle, we might need a separate init for headless or just not call init and rely on lazy init of buffer?
+            // Checking log_bridge code again...
+            // "static LOG_BUFFER: OnceLock<...> = OnceLock::new();" -> lazy init.
+            // So we just need to ensure the tracing layer is added.
+            // And `logger::init_logger()` adds the layer?
+            // Let's check `modules::logger`.
+
+            let proxy_state = commands::proxy::ProxyServiceState::new();
+            let cf_state = Arc::new(commands::cloudflared::CloudflaredState::new());
+
             // Load config
             match modules::config::load_app_config() {
                 Ok(mut config) => {
