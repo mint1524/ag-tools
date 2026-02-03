@@ -15,6 +15,7 @@ interface IpAccessLog {
     api_key_hash?: string;
     blocked: boolean;
     block_reason?: string;
+    username?: string;
 }
 
 interface IpAccessLogResponse {
@@ -115,6 +116,7 @@ export const IpAccessLogs: React.FC<Props> = ({ refreshKey }) => {
                         <tr>
                             <th className="w-20">{t('security.logs.status')}</th>
                             <th className="w-32">{t('security.logs.ip_address')}</th>
+                            <th className="w-24">{t('security.logs.username', 'User')}</th>
                             <th className="w-20">{t('security.logs.method')}</th>
                             <th className="">{t('security.logs.path')}</th>
                             <th className="w-24 text-right">{t('security.logs.duration')}</th>
@@ -137,6 +139,7 @@ export const IpAccessLogs: React.FC<Props> = ({ refreshKey }) => {
                                     )}
                                 </td>
                                 <td className="font-mono font-medium">{log.client_ip}</td>
+                                <td className="font-medium text-blue-600 dark:text-blue-400">{log.username || '-'}</td>
                                 <td className="font-bold text-xs">{log.method || '-'}</td>
                                 <td className="max-w-xs truncate text-gray-600 dark:text-gray-400" title={log.path}>{log.path || '-'}</td>
                                 <td className="text-right font-mono">{log.duration ? `${log.duration}ms` : '-'}</td>
@@ -146,7 +149,7 @@ export const IpAccessLogs: React.FC<Props> = ({ refreshKey }) => {
                         ))}
                         {!loading && logs.length === 0 && (
                             <tr>
-                                <td colSpan={7} className="text-center py-10 text-gray-400">
+                                <td colSpan={8} className="text-center py-10 text-gray-400">
                                     {t('security.logs.no_logs')}
                                 </td>
                             </tr>

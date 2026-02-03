@@ -13,6 +13,8 @@ pub mod cloudflared;
 pub mod security;
 // 导出 proxy_pool 命令
 pub mod proxy_pool;
+// 导出 user_token 命令
+pub mod user_token;
 
 /// 列出所有账号
 #[tauri::command]
