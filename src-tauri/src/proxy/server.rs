@@ -2983,6 +2983,8 @@ async fn admin_update_security_config(
         let mut sec = state.security.write().await;
         *sec = crate::proxy::ProxySecurityConfig::from_proxy_config(&app_config.proxy);
         tracing::info!("[Security] Runtime security config hot-reloaded via Web API");
+    }
+
     Ok(StatusCode::OK)
 }
 
