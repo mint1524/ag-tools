@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Sun, Moon, LayoutDashboard, Users, Network, Activity, BarChart3, Settings, Lock } from 'lucide-react';
+import { Sun, Moon, LayoutDashboard, Users, Network, Activity, BarChart3, Settings, Lock, ChevronDown, MoreVertical } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useConfigStore } from '../../stores/useConfigStore';
 import LogoIcon from '../../../src-tauri/icons/icon.png';
@@ -87,15 +87,29 @@ function Navbar() {
     const desktopLangMenuRef = useRef<HTMLDivElement>(null);
     const mobileLangMenuRef = useRef<HTMLDivElement>(null);
 
-    // Close language menu when clicking outside
+    const [isNavMenuOpen, setIsNavMenuOpen] = useState(false);
+    const navMenuRef = useRef<HTMLDivElement>(null);
+
+    const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+    const moreMenuRef = useRef<HTMLDivElement>(null);
+
+    // Close menus when clicking outside
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             const target = event.target as Node;
             const isOutsideDesktop = desktopLangMenuRef.current && !desktopLangMenuRef.current.contains(target);
             const isOutsideMobile = mobileLangMenuRef.current && !mobileLangMenuRef.current.contains(target);
+            const isOutsideNavMenu = navMenuRef.current && !navMenuRef.current.contains(target);
+            const isOutsideMoreMenu = moreMenuRef.current && !moreMenuRef.current.contains(target);
 
             if (isOutsideDesktop && isOutsideMobile) {
                 setIsLangOpen(false);
+            }
+            if (isOutsideNavMenu) {
+                setIsNavMenuOpen(false);
+            }
+            if (isOutsideMoreMenu) {
+                setIsMoreMenuOpen(false);
             }
         }
         document.addEventListener('mousedown', handleClickOutside);
@@ -128,6 +142,14 @@ function Navbar() {
             theme: config.theme
         }, true);
         setIsLangOpen(false);
+    };
+
+    const getCurrentNavItem = () => {
+        return navItems.find(item => isActive(item.path)) || navItems[0];
+    };
+
+    const handleNavItemClick = () => {
+        setIsNavMenuOpen(false);
     };
 
     return (
@@ -239,15 +261,15 @@ function Navbar() {
                 {/* 小屏布局 (< 1024px): Flexbox,避免重叠 */}
                 <div className="flex lg:hidden items-center justify-between h-16">
                     {/* Logo */}
-                    <div className="flex items-center">
+                    <div className="flex items-center min-w-[40px] flex-shrink-0">
                         <Link to="/" className="text-xl font-semibold text-gray-900 dark:text-base-content flex items-center gap-2">
                             <img src={LogoIcon} alt="Logo" className="w-8 h-8" />
                             <span className="hidden md:inline">Antigravity Tools</span>
                         </Link>
                     </div>
 
-                    {/* 导航 - 紧凑,隐藏低优先级项 */}
-                    <nav className="flex items-center gap-0.5 sm:gap-1 bg-gray-100 dark:bg-base-200 rounded-full p-1">
+                    {/* 导航 - 紧凑,隐藏低优先级项 (≥ 375px) */}
+                    <nav className="hidden min-[375px]:flex items-center gap-0.5 sm:gap-1 bg-gray-100 dark:bg-base-200 rounded-full p-1">
                         {navItems.map((item) => (
                             <Link
                                 key={item.path}
@@ -274,49 +296,156 @@ function Navbar() {
                         ))}
                     </nav>
 
-                    {/* 右侧快捷设置按钮 */}
-                    <div className="flex items-center gap-2">
-
-
-                        {/* 主题切换按钮 */}
+                    {/* 导航下拉菜单 (< 375px) */}
+                    <div className="min-[375px]:hidden relative" ref={navMenuRef}>
                         <button
-                            onClick={toggleTheme}
-                            className="w-10 h-10 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 flex items-center justify-center transition-colors"
-                            title={config?.theme === 'light' ? t('nav.theme_to_dark') : t('nav.theme_to_light')}
+                            onClick={() => setIsNavMenuOpen(!isNavMenuOpen)}
+                            className="flex items-center gap-2 px-3 py-2 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 transition-colors"
                         >
-                            {config?.theme === 'light' ? (
-                                <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                            ) : (
-                                <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                            )}
+                            {(() => {
+                                const currentItem = getCurrentNavItem();
+                                const CurrentIcon = currentItem.icon;
+                                return (
+                                    <>
+                                        <CurrentIcon className="w-4 h-4 text-gray-700 dark:text-gray-300" />
+                                        <span className="hidden min-[320px]:inline text-sm font-medium text-gray-700 dark:text-gray-300">{currentItem.label}</span>
+                                    </>
+                                );
+                            })()}
+                            <ChevronDown className={`w-3 h-3 text-gray-700 dark:text-gray-300 transition-transform ${isNavMenuOpen ? 'rotate-180' : ''}`} />
                         </button>
 
-                        {/* 语言切换下拉菜单 */}
-                        <div className="relative" ref={mobileLangMenuRef}>
+                        {/* 下拉菜单 */}
+                        {isNavMenuOpen && (
+                            <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-48 bg-white dark:bg-[#1a1a1a] rounded-xl shadow-xl border-2 border-gray-200 dark:border-gray-700 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top">
+                                {navItems.map((item) => (
+                                    <Link
+                                        key={item.path}
+                                        to={item.path}
+                                        onClick={() => handleNavItemClick()}
+                                        className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-base-100 transition-colors ${isActive(item.path)
+                                            ? 'text-blue-500 font-medium bg-blue-50 dark:bg-blue-900/10'
+                                            : 'text-gray-700 dark:text-gray-300'
+                                            }`}
+                                    >
+                                        <item.icon className="w-4 h-4" />
+                                        <span>{item.label}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* 右侧快捷设置按钮 */}
+                    <div className="flex items-center gap-2">
+                        {/* 独立按钮 (≥ 480px) */}
+                        <div className="hidden min-[480px]:flex items-center gap-2">
+                            {/* 主题切换按钮 */}
                             <button
-                                onClick={() => setIsLangOpen(!isLangOpen)}
+                                onClick={toggleTheme}
                                 className="w-10 h-10 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 flex items-center justify-center transition-colors"
-                                title={t('settings.general.language')}
+                                title={config?.theme === 'light' ? t('nav.theme_to_dark') : t('nav.theme_to_light')}
                             >
-                                <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
-                                    {languages.find(l => l.code === config?.language)?.short || 'EN'}
-                                </span>
+                                {config?.theme === 'light' ? (
+                                    <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                                ) : (
+                                    <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                                )}
+                            </button>
+
+                            {/* 语言切换下拉菜单 */}
+                            <div className="relative" ref={mobileLangMenuRef}>
+                                <button
+                                    onClick={() => setIsLangOpen(!isLangOpen)}
+                                    className="w-10 h-10 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 flex items-center justify-center transition-colors"
+                                    title={t('settings.general.language')}
+                                >
+                                    <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                                        {languages.find(l => l.code === config?.language)?.short || 'EN'}
+                                    </span>
+                                </button>
+
+                                {/* 下拉菜单 */}
+                                {isLangOpen && (
+                                    <div className="absolute ltr:right-0 rtl:left-0 mt-2 w-32 bg-white dark:bg-base-200 rounded-xl shadow-lg border border-gray-100 dark:border-base-100 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-200 ltr:origin-top-right rtl:origin-top-left">
+                                        {languages.map((lang) => (
+                                            <button
+                                                key={lang.code}
+                                                onClick={() => handleLanguageChange(lang.code)}
+                                                className={`w-full px-4 py-2 text-left text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-base-100 transition-colors ${config?.language === lang.code
+                                                    ? 'text-blue-500 font-medium bg-blue-50 dark:bg-blue-900/10'
+                                                    : 'text-gray-700 dark:text-gray-300'
+                                                    }`}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <span className="font-mono font-bold w-6">{lang.short}</span>
+                                                    <span className="text-xs opacity-70">{lang.label}</span>
+                                                </div>
+                                                {config?.language === lang.code && (
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 更多菜单 (< 480px) */}
+                        <div className="min-[480px]:hidden relative" ref={moreMenuRef}>
+                            <button
+                                onClick={() => setIsMoreMenuOpen(!isMoreMenuOpen)}
+                                className="w-10 h-10 rounded-full bg-gray-100 dark:bg-base-200 hover:bg-gray-200 dark:hover:bg-base-100 flex items-center justify-center transition-colors"
+                                title={t('nav.more', '更多')}
+                            >
+                                <MoreVertical className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                             </button>
 
                             {/* 下拉菜单 */}
-                            {isLangOpen && (
-                                <div className="absolute ltr:right-0 rtl:left-0 mt-2 w-32 bg-white dark:bg-base-200 rounded-xl shadow-lg border border-gray-100 dark:border-base-100 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-200 ltr:origin-top-right rtl:origin-top-left">
+                            {isMoreMenuOpen && (
+                                <div className="absolute ltr:right-0 rtl:left-0 mt-2 w-40 bg-white dark:bg-base-200 rounded-xl shadow-lg border border-gray-100 dark:border-base-100 py-1 overflow-hidden animate-in fade-in zoom-in-95 duration-200 ltr:origin-top-right rtl:origin-top-left">
+                                    {/* 主题切换 */}
+                                    <button
+                                        onClick={(e) => {
+                                            toggleTheme(e);
+                                            setIsMoreMenuOpen(false);
+                                        }}
+                                        className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-base-100 transition-colors text-gray-700 dark:text-gray-300"
+                                    >
+                                        {config?.theme === 'light' ? (
+                                            <>
+                                                <Moon className="w-4 h-4" />
+                                                <span>{t('nav.theme_to_dark', '深色模式')}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Sun className="w-4 h-4" />
+                                                <span>{t('nav.theme_to_light', '浅色模式')}</span>
+                                            </>
+                                        )}
+                                    </button>
+
+                                    {/* 分隔线 */}
+                                    <div className="my-1 border-t border-gray-100 dark:border-base-100"></div>
+
+                                    {/* 语言选择 */}
+                                    <div className="px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">
+                                        {t('settings.general.language', '语言')}
+                                    </div>
                                     {languages.map((lang) => (
                                         <button
                                             key={lang.code}
-                                            onClick={() => handleLanguageChange(lang.code)}
+                                            onClick={() => {
+                                                handleLanguageChange(lang.code);
+                                                setIsMoreMenuOpen(false);
+                                            }}
                                             className={`w-full px-4 py-2 text-left text-sm flex items-center justify-between hover:bg-gray-50 dark:hover:bg-base-100 transition-colors ${config?.language === lang.code
                                                 ? 'text-blue-500 font-medium bg-blue-50 dark:bg-blue-900/10'
                                                 : 'text-gray-700 dark:text-gray-300'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <span className="font-mono font-bold w-6">{lang.short}</span>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono font-bold text-xs w-5">{lang.short}</span>
                                                 <span className="text-xs opacity-70">{lang.label}</span>
                                             </div>
                                             {config?.language === lang.code && (
