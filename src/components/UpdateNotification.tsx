@@ -12,6 +12,7 @@ interface UpdateInfo {
   latest_version: string;
   current_version: string;
   download_url: string;
+  source?: string;
 }
 
 type UpdateState = 'checking' | 'available' | 'downloading' | 'ready' | 'none';
@@ -153,9 +154,16 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose 
                     : t('update_notification.title')}
                 </h3>
                 {updateInfo && (
-                  <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                    v{updateInfo.latest_version}
-                  </p>
+                  <div className="flex flex-col">
+                    <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                      v{updateInfo.latest_version}
+                    </p>
+                    {updateInfo.source && updateInfo.source !== 'GitHub API' && (
+                      <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-0.5">
+                        via {updateInfo.source}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
