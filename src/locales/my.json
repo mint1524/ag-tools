@@ -889,7 +889,14 @@
     "update_notification": {
         "title": "Versi Baharu Tersedia",
         "message": "Versi baharu sudah sedia dengan pengoptimuman dan penambahbaikan. Semasa: v{{current}}",
-        "action": "Kemas Kini Sekarang"
+        "ready": "Kemas Kini Sedia",
+        "downloading": "Memuat turun kemas kini...",
+        "restarting": "Memulakan semula aplikasi...",
+        "auto_update": "Kemas Kini Automatik",
+        "toast": {
+            "not_ready": "Pakej kemas kini automatik belum sedia, mengarahkan anda ke halaman muat turun...",
+            "failed": "Kemas kini automatik gagal, mengarahkan anda ke halaman muat turun..."
+        }
     },
     "login": {
         "title": "Kawalan Akses Selamat",

@@ -898,8 +898,15 @@
     },
     "update_notification": {
         "title": "發現新版本",
-        "message": "新版本已準備就緒，包含多項最佳化與改進。當前版本: v{{current}}",
-        "action": "立即更新"
+        "message": "新版本已準備就緒，包含諸多優化與改進。目前版本: v{{current}}",
+        "ready": "更新準備就緒",
+        "downloading": "正在下載更新...",
+        "restarting": "正在重新啟動應用程式...",
+        "auto_update": "自動更新",
+        "toast": {
+            "not_ready": "自動更新包尚未就緒，為您跳轉到下載頁面...",
+            "failed": "自動更新失敗，為您跳轉到下載頁面..."
+        }
     },
     "login": {
         "title": "安全存取控制",

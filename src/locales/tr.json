@@ -865,9 +865,16 @@
         }
     },
     "update_notification": {
-        "title": "Yeni Sürüm Mevcut",
-        "message": "Optimizasyonlar ve iyileştirmeler içeren yeni bir sürüm hazır. Mevcut: v{{current}}",
-        "action": "Şimdi Güncelle"
+        "title": "Yeni versiyon mevcut",
+        "message": "Optimizasyonlar ve iyileştirmeler içeren yeni bir versiyon hazır. Mevcut: v{{current}}",
+        "ready": "Güncelleme hazır",
+        "downloading": "Güncelleme indiriliyor...",
+        "restarting": "Uygulama yeniden başlatılıyor...",
+        "auto_update": "Otomatik güncelleme",
+        "toast": {
+            "not_ready": "Otomatik güncelleme paketi hazır değil, indirme sayfasına yönlendiriliyorsunuz...",
+            "failed": "Otomatik güncelleme başarısız oldu, indirme sayfasına yönlendiriliyorsunuz..."
+        }
     },
     "login": {
         "title": "Güvenli Erişim Kontrolü",

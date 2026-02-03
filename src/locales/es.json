@@ -893,9 +893,16 @@
         }
     },
     "update_notification": {
-        "title": "Nueva Versión Disponible",
+        "title": "Nueva versión disponible",
         "message": "Una nueva versión está lista con optimizaciones y mejoras. Actual: v{{current}}",
-        "action": "Actualizar Ahora"
+        "ready": "Actualización lista",
+        "downloading": "Descargando actualización...",
+        "restarting": "Reiniciando la aplicación...",
+        "auto_update": "Actualización automática",
+        "toast": {
+            "not_ready": "El paquete de actualización automática no está listo, redirigiendo a la página de descarga...",
+            "failed": "Falló la actualización automática, redirigiendo a la página de descarga..."
+        }
     },
     "login": {
         "title": "Control de Acceso Seguro",

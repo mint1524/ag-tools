@@ -953,7 +953,14 @@
     "update_notification": {
         "title": "New Version Available",
         "message": "A new version is ready with optimizations and improvements. Current: v{{current}}",
-        "action": "Update Now"
+        "ready": "Update Ready",
+        "downloading": "Downloading update...",
+        "restarting": "Restarting application...",
+        "auto_update": "Auto Update",
+        "toast": {
+            "not_ready": "Auto-update package is not ready, redirecting to download page...",
+            "failed": "Auto-update failed, redirecting to download page..."
+        }
     },
     "login": {
         "title": "Secure Access Control",

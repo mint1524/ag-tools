@@ -915,8 +915,15 @@
     },
     "update_notification": {
         "title": "Có phiên bản mới",
-        "message": "Có phiên bản mới với các tối ưu hóa và cải thiện. Hiện tại: v{{current}}",
-        "action": "Cập nhật ngay"
+        "message": "Một phiên bản mới đã sẵn sàng với các tối ưu hóa và cải tiến. Hiện tại: v{{current}}",
+        "ready": "Cập nhật đã sẵn sàng",
+        "downloading": "Đang tải bản cập nhật...",
+        "restarting": "Đang khởi động lại ứng dụng...",
+        "auto_update": "Cập nhật tự động",
+        "toast": {
+            "not_ready": "Gói cập nhật tự động chưa sẵn sàng, đang chuyển hướng bạn đến trang tải xuống...",
+            "failed": "Cập nhật tự động thất bại, đang chuyển hướng bạn đến trang tải xuống..."
+        }
     },
     "login": {
         "title": "Kiểm soát truy cập an toàn",
