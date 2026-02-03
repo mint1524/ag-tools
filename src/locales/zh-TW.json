@@ -413,16 +413,22 @@
         },
         "thinking_budget": {
             "title": "思考預算 (Thinking Budget)",
-            "description": "控制 AI 模型的推理深度，影響複雜任務的解題能力",
-            "mode_auto": "自動 (推薦)",
-            "mode_auto_desc": "系統自動為不同模型套用最優上限",
-            "mode_passthrough": "直通",
-            "mode_passthrough_desc": "完全信任調用方的值（需自行控制風險）",
-            "mode_custom": "自訂",
-            "mode_custom_desc": "使用固定的自訂預算值",
-            "custom_value_label": "自訂預算值",
-            "custom_value_hint": "範圍: 1024 - 65536 tokens",
-            "warning_passthrough": "⚠️ 直通模式可能導致配額快速消耗"
+            "description": "控制 AI 深度思考時的 Token 預算。某些模型（如 Flash、帶 -thinking 後置的模型）受上游 24576 上限限制。",
+            "mode_label": "處理模式",
+            "mode": {
+                "auto": "自動限制",
+                "auto_desc": "智能限制",
+                "passthrough": "透傳",
+                "passthrough_desc": "不做限制",
+                "custom": "自定義",
+                "custom_desc": "固定值"
+            },
+            "auto_hint": "自動模式：對 Flash 模型、-thinking 後置模型、以及啟用 Web Search 的請求自動限制在 24576 以避免 API 錯誤。其他模型保持原始請求值。",
+            "passthrough_warning": "透传模式：直接使用调用方传入的 thinking_budget 值，不做任何限制。如果上游 API 不支持高值可能导致请求失败。",
+            "custom_value_label": "自定義值",
+            "custom_value_hint": "範圍：1024 - 65536。推薦值：24576（Flash 上限）或 51200（標準擴展思考）。",
+            "high_value_warning": "當前值超過 24576，某些模型（Flash、-thinking）可能不支持並導致請求失敗。",
+            "tokens": "tokens"
         }
     },
     "tray": {

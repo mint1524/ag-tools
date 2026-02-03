@@ -79,10 +79,10 @@ export default function ThinkingBudget({
                         >
                             <div className="flex flex-col items-center gap-2">
                                 <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                    {t(`settings.thinking_budget.mode.${key}`, { defaultValue: key })}
+                                    {t(`settings.thinking_budget.mode.${key}`)}
                                 </span>
                                 <span className="text-[10px] text-gray-500 dark:text-gray-400 text-center">
-                                    {t(`settings.thinking_budget.mode.${key}_desc`, { defaultValue: '' })}
+                                    {t(`settings.thinking_budget.mode.${key}_desc`)}
                                 </span>
                             </div>
                         </button>

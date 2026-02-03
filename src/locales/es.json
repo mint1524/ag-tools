@@ -414,16 +414,22 @@
         },
         "thinking_budget": {
             "title": "Presupuesto de Pensamiento (Thinking Budget)",
-            "description": "Controla la profundidad de razonamiento del modelo AI, afectando su capacidad para resolver tareas complejas",
-            "mode_auto": "Automático (Recomendado)",
-            "mode_auto_desc": "El sistema aplica el límite óptimo para cada modelo",
-            "mode_passthrough": "Paso directo",
-            "mode_passthrough_desc": "Confía completamente en el valor del llamador (gestión de riesgos bajo su responsabilidad)",
-            "mode_custom": "Personalizado",
-            "mode_custom_desc": "Usar un valor de presupuesto personalizado fijo",
-            "custom_value_label": "Valor de presupuesto personalizado",
-            "custom_value_hint": "Rango: 1024 - 65536 tokens",
-            "warning_passthrough": "⚠️ El modo de paso directo puede consumir la cuota rápidamente"
+            "description": "Controla el presupuesto de tokens para el pensamiento profundo de la IA. Algunos modelos (p. ej., Flash, modelos con sufijo -thinking) están limitados a 24576 por la API ascendente.",
+            "mode_label": "Modo de Procesamiento",
+            "mode": {
+                "auto": "Límite Automático",
+                "auto_desc": "Límite inteligente",
+                "passthrough": "Paso Directo",
+                "passthrough_desc": "Sin límite",
+                "custom": "Personalizado",
+                "custom_desc": "Valor fijo"
+            },
+            "auto_hint": "Modo Automático: Limita automáticamente el presupuesto a 24576 para modelos Flash, modelos con sufijo -thinking y solicitudes de búsqueda web para evitar errores de API. Otros modelos conservan sus valores originales.",
+            "passthrough_warning": "Modo de Paso Directo: Utiliza directamente el valor de thinking_budget del llamador sin límites. Puede causar fallos en la solicitud si la API ascendente no admite valores altos.",
+            "custom_value_label": "Valor Personalizado",
+            "custom_value_hint": "Rango: 1024 - 65536. Recomendado: 24576 (límite Flash) o 51200 (pensamiento extendido estándar).",
+            "high_value_warning": "El valor actual excede 24576. Es posible que algunos modelos (Flash, -thinking) no lo admitan y las solicitudes fallen.",
+            "tokens": "tokens"
         }
     },
     "tray": {
