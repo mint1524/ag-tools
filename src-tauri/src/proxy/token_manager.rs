@@ -180,6 +180,31 @@ impl TokenManager {
         Ok(count)
     }
 
+    /// 从内存中彻底移除指定账号及其关联数据 (Issue #1477)
+    pub fn remove_account(&self, account_id: &str) {
+        // 1. 从 DashMap 中移除令牌
+        if self.tokens.remove(account_id).is_some() {
+            tracing::info!("[Proxy] Removed account {} from memory cache", account_id);
+        }
+
+        // 2. 清理相关的健康分数
+        self.health_scores.remove(account_id);
+
+        // 3. 清理该账号的所有限流记录
+        self.clear_rate_limit(account_id);
+
+        // 4. 清理涉及该账号的所有会话绑定
+        self.session_accounts.retain(|_, v| v != account_id);
+
+        // 5. 如果是当前优先账号，也需要清理
+        if let Ok(mut preferred) = self.preferred_account_id.try_write() {
+            if preferred.as_deref() == Some(account_id) {
+                *preferred = None;
+                tracing::info!("[Proxy] Cleared preferred account status for {}", account_id);
+            }
+        }
+    }
+
     /// 加载单个账号
     async fn load_single_account(&self, path: &PathBuf) -> Result<Option<ProxyToken>, String> {
         let content = std::fs::read_to_string(path)
@@ -811,8 +836,8 @@ impl TokenManager {
         target_model: &str,
     ) -> Result<(String, String, String, String, u64), String> {
         // [FIX] 检查并处理待重新加载的账号（配额保护同步）
-        let pending_accounts = crate::proxy::server::take_pending_reload_accounts();
-        for account_id in pending_accounts {
+        let pending_reload = crate::proxy::server::take_pending_reload_accounts();
+        for account_id in pending_reload {
             if let Err(e) = self.reload_account(&account_id).await {
                 tracing::warn!("[Quota] Failed to reload account {}: {}", account_id, e);
             } else {
@@ -821,6 +846,16 @@ impl TokenManager {
                     account_id
                 );
             }
+        }
+
+        // [FIX #1477] 检查并处理待删除的账号（彻底清理缓存）
+        let pending_delete = crate::proxy::server::take_pending_delete_accounts();
+        for account_id in pending_delete {
+            self.remove_account(&account_id);
+            tracing::info!(
+                "[Proxy] Purged deleted account {} from all caches",
+                account_id
+            );
         }
 
         // 【优化 Issue #284】添加 5 秒超时，防止死锁

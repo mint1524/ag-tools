@@ -269,6 +269,9 @@ print(response.choices[0].message.content)
         -   **[Core Fix] Debug Console & Binding in Docker/Headless**:
             -   **Debug Console**: Fixed uninitialized log bridge in Docker and added HTTP API mappings for Web UI log access.
             -   **Fingerprint Binding**: Enhanced device fingerprint binding logic for better Docker container compatibility and API support.
+        -   **[Core Fix] Account Deletion Cache Sync Fix (Issue #1477)**:
+            -   **Sync Mechanism**: Introduced a global deletion signal synchronization queue, ensuring accounts are purged from memory cache immediately after disk deletion.
+            -   **Thorough Cleanup**: TokenManager now synchronizes the cleanup of tokens, health scores, rate limits, and session bindings for deleted accounts, completely resolving "ghost account" scheduling issues.
         -   **[UI Optimization] Localize Update Notification (PR #1484)**:
             -   **i18n Adaptation**: Completely removed hardcoded strings in the update notification dialog, achieving full support for all 12 languages.
     *   **v4.0.15 (2026-02-03)**:

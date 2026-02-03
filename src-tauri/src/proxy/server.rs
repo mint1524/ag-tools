@@ -23,8 +23,16 @@ use tracing::{debug, error};
 // TokenManager 在 get_token 时会检查并处理这些账号
 static PENDING_RELOAD_ACCOUNTS: OnceLock<std::sync::RwLock<HashSet<String>>> = OnceLock::new();
 
+// [NEW] 全局待删除账号队列 (Issue #1477)
+// 当账号被删除后，将账号 ID 加入此队列，TokenManager 在 get_token 时会检查并清理内存缓存
+static PENDING_DELETE_ACCOUNTS: OnceLock<std::sync::RwLock<HashSet<String>>> = OnceLock::new();
+
 fn get_pending_reload_accounts() -> &'static std::sync::RwLock<HashSet<String>> {
     PENDING_RELOAD_ACCOUNTS.get_or_init(|| std::sync::RwLock::new(HashSet::new()))
+}
+
+fn get_pending_delete_accounts() -> &'static std::sync::RwLock<HashSet<String>> {
+    PENDING_DELETE_ACCOUNTS.get_or_init(|| std::sync::RwLock::new(HashSet::new()))
 }
 
 /// 触发账号重新加载信号（供 update_account_quota 调用）
@@ -38,6 +46,17 @@ pub fn trigger_account_reload(account_id: &str) {
     }
 }
 
+/// 触发账号删除信号 (Issue #1477)
+pub fn trigger_account_delete(account_id: &str) {
+    if let Ok(mut pending) = get_pending_delete_accounts().write() {
+        pending.insert(account_id.to_string());
+        tracing::debug!(
+            "[Proxy] Queued account {} for cache removal",
+            account_id
+        );
+    }
+}
+
 /// 获取并清空待重新加载的账号列表（供 TokenManager 调用）
 pub fn take_pending_reload_accounts() -> Vec<String> {
     if let Ok(mut pending) = get_pending_reload_accounts().write() {
@@ -45,6 +64,22 @@ pub fn take_pending_reload_accounts() -> Vec<String> {
         if !accounts.is_empty() {
             tracing::debug!(
                 "[Quota] Taking {} pending accounts for reload",
+                accounts.len()
+            );
+        }
+        accounts
+    } else {
+        Vec::new()
+    }
+}
+
+/// 获取并清空待删除的账号列表 (Issue #1477)
+pub fn take_pending_delete_accounts() -> Vec<String> {
+    if let Ok(mut pending) = get_pending_delete_accounts().write() {
+        let accounts: Vec<String> = pending.drain().collect();
+        if !accounts.is_empty() {
+            tracing::debug!(
+                "[Proxy] Taking {} pending accounts for cache removal",
                 accounts.len()
             );
         }

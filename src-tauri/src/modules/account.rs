@@ -296,6 +296,9 @@ pub fn delete_account(account_id: &str) -> Result<(), String> {
             .map_err(|e| format!("failed_to_delete_account_file: {}", e))?;
     }
 
+    // [FIX #1477] 触发 TokenManager 缓存清理信号
+    crate::proxy::server::trigger_account_delete(account_id);
+
     Ok(())
 }
 
@@ -322,6 +325,9 @@ pub fn delete_accounts(account_ids: &[String]) -> Result<(), String> {
         if account_path.exists() {
             let _ = fs::remove_file(&account_path);
         }
+
+        // [FIX #1477] 触发 TokenManager 缓存清理信号
+        crate::proxy::server::trigger_account_delete(account_id);
     }
 
     // If current account is empty, use first one as default
