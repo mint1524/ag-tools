@@ -263,6 +263,9 @@ print(response.choices[0].message.content)
             -   **Monitoring**: Enhanced system monitoring and routing integration for better observability.
         -   **[Core Fix] Warmup API Field Missing Fix**:
             -   **Compilation Fix**: Resolved compilation error caused by missing `username` field in `ProxyRequestLog` initialization.
+        -   **[Core Fix] Docker Warmup 401/502 Error Fix (PR #1479)**:
+            -   **Network Optimization**: Used a client with `.no_proxy()` for Warmup requests in Docker environments, preventing localhost requests from being incorrectly routed to external proxies causing 502/401 errors.
+            -   **Auth Update**: Exempted `/internal/*` paths from authentication, ensuring internal warmup requests are not intercepted.
     *   **v4.0.15 (2026-02-03)**:
         -   **[Core Optimization] Enhanced Warmup Functionality & False-Positive Fixes (PR #1466)**:
             -   **Logic Optimization**: Removed the hardcoded model whitelist, enabling automatic warmup for all models reaching 100% quota based on account data.
