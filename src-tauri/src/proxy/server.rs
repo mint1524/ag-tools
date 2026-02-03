@@ -372,13 +372,17 @@ impl AxumServer {
             .route("/v1/api/event_logging/batch", post(silent_ok_handler))
             .route("/v1/api/event_logging", post(silent_ok_handler))
             // 应用 AI 服务特定的层
-            .layer(axum::middleware::from_fn_with_state(
-                state.clone(),
-                auth_middleware,
-            ))
+            // 注意：Axum layer 执行顺序是从下往上（洋葱模型）
+            // 请求: ip_filter -> auth -> monitor -> handler
+            // 响应: handler -> monitor -> auth -> ip_filter
+            // monitor 需要在 auth 之后执行才能获取 UserTokenIdentity
             .layer(axum::middleware::from_fn_with_state(
                 state.clone(),
                 monitor_middleware,
+            ))
+            .layer(axum::middleware::from_fn_with_state(
+                state.clone(),
+                auth_middleware,
             ))
             .layer(axum::middleware::from_fn_with_state(
                 state.clone(),

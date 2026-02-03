@@ -24,6 +24,7 @@ interface IpTokenStats {
     input_tokens: number;
     output_tokens: number;
     request_count: number;
+    username?: string;
 }
 
 interface Props {
@@ -144,6 +145,7 @@ export const IpStatistics: React.FC<Props> = ({ refreshKey }) => {
                                     <tr>
                                         <th className="w-12">{t('security.stats.rank')}</th>
                                         <th>{t('security.stats.ip_address')}</th>
+                                        <th className="w-24">{t('security.logs.username')}</th>
                                         <th className="w-1/4">{t('security.stats.activity_reqs')}</th>
                                         <th className="text-right">{t('security.stats.total_token')}</th>
                                         <th className="text-right text-xs text-gray-500">{t('security.stats.prompt')}</th>
@@ -166,6 +168,7 @@ export const IpStatistics: React.FC<Props> = ({ refreshKey }) => {
                                                 <td className="font-mono font-medium">
                                                     {ip.client_ip}
                                                 </td>
+                                                <td className="font-medium text-blue-600 dark:text-blue-400">{ip.username || '-'}</td>
                                                 <td>
                                                     <div className="flex flex-col gap-1">
                                                         <div className="flex justify-between text-xs text-gray-500">
@@ -194,7 +197,7 @@ export const IpStatistics: React.FC<Props> = ({ refreshKey }) => {
                                     })}
                                     {tokenStats.length === 0 && (
                                         <tr>
-                                            <td colSpan={6} className="text-center py-8 text-gray-500">
+                                            <td colSpan={7} className="text-center py-8 text-gray-500">
                                                 {t('security.stats.no_data')}
                                             </td>
                                         </tr>

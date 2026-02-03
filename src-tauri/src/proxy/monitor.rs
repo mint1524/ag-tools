@@ -22,6 +22,7 @@ pub struct ProxyRequestLog {
     pub input_tokens: Option<u32>,
     pub output_tokens: Option<u32>,
     pub protocol: Option<String>,     // 协议类型: "openai", "anthropic", "gemini"
+    pub username: Option<String>,     // User token username
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -137,6 +138,7 @@ impl ProxyMonitor {
                     api_key_hash: None,
                     blocked: false, // This comes from monitor, so it wasn't blocked by IP filter
                     block_reason: None,
+                    username: log_to_save.username.clone(),
                 };
 
                 if let Err(e) = crate::modules::security_db::save_ip_access_log(&security_log) {
@@ -176,6 +178,7 @@ impl ProxyMonitor {
                 input_tokens: log.input_tokens,
                 output_tokens: log.output_tokens,
                 protocol: log.protocol.clone(),
+                username: log.username.clone(),
             };
             let _ = app.emit("proxy://request", &log_summary);
         }
