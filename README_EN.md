@@ -253,6 +253,10 @@ print(response.choices[0].message.content)
         -   **[Core Fix] Unified Account Disable Status Check Logic (Issue #1512)**:
             -   **Logic Alignment**: Fixed an issue where the manual disable status (`proxy_disabled`) was ignored in batch quota refresh and auto-warmup logic.
             -   **Background Noise Reduction**: Ensured that accounts marked as "Disabled" or "Proxy Disabled" no longer trigger any background network requests, enhancing privacy and resource efficiency.
+        -   **[Core Fix] Resolve 400 Invalid Argument Errors in OpenAI Protocol (Issue #1506)**:
+            -   **Session-level Signature Isolation**: Integrated `SignatureCache` to physically isolate thinking signatures using `session_id`, preventing signature cross-contamination in multi-turn or concurrent sessions.
+            -   **Enhanced Robustness**: Added logic to recognize and automatically clean invalid thinking placeholders (e.g., `[undefined]`), improving compatibility with various clients like Cherry Studio.
+            -   **Full-link Context Propagation**: Refactored request mapping and streaming chains to ensure precise Session context propagation across both non-streaming and streaming requests.
     *   **v4.1.1 (2026-02-04)**:
         -   **[Core Feature] Update Checker Enhanced (Update Checker 2.0) (PR #1494)**:
             -   **Proxy Support**: The update checker now fully respects the global upstream proxy configuration.

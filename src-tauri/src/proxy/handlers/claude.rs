@@ -22,6 +22,7 @@ use crate::proxy::server::AppState;
 use crate::proxy::mappers::context_manager::ContextManager;
 use crate::proxy::mappers::estimation_calibrator::get_calibrator;
 use crate::proxy::debug_logger;
+use crate::proxy::common::client_adapter::CLIENT_ADAPTERS; // [NEW] Import Adapter Registry
 use axum::http::HeaderMap;
 use std::sync::{atomic::Ordering, Arc};
 
@@ -127,6 +128,13 @@ pub async fn handle_messages(
         .map(char::from)
         .collect::<String>().to_lowercase();
     let debug_cfg = state.debug_logging.read().await.clone();
+    
+    // [NEW] Detect Client Adapter
+    // 检查是否有匹配的客户端适配器（如 opencode）
+    let client_adapter = CLIENT_ADAPTERS.iter().find(|a| a.matches(&headers)).cloned();
+    if let Some(_adapter) = &client_adapter {
+        tracing::debug!("[{}] Client Adapter detected: Applying custom strategies", trace_id);
+    }
         
     // Decide whether this request should be handled by z.ai (Anthropic passthrough) or the existing Google flow.
     let zai = state.zai.read().await.clone();
@@ -704,7 +712,21 @@ pub async fn handle_messages(
             extra_headers.insert("anthropic-beta".to_string(), "interleaved-thinking-2025-05-14".to_string());
             tracing::debug!("[{}] Added Beta Header: interleaved-thinking-2025-05-14", trace_id);
         }
-
+        
+        // [NEW] Inject Beta Headers from Client Adapter
+        if let Some(adapter) = &client_adapter {
+            let mut temp_headers = HeaderMap::new();
+            adapter.inject_beta_headers(&mut temp_headers);
+            for (k, v) in temp_headers {
+                if let Some(name) = k {
+                    if let Ok(v_str) = v.to_str() {
+                        extra_headers.insert(name.to_string(), v_str.to_string());
+                        tracing::debug!("[{}] Added Adapter Header: {}: {}", trace_id, name, v_str);
+                    }
+                }
+            }
+        }
+        
         // 5. 上游调用
         let response = match upstream
             .call_v1_internal_with_headers(method, &access_token, gemini_body, query, extra_headers.clone(), Some(account_id.as_str()))
@@ -761,6 +783,7 @@ pub async fn handle_messages(
                     context_limit,
                     Some(raw_estimated), // [FIX] Pass estimated tokens for calibrator learning
                     current_message_count, // [NEW v4.0.0] Pass message count for rewind detection
+                    client_adapter.clone(), // [NEW] Pass client adapter
                 );
 
                 let mut first_data_chunk = None;

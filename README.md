@@ -362,9 +362,18 @@ response = client.chat.completions.create(
 
 *   **版本演进 (Changelog)**:
     *   **v4.1.2 (2026-02-04)**:
+        -   **[核心功能] 多协议客户端适配器 (ClientAdapter Framework) (Issue #1522)**:
+            -   **架构重构**: 引入 `ClientAdapter` 框架并应用 `Arc` 引用计数，实现了 Handler 层与下游客户端逻辑的完全解耦，支持更安全的跨线程共享。
+            -   **全协议兼容**: 针对 `opencode` 等第三方客户端，实现了 **4 种协议**（Claude/OpenAI/Gemini/OA-Compatible）的无缝接入，彻底解决了 `AI_TypeValidationError` 报错。
+            -   **智能策略**: 实现了 FIFO 签名缓存策略与 `let_it_crash` 快速失败机制，显著提升了高并发场景下的稳定性和错误反馈速度。
+            -   **标准化错误响应**: 强制统一所有协议的错误返回格式（流式 SSE `event: error` / 非流式 JSON），确保客户端能正确解析上游异常。
         -   **[核心修复] 统一账号禁用状态检查逻辑 (Issue #1512)**:
             -   **逻辑对齐**: 修复了批量刷新配额及自动预热逻辑中遗漏手动禁用状态 (`proxy_disabled`) 的问题。
             -   **后台降噪**: 确保标记为“禁用”或“禁用代理”的账号不再触发任何后台网络请求，提升了系统的隐私性与资源效率。
+        -   **[核心修复] 解决 OpenAI 协议路径下 Invalid signature 导致的 400 错误 (Issue #1506)**:
+            -   **Session 级签名隔离**: 引入了 `SignatureCache` 机制，通过 `session_id` 物理隔离不同会话的思维签名存储，彻底杜绝多轮对话或并发请求导致的签名污染。
+            -   **鲁棒性增强**: 增加了对思维链占位符（如 `[undefined]`）的识别与自动清洗逻辑，提升了对不同客户端（如 Cherry Studio）的兼容性。
+            -   **全路径透传**: 重构了请求转换与流式处理链路，确保 Session 上下文在非流式和流式请求中均能精准传导。
     *   **v4.1.1 (2026-02-04)**:
         -   **[核心修复] 解决 User Tokens 页面在 Web/Docker 环境下加载失败问题 (Issue #1525)**:
             -   **API 同步**: 补全了前端 `request.ts` 的命令映射，并新增对 `PATCH` 方法的支持，解决了 Web 端因映射缺失导致的 API 调用错误。

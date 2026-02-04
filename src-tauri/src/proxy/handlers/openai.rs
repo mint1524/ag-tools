@@ -20,9 +20,12 @@ use super::common::{
 };
 use crate::proxy::session_manager::SessionManager;
 use tokio::time::Duration;
+use crate::proxy::common::client_adapter::CLIENT_ADAPTERS; // [NEW] Adapter Registry
+use axum::http::HeaderMap;
 
 pub async fn handle_chat_completions(
     State(state): State<AppState>,
+    headers: HeaderMap, // [CHANGED] Extract headers
     Json(mut body): Json<Value>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // [FIX] 保存原始请求体的完整副本，用于日志记录
@@ -116,6 +119,12 @@ pub async fn handle_chat_completions(
         debug_logger::write_debug_payload(&debug_cfg, Some(&trace_id), "original_request", &original_payload).await;
     }
 
+    // [NEW] Detect Client Adapter
+    let client_adapter = CLIENT_ADAPTERS.iter().find(|a| a.matches(&headers)).cloned();
+    if client_adapter.is_some() {
+        debug!("[{}] Client Adapter detected", trace_id);
+    }
+
     // 1. 获取 UpstreamClient (Clone handle)
     let upstream = state.upstream.clone();
     let token_manager = state.token_manager;
@@ -176,8 +185,8 @@ pub async fn handle_chat_completions(
         last_email = Some(email.clone());
         info!("✓ Using account: {} (type: {})", email, config.request_type);
 
-        // 4. 转换请求
-        let gemini_body = transform_openai_request(&openai_req, &project_id, &mapped_model);
+        // 4. 转换请求 (返回内容包含 session_id 和 message_count)
+        let (gemini_body, session_id, message_count) = transform_openai_request(&openai_req, &project_id, &mapped_model);
 
         if debug_logger::is_enabled(&debug_cfg) {
             let payload = json!({
@@ -238,7 +247,6 @@ pub async fn handle_chat_completions(
         if status.is_success() {
             // 5. 处理流式 vs 非流式
             if actual_stream {
-                use crate::proxy::mappers::openai::streaming::create_openai_sse_stream;
                 use axum::body::Body;
                 use axum::response::Response;
                 use futures::StreamExt;
@@ -262,8 +270,9 @@ pub async fn handle_chat_completions(
 
                 // [P1 FIX] Enhanced Peek logic to handle heartbeats and slow start
                 // Pre-read until we find meaningful content, skip heartbeats
+                use crate::proxy::mappers::openai::streaming::create_openai_sse_stream;
                 let mut openai_stream =
-                    create_openai_sse_stream(gemini_stream, openai_req.model.clone());
+                    create_openai_sse_stream(gemini_stream, openai_req.model.clone(), session_id, message_count);
 
                 let mut first_data_chunk = None;
                 let mut retry_this_account = false;
@@ -384,7 +393,7 @@ pub async fn handle_chat_completions(
                 .await
                 .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Parse error: {}", e)))?;
 
-            let openai_response = transform_openai_response(&gemini_resp);
+            let openai_response = transform_openai_response(&gemini_resp, Some(&session_id), message_count);
             return Ok((
                 StatusCode::OK,
                 [
@@ -449,6 +458,20 @@ pub async fn handle_chat_completions(
 
         // 执行退避
         if apply_retry_strategy(strategy, attempt, max_attempts, status_code, &trace_id).await {
+            // [NEW] Apply Client Adapter "let_it_crash" strategy
+            if let Some(adapter) = &client_adapter {
+                if adapter.let_it_crash() && attempt > 0 {
+                    // For let_it_crash clients (like opencode), allow maybe 1 retry but then fail fast
+                    // to prevent long hangs on UI.
+                    tracing::warn!("[OpenAI] let_it_crash active: Aborting retries after attempt {}", attempt);
+                    // Breaking loop to return error immediately
+                    // Reuse existing error return logic via loop exit behavior? 
+                    // Or construct error here?
+                    // Let's just break for now, which will trigger the "All accounts exhausted" or last error logic.
+                    break;
+                }
+            }
+
             // 判断是否需要轮换账号
             if !should_rotate_account(status_code) {
                 debug!(
@@ -582,7 +605,14 @@ pub async fn handle_chat_completions(
                 ("X-Account-Email", email.as_str()),
                 ("X-Mapped-Model", mapped_model.as_str()),
             ],
-            error_text,
+            // [FIX] Return JSON error for better client compatibility
+            Json(json!({
+                "error": {
+                    "message": error_text,
+                    "type": "upstream_error",
+                    "code": status_code
+                }
+            })),
         )
             .into_response());
     }
@@ -1046,13 +1076,12 @@ pub async fn handle_completions(
 
         info!("✓ Using account: {} (type: {})", email, config.request_type);
 
-        let gemini_body = transform_openai_request(&openai_req, &project_id, &mapped_model);
+        let (gemini_body, session_id, message_count) = transform_openai_request(&openai_req, &project_id, &mapped_model);
 
         // [New] 打印转换后的报文 (Gemini Body) 供调试 (Codex 路径) ———— 缩减为 simple debug
         debug!(
             "[Codex-Request] Transformed Gemini Body ({} parts)",
-            gemini_body
-                .get("contents")
+            gemini_body.get("contents")
                 .and_then(|c| c.as_array())
                 .map(|a| a.len())
                 .unwrap_or(0)
@@ -1106,10 +1135,10 @@ pub async fn handle_completions(
                 if client_wants_stream {
                     let mut openai_stream = if is_codex_style {
                         use crate::proxy::mappers::openai::streaming::create_codex_sse_stream;
-                        create_codex_sse_stream(Box::pin(gemini_stream), openai_req.model.clone())
+                        create_codex_sse_stream(Box::pin(gemini_stream), openai_req.model.clone(), session_id, message_count)
                     } else {
                         use crate::proxy::mappers::openai::streaming::create_legacy_sse_stream;
-                        create_legacy_sse_stream(Box::pin(gemini_stream), openai_req.model.clone())
+                        create_legacy_sse_stream(Box::pin(gemini_stream), openai_req.model.clone(), session_id, message_count)
                     };
 
                     // [P1 FIX] Enhanced Peek logic (Reused from above/standard)
@@ -1184,7 +1213,7 @@ pub async fn handle_completions(
                     // Note: We use create_openai_sse_stream regardless of is_codex_style here,
                     // because we just want the content aggregation which chat stream does well.
                     let mut openai_stream =
-                        create_openai_sse_stream(Box::pin(gemini_stream), openai_req.model.clone());
+                        create_openai_sse_stream(Box::pin(gemini_stream), openai_req.model.clone(), session_id, message_count);
 
                     // Peek Logic (Repeated for safety/correctness on this stream type)
                     let mut first_data_chunk = None;
@@ -1299,7 +1328,7 @@ pub async fn handle_completions(
                 }
             };
 
-            let chat_resp = transform_openai_response(&gemini_resp);
+            let chat_resp = transform_openai_response(&gemini_resp, Some("session-123"), 1);
 
             // Map Chat Response -> Legacy Completions Response
             let choices = chat_resp.choices.iter().map(|c| {

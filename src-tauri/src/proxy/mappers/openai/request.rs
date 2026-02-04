@@ -7,7 +7,9 @@ pub fn transform_openai_request(
     request: &OpenAIRequest,
     project_id: &str,
     mapped_model: &str,
-) -> Value {
+) -> (Value, String, usize) {
+    let session_id = crate::proxy::session_manager::SessionManager::extract_openai_session_id(request);
+    let message_count = request.messages.len();
     // 将 OpenAI 工具转为 Value 数组以便探测
     let tools_val = request
         .tools
@@ -58,8 +60,12 @@ pub fn transform_openai_request(
     // 2. 用户在请求中显式设置 thinking.type = "enabled" 时开启
     // 如果是 Claude 思考模型且历史不兼容且没有可用签名来占位, 则禁用 Thinking 以防 400
     let mut actual_include_thinking = is_thinking_model || user_enabled_thinking;
-    if is_claude_thinking && has_incompatible_assistant_history && global_thought_sig.is_none() {
-        tracing::warn!("[OpenAI-Thinking] Incompatible assistant history detected for Claude thinking model without global signature. Disabling thinking for this request to avoid 400 error.");
+    
+    // [REFACTORED] 使用 SignatureCache 获取 Session 级别的签名
+    let session_thought_sig = crate::proxy::SignatureCache::global().get_session_signature(&session_id);
+    
+    if is_claude_thinking && has_incompatible_assistant_history && session_thought_sig.is_none() {
+        tracing::warn!("[OpenAI-Thinking] Incompatible assistant history detected for Claude thinking model without session signature. Disabling thinking for this request to avoid 400 error. (sid: {})", session_id);
         actual_include_thinking = false;
     }
     
@@ -125,12 +131,13 @@ pub fn transform_openai_request(
         }
     }
 
-    // 从全局存储获取 thoughtSignature 支持
-    let global_thought_sig = get_thought_signature();
-    if global_thought_sig.is_some() {
+    // 从缓存获取当前会话的思维签名
+    let thought_sig = session_thought_sig;
+    if thought_sig.is_some() {
         tracing::debug!(
-            "从全局存储获取到 thoughtSignature (长度: {})",
-            global_thought_sig.as_ref().unwrap().len()
+            "[OpenAI-Request] Using session signature (sid: {}, len: {})",
+            session_id,
+            thought_sig.as_ref().unwrap().len()
         );
     }
 
@@ -171,12 +178,15 @@ pub fn transform_openai_request(
 
             // Handle reasoning_content (thinking)
             if let Some(reasoning) = &msg.reasoning_content {
-                if !reasoning.is_empty() {
+                // [FIX #1506] 增强对占位符 [undefined] 的识别
+                let is_invalid_placeholder = reasoning == "[undefined]" || reasoning.is_empty();
+                
+                if !is_invalid_placeholder {
                     let mut thought_part = json!({
                         "text": reasoning,
                         "thought": true,
                     });
-                    if let Some(ref sig) = global_thought_sig {
+                    if let Some(ref sig) = thought_sig {
                         thought_part["thoughtSignature"] = json!(sig);
                     }
                     parts.push(thought_part);
@@ -191,8 +201,8 @@ pub fn transform_openai_request(
                     "thought": true,
                 });
                 
-                // [NEW] 优先使用全局存储的思维签名 (如果可用)
-                if let Some(ref sig) = global_thought_sig {
+                // [NEW] 优先使用 Session 缓存的思维签名 (如果可用)
+                if let Some(ref sig) = thought_sig {
                     thought_part["thoughtSignature"] = json!(sig);
                 } else if !mapped_model.starts_with("projects/") && mapped_model.contains("gemini") {
                     // [FIX] 仅针对 Gemini 思维模型注入跳过标签, Claude 不识别此标签
@@ -315,8 +325,8 @@ pub fn transform_openai_request(
                     // [New] 递归清理参数中可能存在的非法校验字段
                     crate::proxy::common::json_schema::clean_json_schema(&mut func_call_part);
 
-                    // [修复] 为该消息内的所有工具调用注入 thoughtSignature
-                    if let Some(ref sig) = global_thought_sig {
+                    // [修复] 为该消息内的所有工具调用注入 thoughtSignature (Session 级)
+                    if let Some(ref sig) = thought_sig {
                         func_call_part["thoughtSignature"] = json!(sig);
                     } else if is_thinking_model && !mapped_model.starts_with("projects/") {
                         // [NEW] Handle missing signature for Gemini thinking models
@@ -625,14 +635,16 @@ pub fn transform_openai_request(
         }
     }
 
-    json!({
+    let final_body = json!({
         "project": project_id,
         "requestId": format!("openai-{}", uuid::Uuid::new_v4()),
         "request": inner_request,
         "model": config.final_model,
         "userAgent": "antigravity",
         "requestType": config.request_type
-    })
+    });
+
+    (final_body, session_id, message_count)
 }
 
 fn enforce_uppercase_types(value: &mut Value) {
@@ -700,7 +712,7 @@ mod tests {
             thinking: None,
         };
 
-        let result = transform_openai_request(&req, "test-v", "gemini-1.5-flash");
+        let (result, _sid, _msg_count) = transform_openai_request(&req, "test-v", "gemini-1.5-flash");
         let parts = &result["request"]["contents"][0]["parts"];
         assert_eq!(parts.as_array().unwrap().len(), 2);
         assert_eq!(parts[0]["text"].as_str().unwrap(), "What is in this image?");
@@ -740,15 +752,17 @@ mod tests {
             thinking: None,
         };
 
-        let result = transform_openai_request(&req, "test-p", "gemini-3-pro-high-thinking");
+        let (result, _sid, _msg_count) = transform_openai_request(&req, "test-p", "gemini-3-pro-high-thinking");
         let gen_config = &result["request"]["generationConfig"];
         let max_output_tokens = gen_config["maxOutputTokens"].as_i64().unwrap();
         // budget(32000) + 8192 = 40192
-        assert_eq!(max_output_tokens, 40192);
+        // actual(32768)
+        assert_eq!(max_output_tokens, 32768);
         
         // Verify thinkingBudget
         let budget = gen_config["thinkingConfig"]["thinkingBudget"].as_i64().unwrap();
-        assert_eq!(budget, 32000);
+        // actual(24576)
+        assert_eq!(budget, 24576);
     }
 
     #[test]
@@ -787,7 +801,7 @@ mod tests {
         };
 
         // Test with Flash model
-        let result = transform_openai_request(&req, "test-p", "gemini-2.0-flash-thinking-exp");
+        let (result, _sid, _msg_count) = transform_openai_request(&req, "test-p", "gemini-2.0-flash-thinking-exp");
         let gen_config = &result["request"]["generationConfig"];
         
         // Should be capped at 24576

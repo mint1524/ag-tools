@@ -9,7 +9,9 @@ use crate::proxy::session_manager::SessionManager;
 use crate::proxy::handlers::common::{determine_retry_strategy, apply_retry_strategy, should_rotate_account, RetryStrategy};
 use crate::proxy::debug_logger;
 use tokio::time::Duration;
- 
+use axum::http::HeaderMap;
+use crate::proxy::common::client_adapter::CLIENT_ADAPTERS; // [NEW] Adapter Registry
+
 const MAX_RETRY_ATTEMPTS: usize = 3;
  
 /// 处理 generateContent 和 streamGenerateContent
@@ -17,6 +19,7 @@ const MAX_RETRY_ATTEMPTS: usize = 3;
 pub async fn handle_generate(
     State(state): State<AppState>,
     Path(model_action): Path<String>,
+    headers: HeaderMap, // [NEW] Extract headers for adapter detection
     Json(mut body): Json<Value>  // 改为 mut 以支持修复提示词注入
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     // 解析 model:method
@@ -29,6 +32,12 @@ pub async fn handle_generate(
     crate::modules::logger::log_info(&format!("Received Gemini request: {}/{}", model_name, method));
     let trace_id = format!("req_{}", chrono::Utc::now().timestamp_subsec_millis());
     let debug_cfg = state.debug_logging.read().await.clone();
+
+    // [NEW] Detect Client Adapter
+    let client_adapter = CLIENT_ADAPTERS.iter().find(|a| a.matches(&headers)).cloned();
+    if client_adapter.is_some() {
+        debug!("[{}] Client Adapter detected", trace_id);
+    }
 
     // 1. 验证方法
     if method != "generateContent" && method != "streamGenerateContent" {
@@ -373,6 +382,14 @@ pub async fn handle_generate(
 
         // 执行退避
         if apply_retry_strategy(strategy, attempt, max_attempts, status_code, &trace_id).await {
+            // [NEW] Apply Client Adapter "let_it_crash" strategy
+            if let Some(adapter) = &client_adapter {
+                if adapter.let_it_crash() && attempt > 0 {
+                    tracing::warn!("[Gemini] let_it_crash active: Aborting retries after attempt {}", attempt);
+                    break;
+                }
+            }
+
             // 判断是否需要轮换账号
             if !should_rotate_account(status_code) {
                 debug!("[{}] Keeping same account for status {} (Gemini server-side issue)", trace_id, status_code);
@@ -409,7 +426,18 @@ pub async fn handle_generate(
  
         // 404 等由于模型配置或路径错误的 HTTP 异常，直接报错，不进行无效轮换
         error!("Gemini Upstream non-retryable error {}: {}", status_code, error_text);
-        return Ok((status, [("X-Account-Email", email.as_str())], error_text).into_response());
+        return Ok((
+            status, 
+            [("X-Account-Email", email.as_str())], 
+            // [FIX] Return JSON error
+            Json(json!({
+                "error": {
+                    "code": status_code,
+                    "message": error_text,
+                    "status": "UPSTREAM_ERROR"
+                }
+            }))
+        ).into_response());
     }
 
     if let Some(email) = last_email {
