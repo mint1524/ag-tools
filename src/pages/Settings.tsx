@@ -90,6 +90,7 @@ function Settings() {
         latestVersion: string;
         currentVersion: string;
         downloadUrl: string;
+        source?: string;
     } | null>(null);
 
 
@@ -245,6 +246,7 @@ function Settings() {
                 latest_version: string;
                 current_version: string;
                 download_url: string;
+                source?: string;
             }>('check_for_updates');
 
             setUpdateInfo({
@@ -252,10 +254,12 @@ function Settings() {
                 latestVersion: result.latest_version,
                 currentVersion: result.current_version,
                 downloadUrl: result.download_url,
+                source: result.source,
             });
 
             if (result.has_update) {
-                showToast(t('settings.about.new_version_available', { version: result.latest_version }), 'info');
+                const sourceMsg = result.source && result.source !== 'GitHub API' ? ` (via ${result.source})` : '';
+                showToast(t('settings.about.new_version_available', { version: result.latest_version }) + sourceMsg, 'info');
             } else {
                 showToast(t('settings.about.latest_version'), 'success');
             }
