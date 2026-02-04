@@ -93,7 +93,13 @@ pub fn init_db() -> Result<(), String> {
         [],
     ).map_err(|e| format!("Failed to create user_tokens table: {}", e))?;
 
-    // 尝试添加新列 (用于旧数据库迁移)
+    // 尝试添加新列 (用于旧数据库迁移，忽略已存在的错误)
+    let _ = conn.execute("ALTER TABLE user_tokens ADD COLUMN expires_type TEXT", []);
+    let _ = conn.execute("ALTER TABLE user_tokens ADD COLUMN expires_at INTEGER", []);
+    let _ = conn.execute("ALTER TABLE user_tokens ADD COLUMN max_ips INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE user_tokens ADD COLUMN total_requests INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE user_tokens ADD COLUMN total_tokens_used INTEGER DEFAULT 0", []);
+    let _ = conn.execute("ALTER TABLE user_tokens ADD COLUMN last_used_at INTEGER", []);
     let _ = conn.execute("ALTER TABLE user_tokens ADD COLUMN curfew_start TEXT", []);
     let _ = conn.execute("ALTER TABLE user_tokens ADD COLUMN curfew_end TEXT", []);
 

@@ -39,6 +39,7 @@
 ## 💖 赞助商 (Sponsors)
 
 | <img src="docs/images/packycode_logo.png" width="200" alt="PackyCode Logo"> | 感谢 **PackyCode** 对本项目的赞助！PackyCode 是一家可靠高效的 API 中转服务商，提供 Claude Code、Codex、Gemini 等多种服务的中转。PackyCode 为本项目的用户提供了特别优惠：使用[此链接](https://www.packyapi.com/register?aff=Ctrler)注册，并在充值时输入 **“Ctrler”** 优惠码即可享受 **九折优惠**。 |
+| <img src="docs/images/AICodeMirror.jpg" width="200" alt="AICodeMirror Logo"> | 感谢 AICodeMirror 赞助了本项目！AICodeMirror 提供 Claude Code / Codex / Gemini CLI 官方高稳定中转服务，支持企业级高并发、极速开票、7×24 专属技术支持。 Claude Code / Codex / Gemini 官方渠道低至 3.8 / 0.2 / 0.9 折，充值更有折上折！AICodeMirror 为 Antigravity-Manager 的用户提供了特别福利，通过[此链接](https://www.aicodemirror.com/register?invitecode=MV5XUM)注册的用户，可享受首充8折，企业客户最高可享 7.5 折！ |
 | :--- | :--- |
 
 ### ☕ 支持项目 (Support)
@@ -360,6 +361,13 @@ response = client.chat.completions.create(
 
 *   **版本演进 (Changelog)**:
     *   **v4.1.1 (2026-02-04)**:
+        -   **[核心修复] 解决 User Tokens 页面在 Web/Docker 环境下加载失败问题 (Issue #1525)**:
+            -   **API 同步**: 补全了前端 `request.ts` 的命令映射，并新增对 `PATCH` 方法的支持，解决了 Web 端因映射缺失导致的 API 调用错误。
+            -   **后端路由补全**: 在 Axum 管理服务器中新增了 User Token 的全量管理接口（List/Create/Update/Renew/Delete），确保 Headless 模式功能完整。
+        -   **[核心优化] 数据库迁移增强与幂等性改进**:
+            -   **自动列迁移**: 完善了 `UserToken` 数据库初始化逻辑，支持从旧版本自动通过 `ALTER TABLE` 补全缺失列（如 `expires_type`, `max_ips`, `curfew_*` 等），极大提升了版本升级的稳定性。
+        -   **[Docker 优化] 新增 ABV_DATA_DIR 环境变量支持**:
+            -   **灵活挂载**: 允许用户通过环境变量显式指定数据存储目录。现在 Docker 用户可以更方便地挂载外部卷至自定义路径（如 `-e ABV_DATA_DIR=/app/data`），解决了默认隐藏目录权限及可见性问题。
         -   **[核心功能] 更新检查器增强 (Update Checker 2.0) (PR #1494)**:
             -   **代理支持**: 更新检查器现在完全遵循全局上游代理配置，解决了在受限网络环境下无法获取更新的问题。
             -   **多级降级策略**: 实现了 `GitHub API -> GitHub Raw -> jsDelivr` 的三层回退机制，极大提升了版本检测的成功率。

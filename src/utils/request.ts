@@ -4,7 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 const isTauri = typeof window !== 'undefined' && (!!(window as any).__TAURI_INTERNALS__ || !!(window as any).__TAURI__);
 
 // 命令到 API 的映射
-const COMMAND_MAPPING: Record<string, { url: string; method: 'GET' | 'POST' | 'DELETE' }> = {
+const COMMAND_MAPPING: Record<string, { url: string; method: 'GET' | 'POST' | 'DELETE' | 'PATCH' }> = {
   // Accounts
   'list_accounts': { url: '/api/accounts', method: 'GET' },
   'get_current_account': { url: '/api/accounts/current', method: 'GET' },
@@ -136,6 +136,13 @@ const COMMAND_MAPPING: Record<string, { url: string; method: 'GET' | 'POST' | 'D
   'check_ip_in_whitelist': { url: '/api/security/whitelist/check', method: 'GET' },
   'get_security_config': { url: '/api/security/config', method: 'GET' },
   'update_security_config': { url: '/api/security/config', method: 'POST' },
+  // User Tokens
+  'list_user_tokens': { url: '/api/user-tokens', method: 'GET' },
+  'get_user_token_summary': { url: '/api/user-tokens/summary', method: 'GET' },
+  'create_user_token': { url: '/api/user-tokens', method: 'POST' },
+  'renew_user_token': { url: '/api/user-tokens/:id/renew', method: 'POST' },
+  'delete_user_token': { url: '/api/user-tokens/:id', method: 'DELETE' },
+  'update_user_token': { url: '/api/user-tokens/:id', method: 'PATCH' },
 };
 
 export async function request<T>(cmd: string, args?: any): Promise<T> {

@@ -23,6 +23,17 @@ const ACCOUNTS_DIR: &str = "accounts";
 // ... existing functions get_data_dir, get_accounts_dir, load_account_index, save_account_index ...
 /// Get data directory path
 pub fn get_data_dir() -> Result<PathBuf, String> {
+    // [NEW] 支持通过环境变量自定义数据目录
+    if let Ok(env_path) = std::env::var("ABV_DATA_DIR") {
+        if !env_path.trim().is_empty() {
+            let data_dir = PathBuf::from(env_path);
+            if !data_dir.exists() {
+                fs::create_dir_all(&data_dir).map_err(|e| format!("failed_to_create_custom_data_dir: {}", e))?;
+            }
+            return Ok(data_dir);
+        }
+    }
+
     let home = dirs::home_dir().ok_or("failed_to_get_home_dir")?;
     let data_dir = home.join(DATA_DIR);
 

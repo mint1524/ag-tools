@@ -615,6 +615,11 @@ impl AxumServer {
             .route("/security/whitelist/clear", post(admin_clear_ip_whitelist))
             .route("/security/whitelist/check", get(admin_check_ip_in_whitelist))
             .route("/security/config", get(admin_get_security_config).post(admin_update_security_config))
+            // User Tokens
+            .route("/user-tokens", get(admin_list_user_tokens).post(admin_create_user_token))
+            .route("/user-tokens/summary", get(admin_get_user_token_summary))
+            .route("/user-tokens/:id/renew", post(admin_renew_user_token))
+            .route("/user-tokens/:id", delete(admin_delete_user_token).patch(admin_update_user_token))
             // OAuth (Web) - Admin 接口
             .route("/auth/url", get(admin_prepare_oauth_url_web))
             // 应用管理特定鉴权层 (强制校验)
@@ -1595,6 +1600,84 @@ async fn admin_get_data_dir_path() -> impl IntoResponse {
         Ok(p) => Json(p.to_string_lossy().to_string()),
         Err(e) => Json(format!("Error: {}", e)),
     }
+}
+
+// --- User Token Handlers ---
+
+async fn admin_list_user_tokens() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let tokens = crate::commands::user_token::list_user_tokens().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error: e }),
+        )
+    })?;
+    Ok(Json(tokens))
+}
+
+async fn admin_get_user_token_summary() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let summary = crate::commands::user_token::get_user_token_summary().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error: e }),
+        )
+    })?;
+    Ok(Json(summary))
+}
+
+async fn admin_create_user_token(
+    Json(payload): Json<crate::commands::user_token::CreateTokenRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let token = crate::commands::user_token::create_user_token(payload).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error: e }),
+        )
+    })?;
+    Ok(Json(token))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RenewTokenRequest {
+    expires_type: String,
+}
+
+async fn admin_renew_user_token(
+    Path(id): Path<String>,
+    Json(payload): Json<RenewTokenRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    crate::commands::user_token::renew_user_token(id, payload.expires_type).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error: e }),
+        )
+    })?;
+    Ok(StatusCode::OK)
+}
+
+async fn admin_delete_user_token(
+    Path(id): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    crate::commands::user_token::delete_user_token(id).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error: e }),
+        )
+    })?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn admin_update_user_token(
+    Path(id): Path<String>,
+    Json(payload): Json<crate::commands::user_token::UpdateTokenRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    crate::commands::user_token::update_user_token(id, payload).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error: e }),
+        )
+    })?;
+    Ok(StatusCode::OK)
 }
 
 async fn admin_should_check_updates() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)>
