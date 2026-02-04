@@ -252,6 +252,10 @@ print(response.choices[0].message.content)
             -   **Proxy Support**: The update checker now fully respects the global upstream proxy configuration.
             -   **Multi-layer Fallback**: Implemented a 3-layer fallback strategy: `GitHub API -> GitHub Raw -> jsDelivr`, significantly improving update detection reliability.
             -   **Observability**: The update notification now displays the source of the detection.
+        -   **[Core Optimization] Antigravity Database Compatibility Improvement (>= 1.16.5)**:
+            -   **Smart Version Detection**: Added a cross-platform version detection module (macOS/Windows/Linux) to automatically identify the Antigravity client version.
+            -   **Format Adaptation**: Supported the new `antigravityUnifiedStateSync.oauthToken` format for v1.16.5+ while maintaining backward compatibility for legacy formats.
+            -   **Smart Injection**: Implemented a version-aware injection strategy with a dual-format fallback mechanism to ensure seamless account switching.
     *   **v4.1.0 (2026-02-04)**:
         -   **[Major Update] Proxy Pool 2.0 & Stability Enhancements**:
             -   **Account-level Exclusive IP Isolation**: Implemented strong binding between accounts and proxies. Bound proxies are automatically isolated from the public pool.
