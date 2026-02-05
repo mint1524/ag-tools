@@ -47,8 +47,7 @@
       "endpoints": [
         "https://github.com/lbjlaq/Antigravity-Manager/releases/latest/download/updater.json"
       ],
-      "dialog": true,
-      "pubkey": "RWSQvAJOE+udAGSUoZB7Y7EhAGOyZkB1zHaKwRYfldgig5rIF+PVUDbo"
+      "dialog": true
     },
     "process": null,
     "fs": null,
