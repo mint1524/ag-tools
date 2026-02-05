@@ -87,26 +87,25 @@ jobs:
           echo "Detected architecture: $ARCH"
 
           # 2. 调试：列出产物目录
-          echo "Debug: Searching for bundles in src-tauri/target..."
-          
-          # 3. 寻找安装包 (Tauri v2: macOS 使用 .app.tar.gz, Windows 使用 .zip 或 .msi)
-          # 改进搜索逻辑：先列出所有潜在候选，再按特定规则筛选
-          ALL_CANDIDATES=$(find src-tauri/target -type f \( -name "*.app.tar.gz" -o -name "*.zip" -o -name "*.msi" -o -name "*.tar.gz" \))
-          echo "All potential candidates found:"
+          echo "Debug: Searching for bundles in whole repository..."
+          # 3. 寻找安装包 (Tauri v2)
+          # 激进搜索策略：从根目录搜索所有常见的包格式，确保在任何 target 结构下都能找到
+          ALL_CANDIDATES=$(find . -type f \( -name "*.app.tar.gz" -o -name "*.zip" -o -name "*.msi" -o -name "*.tar.gz" -o -name "*.dmg" -o -name "*.deb" -o -name "*.AppImage" \) -not -path "*/node_modules/*")
+          echo "All potential candidates found across repository:"
           echo "$ALL_CANDIDATES"
           
-          # 优先匹配特定的更新包格式
+          # 优先匹配特定的更新包格式 (Updater 专用)
           BUNDLE_PATH=$(echo "$ALL_CANDIDATES" | grep -iE "\.app\.tar\.gz$|\.zip$|\.msi$" | head -n 1)
           
           if [ -z "$BUNDLE_PATH" ]; then
-             # 如果还没找到，尝试任何 tar.gz
-             BUNDLE_PATH=$(echo "$ALL_CANDIDATES" | grep -iE "\.tar\.gz$" | head -n 1)
+             # 如果还没找到，尝试任何安装包作为保底
+             BUNDLE_PATH=$(echo "$ALL_CANDIDATES" | grep -iE "\.dmg$|\.deb$|\.AppImage$|\.tar\.gz$" | head -n 1)
           fi
           
           if [ -z "$BUNDLE_PATH" ]; then
              echo "Error: Could not find any suitable bundle file for updater."
-             echo "Full directory tree for diagnostic:"
-             find src-tauri/target -maxdepth 10 -not -path '*/.*' || true
+             echo "Listing src-tauri/target recursively for diagnostic:"
+             ls -R src-tauri/target || true
              exit 1
           fi
           
