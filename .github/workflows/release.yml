@@ -90,22 +90,27 @@ jobs:
           echo "Debug: Searching for bundles in src-tauri/target..."
           
           # 3. 寻找安装包 (Tauri v2: macOS 使用 .app.tar.gz, Windows 使用 .zip 或 .msi)
-          # 优先匹配 .app.tar.gz (macOS 更新专用) 或 .zip (Windows 更新常用)
-          BUNDLE_PATH=$(find src-tauri/target -type f \( -name "*.app.tar.gz" -o -name "*.zip" \) | grep -i "release" | head -n 1)
+          # 改进搜索逻辑：先列出所有潜在候选，再按特定规则筛选
+          ALL_CANDIDATES=$(find src-tauri/target -type f \( -name "*.app.tar.gz" -o -name "*.zip" -o -name "*.msi" -o -name "*.tar.gz" \))
+          echo "All potential candidates found:"
+          echo "$ALL_CANDIDATES"
           
-          # 如果没找到，退而求其次找 .tar.gz 或 .msi
+          # 优先匹配特定的更新包格式
+          BUNDLE_PATH=$(echo "$ALL_CANDIDATES" | grep -iE "\.app\.tar\.gz$|\.zip$|\.msi$" | head -n 1)
+          
           if [ -z "$BUNDLE_PATH" ]; then
-             BUNDLE_PATH=$(find src-tauri/target -type f \( -name "*.tar.gz" -o -name "*.msi" \) | grep -i "release" | head -n 1)
+             # 如果还没找到，尝试任何 tar.gz
+             BUNDLE_PATH=$(echo "$ALL_CANDIDATES" | grep -iE "\.tar\.gz$" | head -n 1)
           fi
           
           if [ -z "$BUNDLE_PATH" ]; then
              echo "Error: Could not find any suitable bundle file for updater."
-             echo "Listing release files for diagnostic:"
-             find src-tauri/target -maxdepth 10 -not -path '*/.*' | grep -i "release" | grep -E "\.(tar\.gz|zip|msi|sig)$" || true
+             echo "Full directory tree for diagnostic:"
+             find src-tauri/target -maxdepth 10 -not -path '*/.*' || true
              exit 1
           fi
           
-          echo "Found bundle: $BUNDLE_PATH"
+          echo "Selected bundle: $BUNDLE_PATH"
           SIG_PATH="$BUNDLE_PATH.sig"
           
           # 4. 检查签名并生成 JSON
