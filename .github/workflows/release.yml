@@ -61,6 +61,7 @@ jobs:
       # 1. 上传 updater.json 到 Artifacts (供后续合并使用)
       - name: Upload updater json
         uses: actions/upload-artifact@v4
+        if: matrix.platform == 'macos-latest' || matrix.platform == 'windows-latest'
         with:
           name: updater-json-${{ matrix.platform }}-${{ strategy.job-index }}
           path: src-tauri/target/**/release/bundle/**/*.json
