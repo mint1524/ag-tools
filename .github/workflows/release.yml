@@ -80,19 +80,19 @@ jobs:
           fi
           echo "Detected architecture: $ARCH"
 
-          # 2. 调试：列出可能的 bundle 目录
-          echo "Debug: Searching for bundle files in src-tauri/target..."
-          # 列出所有包含 bundle 的目录层级，方便排查
-          find src-tauri/target -type d -name "bundle"
+          # 2. 深入调试：列出产物目录下的所有文件
+          echo "Debug: Listing all files in src-tauri/target to locate bundles..."
+          # 这里不加任何过滤，直接看看到底生成了什么
+          find src-tauri/target -path "*/release/bundle/*" -maxdepth 10 || true
           
           # 3. 寻找安装包 (Tauri v2: macOS 使用 .tar.gz, Windows 使用 .zip 或 .msi)
-          # 我们尝试匹配任何在 release/bundle 目录下的 tar.gz, zip, 或 msi 文件
-          BUNDLE_PATH=$(find src-tauri/target -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.msi" \) | grep "release/bundle" | head -n 1)
+          # 使用 -path 替代 grep 避免 pipefail 报错
+          BUNDLE_PATH=$(find src-tauri/target -path "*/release/bundle/*" -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.msi" \) | head -n 1)
           
           if [ -z "$BUNDLE_PATH" ]; then
              echo "Error: Could not find any bundle file (.tar.gz, .zip, .msi) in release/bundle directory."
-             echo "Directory structure of src-tauri/target:"
-             ls -R src-tauri/target | grep "bundle" -A 5 || true
+             echo "Current directory structure for debugging:"
+             ls -R src-tauri/target/ | grep -i "bundle" -A 10 || echo "No bundle directory found by ls"
              exit 1
           fi
           
@@ -123,7 +123,7 @@ jobs:
             cat updater_fragments/fragment.json
           else
             echo "Error: Signature file not found at $SIG_PATH"
-            # 如果没找到 .sig，列出当前目录下的所有文件帮助调试
+            # 列出该产物所在目录的所有文件，确认 .sig 是否真的存在
             ls -la "$(dirname "$BUNDLE_PATH")"
             exit 1
           fi
