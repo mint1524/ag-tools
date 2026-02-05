@@ -249,7 +249,7 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
-    *   **v4.1.2 (2026-02-04)**:
+    *   **v4.1.2 (2026-02-05)**:
         -   **[Core Feature] ClientAdapter Framework (Issue #1522)**:
             -   **Architecture Refactor**: Introduced `ClientAdapter` framework with `Arc` reference counting to fully decouple handler logic from downstream client specifics, ensuring thread-safe sharing.
             -   **Full Protocol Compatibility**: Achieved seamless integration for **4 protocols** (Claude/OpenAI/Gemini/OA-Compatible) specifically for third-party clients like `opencode`, eliminating `AI_TypeValidationError`.
