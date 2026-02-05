@@ -58,15 +58,71 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri build -- ${{ matrix.args }}
 
-      # 1. 上传 updater.json 到 Artifacts (供后续合并使用)
+      # 1. 生成 updater.json 碎片 (Tauri v2 默认不产出包含下载链接的 JSON)
+      - name: Generate updater fragment
+        if: matrix.platform == 'macos-latest' || matrix.platform == 'windows-latest'
+        shell: bash
+        run: |
+          VERSION="${{ github.ref_name }}"
+          # 去掉版本号前的 v (如果存在)
+          VERSION_CLEAN=$(echo $VERSION | sed 's/^v//')
+          
+          # 根据平台和参数确定架构标识 (Tauri v2 格式)
+          if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
+            if [[ "${{ matrix.args }}" == *"--target aarch64-apple-darwin"* ]]; then
+              ARCH="darwin-aarch64"
+            elif [[ "${{ matrix.args }}" == *"--target x86_64-apple-darwin"* ]]; then
+              ARCH="darwin-x86_64"
+            else
+              ARCH="darwin-universal"
+            fi
+          else
+            ARCH="windows-x86_64"
+          fi
+
+          echo "Detected architecture: $ARCH"
+          
+          # 定位产物路径 (Tauri v2 路径结构)
+          # 寻找 .tar.gz 或 .msi.zip 及其签名
+          BUNDLE_PATH=$(find src-tauri/target -name "*.tar.gz" -o -name "*.msi.zip" | grep "release/bundle" | head -n 1)
+          SIG_PATH="$BUNDLE_PATH.sig"
+          
+          if [ -f "$SIG_PATH" ]; then
+            SIGNATURE=$(cat "$SIG_PATH")
+            FILENAME=$(basename "$BUNDLE_PATH")
+            # 构造 GitHub 下载镜像链接
+            DOWNLOAD_URL="https://github.com/lbjlaq/Antigravity-Manager/releases/download/$VERSION/$FILENAME"
+            
+            # 手动生成碎片 JSON
+            # 注意：这里构造的是局部结构，方便后续汇总
+            mkdir -p updater_fragments
+            cat <<EOF > updater_fragments/fragment.json
+            {
+              "version": "$VERSION_CLEAN",
+              "notes": "Update to $VERSION",
+              "pub_date": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+              "platforms": {
+                "$ARCH": {
+                  "signature": "$SIGNATURE",
+                  "url": "$DOWNLOAD_URL"
+                }
+              }
+            }
+          EOF
+            echo "Successfully generated fragment for $ARCH"
+            cat updater_fragments/fragment.json
+          else
+            echo "Error: Signature file not found at $SIG_PATH"
+            exit 1
+          fi
+
+      # 2. 上传 updater.json 碎片到 Artifacts
       - name: Upload updater json
         uses: actions/upload-artifact@v4
         if: matrix.platform == 'macos-latest' || matrix.platform == 'windows-latest'
         with:
           name: updater-json-${{ matrix.platform }}-${{ strategy.job-index }}
-          path: |
-            src-tauri/target/**/release/bundle/**/*.json
-            src-tauri/target/release/bundle/**/*.json
+          path: updater_fragments/*.json
           if-no-files-found: ignore
 
       # 2. 直接上传安装包到 GitHub Release (避免 artifact 下载超时)
