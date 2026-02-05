@@ -66,8 +66,8 @@ impl UpstreamClient {
         builder.build()
     }
     
-    /// Build a client with a specific ProxyConfig (from ProxyPool)
-    fn build_client_with_proxy(&self, proxy_config: crate::proxy::proxy_pool::ProxyConfig) -> Result<Client, reqwest::Error> {
+    /// Build a client with a specific PoolProxyConfig (from ProxyPool)
+    fn build_client_with_proxy(&self, proxy_config: crate::proxy::proxy_pool::PoolProxyConfig) -> Result<Client, reqwest::Error> {
         // Reuse base settings similar to default client but with specific proxy
         Client::builder()
             .connect_timeout(Duration::from_secs(20))

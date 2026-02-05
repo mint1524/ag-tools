@@ -330,9 +330,10 @@ pub async fn warmup_model_directly(
 /// Smart warmup for all accounts
 pub async fn warm_up_all_accounts() -> Result<String, String> {
     let mut retry_count = 0;
-    
+
     loop {
         let all_accounts = crate::modules::account::list_accounts().unwrap_or_default();
+        // [FIX] 过滤掉禁用反代的账号
         let target_accounts: Vec<_> = all_accounts
             .into_iter()
             .filter(|a| !a.disabled && !a.proxy_disabled)

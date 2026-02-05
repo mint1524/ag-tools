@@ -143,6 +143,13 @@ const COMMAND_MAPPING: Record<string, { url: string; method: 'GET' | 'POST' | 'D
   'renew_user_token': { url: '/api/user-tokens/:id/renew', method: 'POST' },
   'delete_user_token': { url: '/api/user-tokens/:id', method: 'DELETE' },
   'update_user_token': { url: '/api/user-tokens/:id', method: 'PATCH' },
+
+  // Proxy Pool (Web Mode Fix)
+  'get_proxy_pool_config': { url: '/api/proxy/pool/config', method: 'GET' },
+  'get_all_account_bindings': { url: '/api/proxy/pool/bindings', method: 'GET' },
+  'bind_account_proxy': { url: '/api/proxy/pool/bind', method: 'POST' },
+  'unbind_account_proxy': { url: '/api/proxy/pool/unbind', method: 'POST' },
+  'get_account_proxy_binding': { url: '/api/proxy/pool/binding/:accountId', method: 'GET' },
 };
 
 export async function request<T>(cmd: string, args?: any): Promise<T> {

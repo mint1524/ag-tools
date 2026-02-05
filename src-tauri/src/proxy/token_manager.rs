@@ -175,6 +175,7 @@ impl TokenManager {
                 Ok(())
             }
             Ok(None) => {
+<<<<<<< HEAD
                 // load_single_account returning None means the account should be skipped in its
                 // current state (disabled / proxy_disabled / quota_protection / validation_blocked...).
                 // Purge any existing in-memory cache to avoid selecting a disabled account.
@@ -187,6 +188,14 @@ impl TokenManager {
                     }
                 }
                 Ok(())
+=======
+                // [FIX] 账号被禁用或不可用时，从 token 池中移除
+                if self.tokens.remove(account_id).is_some() {
+                    tracing::info!("[TokenManager] Removed disabled account from pool: {}", account_id);
+                    self.clear_rate_limit(account_id);
+                }
+                Ok(()) // 返回 Ok 表示操作成功（账号已被正确处理）
+>>>>>>> pr-1565
             }
             Err(e) => Err(format!("同步账号失败: {}", e)),
         }
