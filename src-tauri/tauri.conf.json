@@ -43,7 +43,7 @@
   },
   "plugins": {
     "updater": {
-      "active": true,
+      "active": false,
       "endpoints": [
         "https://github.com/lbjlaq/Antigravity-Manager/releases/latest/download/updater.json"
       ],
