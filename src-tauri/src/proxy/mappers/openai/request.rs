@@ -634,7 +634,8 @@ pub fn transform_openai_request(
             obj.remove("systemInstruction");
             let gen_config = obj.entry("generationConfig").or_insert_with(|| json!({}));
             if let Some(gen_obj) = gen_config.as_object_mut() {
-                gen_obj.remove("thinkingConfig");
+                // [REMOVED] thinkingConfig 拦截已删除，允许图像生成时输出思维链
+                // gen_obj.remove("thinkingConfig");
                 gen_obj.remove("responseMimeType");
                 gen_obj.remove("responseModalities");
                 gen_obj.insert("imageConfig".to_string(), image_config);

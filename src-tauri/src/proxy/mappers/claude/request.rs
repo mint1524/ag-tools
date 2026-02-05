@@ -597,10 +597,11 @@ pub fn transform_claude_request_in(
             // 2. Remove systemInstruction (image generation does not support system prompts)
             obj.remove("systemInstruction");
 
-            // 3. Clean generationConfig (remove thinkingConfig, responseMimeType, responseModalities etc.)
+            // 3. Clean generationConfig (remove responseMimeType, responseModalities etc.)
             let gen_config = obj.entry("generationConfig").or_insert_with(|| json!({}));
             if let Some(gen_obj) = gen_config.as_object_mut() {
-                gen_obj.remove("thinkingConfig");
+                // [REMOVED] thinkingConfig 拦截已删除，允许图像生成时输出思维链
+                // gen_obj.remove("thinkingConfig");
                 gen_obj.remove("responseMimeType");
                 gen_obj.remove("responseModalities");
                 gen_obj.insert("imageConfig".to_string(), image_config);
