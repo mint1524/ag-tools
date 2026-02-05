@@ -153,6 +153,7 @@ pub async fn handle_chat_completions(
             &tools_val,
             None, // size (not used in handler, transform_openai_request handles it)
             None, // quality
+            None, // OpenAI handler uses transform_openai_request for image gen
         );
 
         // 3. 提取 SessionId (粘性指纹)
@@ -1049,6 +1050,7 @@ pub async fn handle_completions(
             &tools_val,
             None, // size
             None, // quality
+            None, // OpenAI handler uses transform_openai_request for image gen
         );
 
         // 3. 提取 SessionId (复用)

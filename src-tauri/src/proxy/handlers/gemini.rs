@@ -96,7 +96,8 @@ pub async fn handle_generate(
             &mapped_model,
             &tools_val,
             None,  // size (not applicable for Gemini native protocol)
-            None   // quality
+            None,  // quality
+            Some(&body),  // [NEW] Pass request body for imageConfig parsing
         );
 
         // 4. 获取 Token (使用准确的 request_type)

@@ -24,7 +24,8 @@ pub fn transform_openai_request(
         &mapped_model_lower,
         &tools_val,
         request.size.as_deref(),    // [NEW] Pass size parameter
-        request.quality.as_deref()  // [NEW] Pass quality parameter
+        request.quality.as_deref(), // [NEW] Pass quality parameter
+        None,  // OpenAI uses size/quality params, not body.imageConfig
     );
 
     // [FIX] 仅当模型名称显式包含 "-thinking" 时才视为 Gemini 思维模型

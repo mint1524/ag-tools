@@ -22,10 +22,33 @@ pub fn resolve_request_config(
     tools: &Option<Vec<Value>>,
     size: Option<&str>,    // [NEW] Image size parameter
     quality: Option<&str>, // [NEW] Image quality parameter
+    body: Option<&Value>,  // [NEW] Request body for Gemini native imageConfig
 ) -> RequestConfig {
     // 1. Image Generation Check (Priority)
     if mapped_model.starts_with("gemini-3-pro-image") {
-        // [MODIFIED] Use unified parameter parsing function
+        // [NEW] Priority 1: Parse imageConfig from Gemini request body (generationConfig.imageConfig)
+        if let Some(body_val) = body {
+            if let Some(gen_config) = body_val.get("generationConfig") {
+                if let Some(image_config) = gen_config.get("imageConfig") {
+                    tracing::info!(
+                        "[Common-Utils] Parsed imageConfig from Gemini request body: {:?}",
+                        image_config
+                    );
+                    
+                    // Extract base model without suffix (always gemini-3-pro-image for image gen)
+                    let parsed_base_model = "gemini-3-pro-image".to_string();
+                    
+                    return RequestConfig {
+                        request_type: "image_gen".to_string(),
+                        inject_google_search: false,
+                        final_model: parsed_base_model,
+                        image_config: Some(image_config.clone()),
+                    };
+                }
+            }
+        }
+
+        // [FALLBACK] Priority 2: Parse from model name suffix or OpenAI parameters
         let (image_config, parsed_base_model) =
             parse_image_config_with_params(original_model, size, quality);
 

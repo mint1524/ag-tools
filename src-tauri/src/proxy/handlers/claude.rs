@@ -410,7 +410,8 @@ pub async fn handle_messages(
             &mapped_model,
             &tools_val,
             request.size.as_deref(),      // [NEW] Pass size parameter
-            request.quality.as_deref()    // [NEW] Pass quality parameter
+            request.quality.as_deref(),   // [NEW] Pass quality parameter
+            None,  // Claude handler uses transform_claude_request_in for image gen
         );
 
         // 0. 尝试提取 session_id 用于粘性调度 (Phase 2/3)
