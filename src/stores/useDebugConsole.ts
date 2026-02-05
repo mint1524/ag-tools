@@ -4,7 +4,6 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { isTauri } from '../utils/env';
 import { request } from '../utils/request';
 
-
 export interface LogEntry {
     id: number;
     timestamp: number;

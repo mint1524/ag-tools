@@ -249,7 +249,7 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
-    *   **v4.1.6 (2026-02-06)**:
+    *   **v4.1.5 (2026-02-05)**:
         -   **[Core Fix] Fix Account Addition Failure in Docker Environment (Issue #1583)**:
             -   **Account Context Fix**: Fixed the proxy selection issue caused by `account_id` being `None` when adding new accounts. The system now generates a temporary UUID for new accounts to ensure all OAuth requests have a clear account context.
             -   **Enhanced Logging**: Optimized logging in `refresh_access_token` and `get_effective_client` to provide more detailed proxy selection information, helping diagnose network issues in Docker environments.
@@ -276,7 +276,6 @@ print(response.choices[0].message.content)
                 -   Enabled BuildKit cache to accelerate Cargo builds, improving build speed
                 -   Completed `@lobehub/icons` peer dependencies, fixing build failures caused by missing frontend dependencies
             -   **Impact Scope**: This update significantly improves stability and usability in Docker/Web mode, resolving Security API errors, 403 account rotation failures, Debug Console unavailability, and optimizing the Docker build process.
-    *   **v4.1.5 (2026-02-05)**:
         -   **[Core Fix] Fix Debug Console Crash and Log Sync in Web/Docker Mode (Issue #1574)**:
             -   **Web Compatibility**: Fixed `TypeError` crashes caused by direct calls to native `invoke` APIs in non-Tauri environments. Communication now flows through the compatibility request layer.
             -   **Fingerprint Binding Fix**: Resolved `HTTP Error 422` when generating and binding fingerprints by aligning the parameter structure between frontend and backend (nested `profile` object support).
