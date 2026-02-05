@@ -254,6 +254,28 @@ print(response.choices[0].message.content)
             -   **Account Context Fix**: Fixed the proxy selection issue caused by `account_id` being `None` when adding new accounts. The system now generates a temporary UUID for new accounts to ensure all OAuth requests have a clear account context.
             -   **Enhanced Logging**: Optimized logging in `refresh_access_token` and `get_effective_client` to provide more detailed proxy selection information, helping diagnose network issues in Docker environments.
             -   **Impact Scope**: Resolved the long hang or failure issue when adding accounts via Refresh Token in Docker deployment environments.
+        -   **[Core Fix] Web Mode Compatibility Fixes & 403 Account Rotation Optimization (PR #1585)**:
+            -   **Security API Web Mode Compatibility Fix (Issue: 400/422 Errors)**:
+                -   Added default values for `page` and `page_size` in `IpAccessLogQuery`, resolving 400 Bad Request errors from `/api/security/logs`
+                -   Removed `AddBlacklistWrapper` and `AddWhitelistWrapper` structs, fixing 422 Unprocessable Content errors from `/api/security/blacklist` and `/api/security/whitelist` POST requests
+                -   Fixed frontend component parameter naming: `ipPattern` → `ip_pattern`, ensuring consistency with backend API parameters
+            -   **403 Account Rotation Optimization (Issue: Accounts Not Properly Skipped After 403)**:
+                -   Added `set_forbidden` method in `token_manager.rs` to support marking accounts as disabled
+                -   Account selection now checks `quota.is_forbidden` status, automatically skipping disabled accounts
+                -   Clears sticky session bindings for 403 accounts, ensuring immediate switch to other available accounts
+            -   **Web Mode Request Processing Optimization**:
+                -   Fixed `request.ts` to remove used parameters from body after path parameter replacement, avoiding duplicate parameters
+                -   Added PATCH method body handling, completing HTTP method support
+                -   Automatic unpacking of `request` field, simplifying request structure
+            -   **Debug Console Web Mode Support**:
+                -   Added `isTauri` environment detection in `useDebugConsole.ts`, distinguishing between Tauri and Web environments
+                -   Web mode uses `request()` instead of `invoke()`, ensuring proper calls in Web environment
+                -   Added polling mechanism, automatically refreshing logs every 2 seconds in Web mode
+            -   **Docker Build Optimization**:
+                -   Added `--legacy-peer-deps` flag, resolving frontend dependency conflicts
+                -   Enabled BuildKit cache to accelerate Cargo builds, improving build speed
+                -   Completed `@lobehub/icons` peer dependencies, fixing build failures caused by missing frontend dependencies
+            -   **Impact Scope**: This update significantly improves stability and usability in Docker/Web mode, resolving Security API errors, 403 account rotation failures, Debug Console unavailability, and optimizing the Docker build process.
     *   **v4.1.5 (2026-02-05)**:
         -   **[Core Fix] Fix Debug Console Crash and Log Sync in Web/Docker Mode (Issue #1574)**:
             -   **Web Compatibility**: Fixed `TypeError` crashes caused by direct calls to native `invoke` APIs in non-Tauri environments. Communication now flows through the compatibility request layer.

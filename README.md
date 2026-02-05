@@ -366,6 +366,28 @@ response = client.chat.completions.create(
             -   **账号上下文修复**: 修复了在添加新账号时 `account_id` 为 `None` 导致代理选择异常的问题。现在系统会为新账号生成临时 UUID，确保所有 OAuth 请求都有明确的账号上下文。
             -   **日志增强**: 优化了 `refresh_access_token` 和 `get_effective_client` 的日志记录,提供更详细的代理选择信息,帮助诊断 Docker 环境下的网络问题。
             -   **影响范围**: 修复了 Docker 部署环境下通过 Refresh Token 添加账号时可能出现的长时间挂起或失败问题。
+        -   **[核心修复] Web Mode 兼容性修复 & 403 账号轮换优化 (PR #1585)**:
+            -   **Security API Web Mode 兼容性修复 (Issue: 400/422 错误)**:
+                -   为 `IpAccessLogQuery` 添加 `page` 和 `page_size` 的默认值,解决 `/api/security/logs` 返回 400 Bad Request 的问题
+                -   移除 `AddBlacklistWrapper` 和 `AddWhitelistWrapper` 结构体,解决 `/api/security/blacklist` 和 `/api/security/whitelist` POST 返回 422 Unprocessable Content 的问题
+                -   前端组件参数名修正:`ipPattern` → `ip_pattern`,确保与后端 API 参数一致
+            -   **403 账号轮换优化 (Issue: 403 后未正确跳过账号)**:
+                -   在 `token_manager.rs` 中添加 `set_forbidden` 方法,支持标记账号为禁用状态
+                -   账号选择时检查 `quota.is_forbidden` 状态,自动跳过被禁用的账号
+                -   403 时清除该账号的 sticky session 绑定,确保立即切换到其他可用账号
+            -   **Web Mode 请求处理优化**:
+                -   `request.ts` 修复路径参数替换后从 body 中移除已使用的参数,避免重复传参
+                -   支持 PATCH 方法的 body 处理,补全 HTTP 方法支持
+                -   自动解包 `request` 字段,简化请求结构
+            -   **Debug Console Web Mode 支持**:
+                -   `useDebugConsole.ts` 添加 `isTauri` 环境检测,区分 Tauri 和 Web 环境
+                -   Web 模式下使用 `request()` 替代 `invoke()`,确保 Web 环境下的正常调用
+                -   添加轮询机制,Web 模式下每 2 秒自动刷新日志
+            -   **Docker 构建优化**:
+                -   添加 `--legacy-peer-deps` 标志,解决前端依赖冲突
+                -   启用 BuildKit 缓存加速 Cargo 构建,提升构建速度
+                -   补全 `@lobehub/icons` peer dependencies,修复前端依赖缺失导致的构建失败
+            -   **影响范围**: 此更新显著提升了 Docker/Web 模式下的稳定性和可用性,解决了 Security API 报错、403 账号轮换失效、Debug Console 不可用等问题,同时优化了 Docker 构建流程。
     *   **v4.1.5 (2026-02-05)**:
         -   **[核心修复] 修复 Web/Docker 模式下调试控制台崩溃与日志同步问题 (Issue #1574)**:
             -   **Web 兼容性**: 修复了在非 Tauri 环境下直接调用原生 `invoke` API 导致的 `TypeError` 崩溃。现在通过兼容性请求层进行后端通信。
