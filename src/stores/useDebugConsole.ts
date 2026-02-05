@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { request as invoke } from '../utils/request';
 import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { isTauri } from '../utils/env';
+import { request } from '../utils/request';
+
 
 export interface LogEntry {
     id: number;
@@ -61,7 +63,11 @@ export const useDebugConsole = create<DebugConsoleState>((set, get) => ({
 
     enable: async () => {
         try {
-            await invoke('enable_debug_console');
+            if (isTauri()) {
+                await invoke('enable_debug_console');
+            } else {
+                await request('enable_debug_console');
+            }
             set({ isEnabled: true });
             await get().loadLogs();
             if (isTauri()) {
@@ -94,7 +100,11 @@ export const useDebugConsole = create<DebugConsoleState>((set, get) => ({
 
     disable: async () => {
         try {
-            await invoke('disable_debug_console');
+            if (isTauri()) {
+                await invoke('disable_debug_console');
+            } else {
+                await request('disable_debug_console');
+            }
             if (isTauri()) {
                 get().stopListening();
             } else {
@@ -108,7 +118,12 @@ export const useDebugConsole = create<DebugConsoleState>((set, get) => ({
 
     loadLogs: async () => {
         try {
-            const logs = await invoke<LogEntry[]>('get_debug_console_logs');
+            let logs: LogEntry[];
+            if (isTauri()) {
+                logs = await invoke<LogEntry[]>('get_debug_console_logs');
+            } else {
+                logs = await request<LogEntry[]>('get_debug_console_logs');
+            }
             set({ logs });
         } catch (error) {
             console.error('Failed to load logs:', error);
@@ -119,7 +134,11 @@ export const useDebugConsole = create<DebugConsoleState>((set, get) => ({
         console.log('[DebugConsole] Clearing logs...');
         set({ logs: [] }); // Clear immediately in frontend
         try {
-            await invoke('clear_debug_console_logs');
+            if (isTauri()) {
+                await invoke('clear_debug_console_logs');
+            } else {
+                await request('clear_debug_console_logs');
+            }
             console.log('[DebugConsole] Backend log buffer cleared');
         } catch (error) {
             console.error('[DebugConsole] Failed to clear background logs:', error);
@@ -142,6 +161,9 @@ export const useDebugConsole = create<DebugConsoleState>((set, get) => ({
     setAutoScroll: (enabled: boolean) => set({ autoScroll: enabled }),
 
     startListening: async () => {
+        // Web 模式下不支持 Tauri 事件监听，跳过
+        if (!isTauri()) return;
+
         const { unlistenFn } = get();
         if (unlistenFn) return; // Already listening
 
@@ -165,7 +187,12 @@ export const useDebugConsole = create<DebugConsoleState>((set, get) => ({
 
     checkEnabled: async () => {
         try {
-            const isEnabled = await invoke<boolean>('is_debug_console_enabled');
+            let isEnabled: boolean;
+            if (isTauri()) {
+                isEnabled = await invoke<boolean>('is_debug_console_enabled');
+            } else {
+                isEnabled = await request<boolean>('is_debug_console_enabled');
+            }
             set({ isEnabled });
             if (isEnabled) {
                 await get().loadLogs();

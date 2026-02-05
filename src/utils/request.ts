@@ -173,12 +173,19 @@ export async function request<T>(cmd: string, args?: any): Promise<T> {
   }
 
   let url = mapping.url;
+  // [FIX] 创建 args 副本，用于移除已使用的路径参数
+  let bodyArgs = args ? { ...args } : undefined;
+
   // 通用路径参数处理：替换 :key 为 args[key]
   if (args) {
     Object.keys(args).forEach(key => {
       const placeholder = `:${key}`;
       if (url.includes(placeholder)) {
         url = url.replace(placeholder, encodeURIComponent(String(args[key])));
+        // [FIX] 从 body 参数中移除已用于路径的参数
+        if (bodyArgs) {
+          delete bodyArgs[key];
+        }
       }
     });
   }
@@ -199,14 +206,18 @@ export async function request<T>(cmd: string, args?: any): Promise<T> {
   if ((mapping.method === 'GET' || mapping.method === 'DELETE') && args) {
     const params = new URLSearchParams();
     Object.entries(args).forEach(([key, value]) => {
+      // [FIX] 跳过已用于路径替换的参数
+      if (url.includes(encodeURIComponent(String(value)))) return;
       if (value !== undefined && value !== null) {
         params.append(key, String(value));
       }
     });
     const qs = params.toString();
     if (qs) url += `?${qs}`;
-  } else if (mapping.method === 'POST' && args) {
-    options.body = JSON.stringify(args);
+  } else if ((mapping.method === 'POST' || mapping.method === 'PATCH') && bodyArgs) {
+    // [FIX] 如果有 request 包装，提取其内容作为 body
+    const body = bodyArgs.request !== undefined ? bodyArgs.request : bodyArgs;
+    options.body = JSON.stringify(body);
   }
 
   try {
