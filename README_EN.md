@@ -261,6 +261,12 @@ print(response.choices[0].message.content)
             -   **Backward Compatibility**: Used `serde alias` feature to support both camelCase (frontend) and snake_case (backend files) at the API layer, ensuring old account files load correctly.
         -   **[Code Optimization] Simplified API Handling Structure**:
             -   Removed redundant `Wrapper` layers in multiple management API routes (e.g., IP blacklist/whitelist management, security setting updates), directly destructuring business models to improve code conciseness and development efficiency.
+    *   **v4.1.4 (2026-02-05)**:
+        - **Bug Fixes**:
+            - **Gemini Native Protocol Image Generation Parameter Support (Issue #1573)**: Fixed the issue where `generationConfig.imageConfig` parameters were ignored when using the Gemini native protocol. The system now correctly parses and applies image configuration parameters such as `aspectRatio` and `imageSize`.
+                - **Priority Strategy**: Prioritizes parsing parameters from the request body's `generationConfig.imageConfig`, while retaining model name suffix as a backward-compatible fallback.
+                - **Protocol Consistency**: Ensures unified parameter handling logic for image generation across Gemini, OpenAI, and Claude protocols.
+                - **Impact Scope**: Fixed the call chain across 9 files, including core modules like `common_utils.rs`, `gemini.rs`, and `wrapper.rs`.
     *   **v4.1.3 (2026-02-05)**:
         -   **[Core Fix] Resolve Security Config and IP Management Failures in Web/Docker Mode (Issue #1560)**:
             -   **Protocol Alignment**: Fixed the issue where the backend Axum interface could not parse nested parameter formats (e.g., `{"config": ...}`) wrapped by the frontend `invoke` method, ensuring security configurations are correctly persisted.
