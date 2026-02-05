@@ -1,6 +1,6 @@
 # Antigravity Tools 🚀
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.1.4)
+> Professional AI Account Management & Protocol Proxy System (v4.1.5)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -10,7 +10,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.4-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.5-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -249,6 +249,10 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.1.5 (2026-02-05)**:
+        -   **[Core Fix] Fix Debug Console Crash and Log Sync in Web/Docker Mode (Issue #1574)**:
+            -   **Web Compatibility**: Fixed `TypeError` crashes caused by direct calls to native `invoke` APIs in non-Tauri environments. Communication now flows through the compatibility request layer.
+            -   **Log Polling Mechanism**: Introduced automatic log polling (every 2 seconds) for Web mode, overcoming the limitation where browser clients cannot receive Rust event pushes, ensuring logs are correctly displayed.
     *   **v4.1.4 (2026-02-05)**:
         -   **[Core Feature] Proxy Pool Persistence & Account Filtering Optimization (PR #1565)**:
             -   **Persistence Enhancement**: Fixed an issue where proxy pool bindings were not correctly restored after proxy service restart or reload, ensuring strict persistence of binding relationships.
