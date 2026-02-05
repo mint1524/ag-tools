@@ -72,27 +72,36 @@ jobs:
               ARCH="darwin-aarch64"
             elif [[ "${{ matrix.args }}" == *"--target x86_64-apple-darwin"* ]]; then
               ARCH="darwin-x86_64"
-            else
+            elif [[ "${{ matrix.args }}" == *"--target universal-apple-darwin"* ]]; then
               ARCH="darwin-universal"
+            else
+              # 自动检测构建出的目录名
+              ARCH_DIR=$(ls src-tauri/target/ | grep -E "aarch64|x86_64|universal" | head -n 1)
+              if [[ "$ARCH_DIR" == *"aarch64"* ]]; then ARCH="darwin-aarch64";
+              elif [[ "$ARCH_DIR" == *"x86_64"* ]]; then ARCH="darwin-x86_64";
+              else ARCH="darwin-universal"; fi
             fi
           else
             ARCH="windows-x86_64"
           fi
           echo "Detected architecture: $ARCH"
 
-          # 2. 深入调试：列出产物目录下的所有文件
-          echo "Debug: Listing all files in src-tauri/target to locate bundles..."
-          # 这里不加任何过滤，直接看看到底生成了什么
-          find src-tauri/target -path "*/release/bundle/*" -maxdepth 10 || true
+          # 2. 调试：列出产物目录
+          echo "Debug: Searching for bundles in src-tauri/target..."
           
-          # 3. 寻找安装包 (Tauri v2: macOS 使用 .tar.gz, Windows 使用 .zip 或 .msi)
-          # 使用 -path 替代 grep 避免 pipefail 报错
-          BUNDLE_PATH=$(find src-tauri/target -path "*/release/bundle/*" -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.msi" \) | head -n 1)
+          # 3. 寻找安装包 (Tauri v2: macOS 使用 .app.tar.gz, Windows 使用 .zip 或 .msi)
+          # 优先匹配 .app.tar.gz (macOS 更新专用) 或 .zip (Windows 更新常用)
+          BUNDLE_PATH=$(find src-tauri/target -type f \( -name "*.app.tar.gz" -o -name "*.zip" \) | grep -i "release" | head -n 1)
+          
+          # 如果没找到，退而求其次找 .tar.gz 或 .msi
+          if [ -z "$BUNDLE_PATH" ]; then
+             BUNDLE_PATH=$(find src-tauri/target -type f \( -name "*.tar.gz" -o -name "*.msi" \) | grep -i "release" | head -n 1)
+          fi
           
           if [ -z "$BUNDLE_PATH" ]; then
-             echo "Error: Could not find any bundle file (.tar.gz, .zip, .msi) in release/bundle directory."
-             echo "Current directory structure for debugging:"
-             ls -R src-tauri/target/ | grep -i "bundle" -A 10 || echo "No bundle directory found by ls"
+             echo "Error: Could not find any suitable bundle file for updater."
+             echo "Listing release files for diagnostic:"
+             find src-tauri/target -maxdepth 10 -not -path '*/.*' | grep -i "release" | grep -E "\.(tar\.gz|zip|msi|sig)$" || true
              exit 1
           fi
           
@@ -123,7 +132,7 @@ jobs:
             cat updater_fragments/fragment.json
           else
             echo "Error: Signature file not found at $SIG_PATH"
-            # 列出该产物所在目录的所有文件，确认 .sig 是否真的存在
+            # 列出相关目录文件辅助诊断
             ls -la "$(dirname "$BUNDLE_PATH")"
             exit 1
           fi

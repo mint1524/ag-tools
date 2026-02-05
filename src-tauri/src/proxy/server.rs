@@ -600,7 +600,6 @@ impl AxumServer {
             .route("/accounts/warmup", post(admin_warm_up_all_accounts))
             .route("/accounts/:accountId/warmup", post(admin_warm_up_account))
             .route("/system/data-dir", get(admin_get_data_dir_path))
-            .route("/system/save-file", post(admin_save_text_file))
             .route("/system/updates/settings", get(admin_get_update_settings))
             .route(
                 "/system/updates/check-status",
@@ -2298,35 +2297,6 @@ async fn admin_warm_up_account(
     Ok(Json(result))
 }
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SaveFileRequest {
-    path: String,
-    content: String,
-}
-
-async fn admin_save_text_file(
-    Json(payload): Json<SaveFileRequest>,
-) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    let res =
-        tokio::task::spawn_blocking(move || std::fs::write(&payload.path, &payload.content)).await;
-
-    match res {
-        Ok(Ok(_)) => Ok(StatusCode::OK),
-        Ok(Err(e)) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: e.to_string(),
-            }),
-        )),
-        Err(e) => Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(ErrorResponse {
-                error: e.to_string(),
-            }),
-        )),
-    }
-}
 
 async fn admin_save_http_api_settings(
     Json(payload): Json<crate::modules::http_api::HttpApiSettings>,
@@ -2677,6 +2647,16 @@ async fn admin_import_custom_db(
     State(state): State<AppState>,
     Json(payload): Json<CustomDbRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    // [SECURITY] 禁止目录遍历
+    if payload.path.contains("..") {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: "非法路径: 不允许目录遍历".to_string(),
+            }),
+        ));
+    }
+
     let account = migration::import_from_custom_db_path(payload.path)
         .await
         .map_err(|e| {

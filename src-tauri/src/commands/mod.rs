@@ -547,15 +547,45 @@ pub async fn sync_account_from_db(
     Ok(Some(account))
 }
 
+fn validate_path(path: &str) -> Result<(), String> {
+    if path.contains("..") {
+        return Err("非法路径: 不允许目录遍历".to_string());
+    }
+
+    // 检查是否指向系统敏感路径 (基础黑名单)
+    let lower_path = path.to_lowercase();
+    let sensitive_prefixes = [
+        "/etc/",
+        "/var/spool/cron",
+        "/root/",
+        "/proc/",
+        "/sys/",
+        "/dev/",
+        "c:\\windows",
+        "c:\\users\\administrator",
+        "c:\\pagefile.sys",
+    ];
+
+    for prefix in sensitive_prefixes {
+        if lower_path.starts_with(prefix) {
+            return Err(format!("安全拒绝: 禁止访问系统敏感路径 ({})", prefix));
+        }
+    }
+
+    Ok(())
+}
+
 /// 保存文本文件 (绕过前端 Scope 限制)
 #[tauri::command]
 pub async fn save_text_file(path: String, content: String) -> Result<(), String> {
+    validate_path(&path)?;
     std::fs::write(&path, content).map_err(|e| format!("写入文件失败: {}", e))
 }
 
 /// 读取文本文件 (绕过前端 Scope 限制)
 #[tauri::command]
 pub async fn read_text_file(path: String) -> Result<String, String> {
+    validate_path(&path)?;
     std::fs::read_to_string(&path).map_err(|e| format!("读取文件失败: {}", e))
 }
 
