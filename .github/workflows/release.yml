@@ -64,8 +64,10 @@ jobs:
         if: matrix.platform == 'macos-latest' || matrix.platform == 'windows-latest'
         with:
           name: updater-json-${{ matrix.platform }}-${{ strategy.job-index }}
-          path: src-tauri/target/**/release/bundle/**/*.json
-          if-no-files-found: warn
+          path: |
+            src-tauri/target/**/release/bundle/**/*.json
+            src-tauri/target/release/bundle/**/*.json
+          if-no-files-found: ignore
 
       # 2. 直接上传安装包到 GitHub Release (避免 artifact 下载超时)
       - name: Upload Release Assets
