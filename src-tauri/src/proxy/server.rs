@@ -3021,12 +3021,17 @@ fn get_oauth_redirect_uri(port: u16, _host: Option<&str>, _proto: Option<&str>) 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct IpAccessLogQuery {
+    #[serde(default = "default_page")]
     page: usize,
+    #[serde(default = "default_page_size")]
     page_size: usize,
     search: Option<String>,
     #[serde(default)]
     blocked_only: bool,
 }
+
+fn default_page() -> usize { 1 }
+fn default_page_size() -> usize { 50 }
 
 #[derive(Serialize)]
 struct IpAccessLogResponse {
@@ -3108,22 +3113,16 @@ struct AddBlacklistRequest {
     expires_at: Option<i64>,
 }
 
-#[derive(Deserialize)]
-struct AddBlacklistWrapper {
-    request: AddBlacklistRequest,
-}
-
 async fn admin_add_ip_to_blacklist(
-    Json(req_wrapper): Json<AddBlacklistWrapper>,
+    Json(req): Json<AddBlacklistRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    let req = req_wrapper.request;
     security_db::add_to_blacklist(
         &req.ip_pattern,
         req.reason.as_deref(),
         req.expires_at,
         "manual",
     ).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e })))?;
-    
+
     Ok(StatusCode::CREATED)
 }
 
@@ -3185,15 +3184,9 @@ struct AddWhitelistRequest {
     description: Option<String>,
 }
 
-#[derive(Deserialize)]
-struct AddWhitelistWrapper {
-    request: AddWhitelistRequest,
-}
-
 async fn admin_add_ip_to_whitelist(
-    Json(req_wrapper): Json<AddWhitelistWrapper>,
+    Json(req): Json<AddWhitelistRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    let req = req_wrapper.request;
     security_db::add_to_whitelist(
         &req.ip_pattern,
         req.description.as_deref(),
