@@ -255,6 +255,10 @@ print(response.choices[0].message.content)
             -   **Intelligent Filtering**: Optimized account acquisition logic in `TokenManager`. Added deep validation for `disabled` and `proxy_disabled` statuses in loading, syncing, and scheduling paths to prevent disabled accounts from being mistakenly selected.
             -   **Validation Block Support**: Introduced the `validation_blocked` field system to handle Google's `VALIDATION_REQUIRED` (403 temporary risk control) scenarios, implementing intelligent automatic bypass based on expiration time.
             -   **State Cleanup Fortification**: Synchronized cleanup of memory tokens, rate limit records, session bindings, and preferred account flags when an account becomes invalid, ensuring consistency of the internal state machine.
+        -   **[Core Fix] Fix Critical Compatibility Issues in Web/Docker Mode (Issue #1574)**:
+            -   **Debug Mode Fix**: Corrected frontend debug console URL mapping errors (removed redundant `/proxy` path), resolving the issue where debug mode could not be enabled in Web mode.
+            -   **Fingerprint Binding Fix**: Added `BindDeviceProfileWrapper` structure for the `admin_bind_device_profile_with_profile` interface, fixing HTTP 422 errors caused by nested parameters sent from the frontend.
+            -   **Backward Compatibility**: Used `serde alias` feature to support both camelCase (frontend) and snake_case (backend files) at the API layer, ensuring old account files load correctly.
         -   **[Code Optimization] Simplified API Handling Structure**:
             -   Removed redundant `Wrapper` layers in multiple management API routes (e.g., IP blacklist/whitelist management, security setting updates), directly destructuring business models to improve code conciseness and development efficiency.
     *   **v4.1.3 (2026-02-05)**:

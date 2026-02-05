@@ -2473,13 +2473,54 @@ async fn admin_preview_generate_profile(
     Ok(Json(profile))
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BindDeviceProfileWrapper {
+    account_id: String,
+    #[serde(flatten)]
+    profile_wrapper: DeviceProfileApiWrapper,
+}
+
+// 用于 API 的 DeviceProfile 包装器，支持 camelCase 输入
+#[derive(Deserialize)]
+struct DeviceProfileApiWrapper {
+    #[serde(alias = "machineId")]
+    machine_id: String,
+    #[serde(alias = "macMachineId")]
+    mac_machine_id: String,
+    #[serde(alias = "devDeviceId")]
+    dev_device_id: String,
+    #[serde(alias = "sqmId")]
+    sqm_id: String,
+}
+
+impl From<DeviceProfileApiWrapper> for crate::models::account::DeviceProfile {
+    fn from(wrapper: DeviceProfileApiWrapper) -> Self {
+        Self {
+            machine_id: wrapper.machine_id,
+            mac_machine_id: wrapper.mac_machine_id,
+            dev_device_id: wrapper.dev_device_id,
+            sqm_id: wrapper.sqm_id,
+        }
+    }
+}
+
 async fn admin_bind_device_profile_with_profile(
     State(_state): State<AppState>,
     Path(account_id): Path<String>,
-    Json(profile): Json<crate::models::account::DeviceProfile>,
+    Json(payload): Json<BindDeviceProfileWrapper>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    // 优先使用 payload 中的 account_id（前端发送的），如果没有则使用路径参数
+    let target_account_id = if !payload.account_id.is_empty() {
+        &payload.account_id
+    } else {
+        &account_id
+    };
+    
+    let profile: crate::models::account::DeviceProfile = payload.profile_wrapper.into();
+    
     let result =
-        account::bind_device_profile_with_profile(&account_id, profile, None).map_err(|e| {
+        account::bind_device_profile_with_profile(target_account_id, profile, None).map_err(|e| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ErrorResponse { error: e }),
