@@ -114,6 +114,8 @@ pub struct AppState {
     pub cloudflared_state: Arc<crate::commands::cloudflared::CloudflaredState>, // [NEW] Cloudflared 插件状态
     pub is_running: Arc<RwLock<bool>>, // [NEW] 运行状态标识
     pub port: u16,                     // [NEW] 本地监听端口 (v4.0.8 修复)
+    pub proxy_pool_state: Arc<tokio::sync::RwLock<crate::proxy::config::ProxyPoolConfig>>, // [FIX Web Mode]
+    pub proxy_pool_manager: Arc<crate::proxy::proxy_pool::ProxyPoolManager>, // [FIX Web Mode]
 }
 
 // 为 AppState 实现 FromRef，以便中间件提取 security 状态
@@ -141,6 +143,10 @@ struct AccountResponse {
     proxy_disabled_reason: Option<String>,
     proxy_disabled_at: Option<i64>,
     protected_models: Vec<String>,
+    /// [NEW] 403 验证阻止状态
+    validation_blocked: bool,
+    validation_blocked_until: Option<i64>,
+    validation_blocked_reason: Option<String>,
     quota: Option<QuotaResponse>,
     device_bound: bool,
     last_used: i64,
@@ -200,6 +206,9 @@ fn to_account_response(
         }),
         device_bound: account.device_profile.is_some(),
         last_used: account.last_used,
+        validation_blocked: account.validation_blocked,
+        validation_blocked_until: account.validation_blocked_until,
+        validation_blocked_reason: account.validation_blocked_reason.clone(),
     }
 }
 
@@ -349,6 +358,8 @@ impl AxumServer {
             cloudflared_state: cloudflared_state.clone(),
             is_running: is_running_state.clone(),
             port,
+            proxy_pool_state: proxy_pool_state.clone(),
+            proxy_pool_manager: proxy_pool_manager.clone(),
         };
 
         // 构建路由 - 使用新架构的 handlers！
@@ -497,6 +508,12 @@ impl AxumServer {
             .route("/proxy/cli/restore", post(admin_execute_cli_restore))
             .route("/proxy/cli/config", post(admin_get_cli_config_content))
             .route("/proxy/status", get(admin_get_proxy_status))
+            .route("/proxy/pool/config", get(admin_get_proxy_pool_config))
+            .route("/proxy/pool/bindings", get(admin_get_all_account_bindings))
+            .route("/proxy/pool/bind", post(admin_bind_account_proxy))
+            .route("/proxy/pool/unbind", post(admin_unbind_account_proxy))
+            .route("/proxy/pool/binding/:accountId", get(admin_get_account_proxy_binding))
+            .route("/proxy/health-check/trigger", post(admin_trigger_proxy_health_check))
             .route("/proxy/start", post(admin_start_proxy_service))
             .route("/proxy/stop", post(admin_stop_proxy_service))
             .route("/proxy/mapping", post(admin_update_model_mapping))
@@ -815,6 +832,9 @@ async fn admin_list_accounts(
                 proxy_disabled_reason: acc.proxy_disabled_reason,
                 proxy_disabled_at: acc.proxy_disabled_at,
                 protected_models: acc.protected_models.into_iter().collect(),
+                validation_blocked: acc.validation_blocked,
+                validation_blocked_until: acc.validation_blocked_until,
+                validation_blocked_reason: acc.validation_blocked_reason,
                 quota,
                 device_bound: acc.device_profile.is_some(),
                 last_used: acc.last_used,
@@ -889,6 +909,9 @@ async fn admin_get_current_account(
                 proxy_disabled_reason: acc.proxy_disabled_reason,
                 proxy_disabled_at: acc.proxy_disabled_at,
                 protected_models: acc.protected_models.into_iter().collect(),
+                validation_blocked: acc.validation_blocked,
+                validation_blocked_until: acc.validation_blocked_until,
+                validation_blocked_reason: acc.validation_blocked_reason,
                 quota,
                 device_bound: acc.device_profile.is_some(),
                 last_used: acc.last_used,
@@ -1266,6 +1289,85 @@ async fn admin_save_config(
     }
 
     Ok(StatusCode::OK)
+}
+
+// [FIX Web Mode] Get proxy pool config
+async fn admin_get_proxy_pool_config(
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let config = state.proxy_pool_state.read().await;
+    Ok(Json(config.clone()))
+}
+
+// [FIX Web Mode] Get all account proxy bindings
+async fn admin_get_all_account_bindings(
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let bindings = state.proxy_pool_manager.get_all_bindings_snapshot();
+    Ok(Json(bindings))
+}
+
+// [FIX Web Mode] Bind account to proxy
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct BindAccountProxyRequest {
+    account_id: String,
+    proxy_id: String,
+}
+
+async fn admin_bind_account_proxy(
+    State(state): State<AppState>,
+    Json(payload): Json<BindAccountProxyRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    state.proxy_pool_manager
+        .bind_account_to_proxy(payload.account_id, payload.proxy_id)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e })))?;
+    Ok(StatusCode::OK)
+}
+
+// [FIX Web Mode] Unbind account from proxy
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct UnbindAccountProxyRequest {
+    account_id: String,
+}
+
+async fn admin_unbind_account_proxy(
+    State(state): State<AppState>,
+    Json(payload): Json<UnbindAccountProxyRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    state.proxy_pool_manager.unbind_account_proxy(payload.account_id).await;
+    Ok(StatusCode::OK)
+}
+
+// [FIX Web Mode] Get account proxy binding
+async fn admin_get_account_proxy_binding(
+    State(state): State<AppState>,
+    Path(account_id): Path<String>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let binding = state.proxy_pool_manager.get_account_binding(&account_id);
+    Ok(Json(binding))
+}
+
+// [FIX Web Mode] Trigger proxy pool health check
+async fn admin_trigger_proxy_health_check(
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    state.proxy_pool_manager.health_check().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error: e }),
+        )
+    })?;
+
+    // 返回更新后的代理池配置（包含健康状态）
+    let config = state.proxy_pool_state.read().await;
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Health check completed",
+        "proxies": config.proxies,
+    })))
 }
 
 async fn admin_get_proxy_status(

@@ -167,7 +167,14 @@ impl TokenManager {
                 self.clear_rate_limit(account_id);
                 Ok(())
             }
-            Ok(None) => Err("账号加载失败".to_string()),
+            Ok(None) => {
+                // [FIX] 账号被禁用或不可用时，从 token 池中移除
+                if self.tokens.remove(account_id).is_some() {
+                    tracing::info!("[TokenManager] Removed disabled account from pool: {}", account_id);
+                    self.clear_rate_limit(account_id);
+                }
+                Ok(()) // 返回 Ok 表示操作成功（账号已被正确处理）
+            }
             Err(e) => Err(format!("同步账号失败: {}", e)),
         }
     }

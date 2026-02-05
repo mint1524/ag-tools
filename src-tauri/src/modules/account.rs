@@ -1018,6 +1018,14 @@ pub async fn refresh_all_quotas_logic() -> Result<RefreshStats, String> {
                 ));
                 return false;
             }
+            // [FIX] 检查 proxy_disabled 状态
+            if account.proxy_disabled {
+                crate::modules::logger::log_info(&format!(
+                    "  - Skipping {} (Proxy Disabled)",
+                    account.email
+                ));
+                return false;
+            }
             if let Some(ref q) = account.quota {
                 if q.is_forbidden {
                     crate::modules::logger::log_info(&format!(

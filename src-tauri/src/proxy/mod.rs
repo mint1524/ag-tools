@@ -39,6 +39,7 @@ pub use security::ProxySecurityConfig;
 pub use server::AxumServer;
 pub use signature_cache::SignatureCache;
 pub use token_manager::TokenManager;
+pub use proxy_pool::{ProxyPoolManager, get_global_proxy_pool, init_global_proxy_pool};
 
 #[cfg(test)]
 pub mod tests;
