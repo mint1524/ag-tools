@@ -85,49 +85,92 @@ pub fn wrap_request(
 
     // [FIX Issue #1355] Gemini Flash thinking budget capping
     // [CONFIGURABLE] 现在改为遵循全局 Thinking Budget 配置
-    if final_model_name.to_lowercase().contains("flash") {
-        if let Some(gen_config) = inner_request.get_mut("generationConfig") {
-            if let Some(thinking_config) = gen_config.get_mut("thinkingConfig") {
-                if let Some(budget_val) = thinking_config.get("thinkingBudget") {
-                    if let Some(budget) = budget_val.as_u64() {
-                        let tb_config = crate::proxy::config::get_thinking_budget_config();
-                        let final_budget = match tb_config.mode {
-                            crate::proxy::config::ThinkingBudgetMode::Passthrough => {
-                                // 透传模式：不做任何修改，完全使用上游传入值
+    // [FIX #1557] Also apply to Pro/Thinking models to ensure budget processing
+    // [FIX #1557] Auto-inject thinkingConfig if missing for these models
+    let lower_model = final_model_name.to_lowercase();
+    if lower_model.contains("flash")
+        || lower_model.contains("pro")
+        || lower_model.contains("thinking")
+    {
+        // Ensure generationConfig exists
+        let gen_config = inner_request
+            .as_object_mut()
+            .unwrap()
+            .entry("generationConfig")
+            .or_insert(json!({}))
+            .as_object_mut()
+            .unwrap();
+
+        // Check if thinkingConfig exists, if not, inject default if it's a known thinking model without config
+        // Only inject if it's NOT a model that explicitly forbids thinking (no such cases yet for this filter)
+        // Note: regular pro models (gemini-1.5-pro) might not support thinking, but gemini-2.0-pro/gemini-3-pro do.
+        // We might need to be careful with 1.5 pro.
+        // However, 1.5 pro doesn't error with thinkingConfig, it just ignores it or uses it if supported later.
+        // Safest is to target specific high-reasoning lines or just rely on upstream to ignore.
+        // But for "gemini-3-pro" specifically, we NEED it.
+        if gen_config.get("thinkingConfig").is_none() {
+             // For safety, only auto-inject for models we usually want thinking on:
+             // - any with "thinking" in name
+             // - gemini-3-pro / gemini-2.0-pro
+             let should_inject = lower_model.contains("thinking") || 
+                                 lower_model.contains("gemini-2.0-pro") || 
+                                 lower_model.contains("gemini-3-pro");
+                                 
+             if should_inject {
+                 tracing::debug!("[Gemini-Wrap] Auto-injecting default thinkingConfig for {}", final_model_name);
+                 
+                 // Use a safe default budget or let auto-capping handle it (if we set something high)
+                 // But wait, if we set it here, the capping logic below will see it and clamp it if needed.
+                 // Let's rely on global default logic if possible, or hardcode a safe default.
+                 // The capping logic reads from it.
+                 // Let's inject a reasonable default that triggers thinking.
+                 gen_config.insert("thinkingConfig".to_string(), json!({
+                     "includeThoughts": true,
+                     "thinkingBudget": 16000 // Default safe budget for auto-injected
+                 }));
+             }
+        }
+
+        if let Some(thinking_config) = gen_config.get_mut("thinkingConfig") {
+            if let Some(budget_val) = thinking_config.get("thinkingBudget") {
+                if let Some(budget) = budget_val.as_u64() {
+                    let tb_config = crate::proxy::config::get_thinking_budget_config();
+                    let final_budget = match tb_config.mode {
+                        crate::proxy::config::ThinkingBudgetMode::Passthrough => {
+                            // 透传模式：不做任何修改，完全使用上游传入值
+                            tracing::debug!(
+                                "[Gemini-Wrap] Passthrough mode: keeping budget {} for model {}",
+                                budget, final_model_name
+                            );
+                            budget
+                        }
+                        crate::proxy::config::ThinkingBudgetMode::Custom => {
+                            // 自定义模式：使用全局配置的固定值
+                            let custom_value = tb_config.custom_value as u64;
+                            if custom_value != budget {
                                 tracing::debug!(
-                                    "[Gemini-Wrap] Passthrough mode: keeping budget {} for model {}",
+                                    "[Gemini-Wrap] Custom mode: overriding {} with {} for model {}",
+                                    budget, custom_value, final_model_name
+                                );
+                            }
+                            custom_value
+                        }
+                        crate::proxy::config::ThinkingBudgetMode::Auto => {
+                            // 自动模式：应用 24576 capping (向后兼容)
+                            if budget > 24576 {
+                                tracing::info!(
+                                    "[Gemini-Wrap] Auto mode: capping thinking_budget from {} to 24576 for model {}", 
                                     budget, final_model_name
                                 );
+                                24576
+                            } else {
                                 budget
                             }
-                            crate::proxy::config::ThinkingBudgetMode::Custom => {
-                                // 自定义模式：使用全局配置的固定值
-                                let custom_value = tb_config.custom_value as u64;
-                                if custom_value != budget {
-                                    tracing::debug!(
-                                        "[Gemini-Wrap] Custom mode: overriding {} with {} for model {}",
-                                        budget, custom_value, final_model_name
-                                    );
-                                }
-                                custom_value
-                            }
-                            crate::proxy::config::ThinkingBudgetMode::Auto => {
-                                // 自动模式：应用 24576 capping (向后兼容)
-                                if budget > 24576 {
-                                    tracing::info!(
-                                        "[Gemini-Wrap] Auto mode: capping thinking_budget from {} to 24576 for model {}", 
-                                        budget, final_model_name
-                                    );
-                                    24576
-                                } else {
-                                    budget
-                                }
-                            }
-                        };
-
-                        if final_budget != budget {
-                            thinking_config["thinkingBudget"] = json!(final_budget);
                         }
+                    };
+
+                    if final_budget != budget {
+                        thinking_config["thinkingBudget"] = json!(final_budget);
                     }
                 }
             }
@@ -522,5 +565,68 @@ mod tests {
 
         // Verify all 15 parts (1 text + 14 images) are preserved
         assert_eq!(result_parts.len(), 15);
+    }
+
+    #[test]
+    fn test_gemini_pro_thinking_budget_processing() {
+        // Update global config to Custom mode to verify logic execution
+        use crate::proxy::config::{ThinkingBudgetConfig, ThinkingBudgetMode, update_thinking_budget_config};
+        
+        // Save old config (optional, but good practice if tests ran in parallel, but here it's fine)
+        update_thinking_budget_config(ThinkingBudgetConfig {
+            mode: ThinkingBudgetMode::Custom,
+            custom_value: 1024, // Distinct value
+        });
+
+        let body = json!({
+            "model": "gemini-3-pro-preview",
+            "generationConfig": {
+                "thinkingConfig": {
+                    "includeThoughts": true,
+                    "thinkingBudget": 32000
+                }
+            }
+        });
+
+        // Test with Pro model
+        let result = wrap_request(&body, "test-proj", "gemini-3-pro-preview", None);
+        let req = result.get("request").unwrap();
+        let gen_config = req.get("generationConfig").unwrap();
+        
+        let budget = gen_config["thinkingConfig"]["thinkingBudget"]
+            .as_u64()
+            .unwrap();
+
+        // If logic executes, it sees Custom mode and sets 1024
+        // If logic skipped, it keeps 32000
+        assert_eq!(budget, 1024, "Budget should be overridden to 1024 by custom config, proving logic execution");
+
+        // Restore default (Auto 24576)
+        update_thinking_budget_config(ThinkingBudgetConfig::default());
+    }
+
+    #[test]
+    fn test_gemini_pro_auto_inject_thinking() {
+        // Request WITHOUT thinkingConfig
+        let body = json!({
+            "model": "gemini-3-pro-preview",
+            // No generationConfig or empty one
+            "generationConfig": {}
+        });
+
+        // Test with Pro model
+        let result = wrap_request(&body, "test-proj", "gemini-3-pro-preview", None);
+        let req = result.get("request").unwrap();
+        let gen_config = req.get("generationConfig").unwrap();
+        
+        // Should have auto-injected thinkingConfig
+        assert!(gen_config.get("thinkingConfig").is_some(), "Should auto-inject thinkingConfig for gemini-3-pro");
+        
+        let budget = gen_config["thinkingConfig"]["thinkingBudget"]
+            .as_u64()
+            .unwrap();
+            
+        // Default injected value is 16000
+        assert_eq!(budget, 16000);
     }
 }

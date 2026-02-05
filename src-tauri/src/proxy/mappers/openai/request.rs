@@ -29,8 +29,14 @@ pub fn transform_openai_request(
 
     // [FIX] 仅当模型名称显式包含 "-thinking" 时才视为 Gemini 思维模型
     // 避免对 gemini-3-pro (preview) 等其实不支持 thinkingConfig 的模型注入参数导致 400
-    let is_gemini_3_thinking = mapped_model_lower.contains("gemini") 
-        && mapped_model_lower.contains("-thinking") 
+    // [FIX #1557] Allow "pro" models (e.g. gemini-3-pro, gemini-2.0-pro) to bypass thinking check
+    // These models support thinking but do not have "-thinking" suffix
+    let is_gemini_3_thinking = mapped_model_lower.contains("gemini")
+        && (
+            mapped_model_lower.contains("-thinking")
+                || mapped_model_lower.contains("gemini-2.0-pro")
+                || mapped_model_lower.contains("gemini-3-pro")
+        )
         && !mapped_model_lower.contains("claude");
     let is_claude_thinking = mapped_model_lower.ends_with("-thinking");
     let is_thinking_model = is_gemini_3_thinking || is_claude_thinking;
@@ -720,6 +726,53 @@ mod tests {
             parts[1]["inlineData"]["mimeType"].as_str().unwrap(),
             "image/png"
         );
+    }
+    
+    #[test]
+    fn test_gemini_pro_thinking_injection() {
+        let req = OpenAIRequest {
+            model: "gemini-3-pro-preview".to_string(),
+            messages: vec![OpenAIMessage {
+                role: "user".to_string(),
+                content: Some(OpenAIContent::String("Thinking test".to_string())),
+                reasoning_content: None,
+                tool_calls: None,
+                tool_call_id: None,
+                name: None,
+            }],
+            stream: false,
+            n: None,
+            // User enabled thinking
+            thinking: Some(ThinkingConfig {
+                thinking_type: Some("enabled".to_string()),
+                budget_tokens: Some(16000),
+            }),
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            response_format: None,
+            tools: None,
+            tool_choice: None,
+            parallel_tool_calls: None,
+            instructions: None,
+            input: None,
+            prompt: None,
+            size: None,
+            quality: None,
+            person_generation: None,
+        };
+
+        // Pass explicit gemini-3-pro-preview which doesn't have "-thinking" suffix
+        let (result, _sid, _msg_count) = transform_openai_request(&req, "test-p", "gemini-3-pro-preview");
+        let gen_config = &result["request"]["generationConfig"];
+        
+        // Assert thinkingConfig is present (fix verification)
+        assert!(gen_config.get("thinkingConfig").is_some(), "thinkingConfig should be injected for gemini-3-pro");
+        
+        let budget = gen_config["thinkingConfig"]["thinkingBudget"].as_u64().unwrap();
+        // Should use user budget (16000) or capped valid default
+        assert_eq!(budget, 16000);
     }
     #[test]
     fn test_default_max_tokens_openai() {

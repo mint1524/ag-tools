@@ -453,8 +453,11 @@ pub fn transform_claude_request_in(
     // [NEW FIX] Check if target model supports thinking
     // Only models with "-thinking" suffix or Claude models support thinking
     // Regular Gemini models (gemini-2.5-flash, gemini-2.5-pro) do NOT support thinking
-    let target_model_supports_thinking =
-        mapped_model.contains("-thinking") || mapped_model.starts_with("claude-");
+    // [FIX #1557] Allow "pro" models (e.g. gemini-3-pro, gemini-2.0-pro) to be recognized as thinking capable
+    let target_model_supports_thinking = mapped_model.contains("-thinking")
+        || mapped_model.starts_with("claude-")
+        || mapped_model.contains("gemini-2.0-pro")
+        || mapped_model.contains("gemini-3-pro");
 
     if is_thinking_enabled && !target_model_supports_thinking {
         tracing::warn!(
@@ -683,6 +686,17 @@ fn should_enable_thinking_by_default(model: &str) -> bool {
 
     // Also enable for explicit thinking model variants
     if model_lower.contains("-thinking") {
+        return true;
+    }
+
+    // [FIX #1557] Enable thinking by default for Gemini Pro models (gemini-3-pro, gemini-2.0-pro)
+    // These models prioritize reasoning but clients might not send thinking config for them
+    // unless they have "-thinking" suffix (which they don't in Antigravity mapping)
+    if model_lower.contains("gemini-2.0-pro") || model_lower.contains("gemini-3-pro") {
+        tracing::debug!(
+            "[Thinking-Mode] Auto-enabling thinking for Gemini Pro model: {}",
+            model
+        );
         return true;
     }
 
@@ -1681,60 +1695,28 @@ fn build_generation_config(
     let mut config = json!({});
 
     // Thinking 配置
-    if let Some(thinking) = &claude_req.thinking {
-        // [New Check] 必须 is_thinking_enabled 为真才生成 thinkingConfig
-        if thinking.type_ == "enabled" && is_thinking_enabled {
-            let mut thinking_config = json!({"includeThoughts": true});
+    if is_thinking_enabled {
+        let mut thinking_config = json!({"includeThoughts": true});
+        let budget_tokens = claude_req.thinking.as_ref().and_then(|t| t.budget_tokens).unwrap_or(16000);
 
-            if let Some(budget_tokens) = thinking.budget_tokens {
-                // [CONFIGURABLE] 根据用户配置决定 thinking_budget 处理方式
-                let tb_config = crate::proxy::config::get_thinking_budget_config();
-                let budget = match tb_config.mode {
-                    crate::proxy::config::ThinkingBudgetMode::Passthrough => {
-                        // 直接透传调用方传入的值
-                        tracing::debug!(
-                            "[Thinking-Budget] Passthrough mode: using caller's budget {}",
-                            budget_tokens
-                        );
-                        budget_tokens
-                    }
-                    crate::proxy::config::ThinkingBudgetMode::Custom => {
-                        // 使用用户设定的固定值
-                        let custom_value = tb_config.custom_value;
-                        tracing::debug!(
-                            "[Thinking-Budget] Custom mode: overriding {} with fixed value {}",
-                            budget_tokens,
-                            custom_value
-                        );
-                        custom_value
-                    }
-                    crate::proxy::config::ThinkingBudgetMode::Auto => {
-                        // 保留原有的自动限制逻辑 (向后兼容)
-                        let model_lower = claude_req.model.to_lowercase();
-                        let is_gemini_limited = has_web_search
-                            || model_lower.contains("flash")
-                            || model_lower.ends_with("-thinking");
-                        if is_gemini_limited {
-                            let capped = budget_tokens.min(24576);
-                            if capped < budget_tokens {
-                                tracing::debug!(
-                                    "[Thinking-Budget] Auto mode: capping {} to {} for model {}",
-                                    budget_tokens,
-                                    capped,
-                                    claude_req.model
-                                );
-                            }
-                            capped
-                        } else {
-                            budget_tokens
-                        }
-                    }
-                };
-                thinking_config["thinkingBudget"] = json!(budget);
+        let tb_config = crate::proxy::config::get_thinking_budget_config();
+        let budget = match tb_config.mode {
+            crate::proxy::config::ThinkingBudgetMode::Passthrough => budget_tokens,
+            crate::proxy::config::ThinkingBudgetMode::Custom => tb_config.custom_value,
+            crate::proxy::config::ThinkingBudgetMode::Auto => {
+                let model_lower = claude_req.model.to_lowercase();
+                let is_gemini_limited = has_web_search
+                    || model_lower.contains("flash")
+                    || model_lower.ends_with("-thinking");
+                if is_gemini_limited {
+                    budget_tokens.min(24576)
+                } else {
+                    budget_tokens
+                }
             }
-
-            config["thinkingConfig"] = thinking_config;
-        }
+        };
+        thinking_config["thinkingBudget"] = json!(budget);
+        config["thinkingConfig"] = thinking_config;
     }
 
     // 其他参数
@@ -2595,5 +2577,73 @@ mod tests {
             .as_u64()
             .unwrap();
         assert_eq!(budget_pro, 32000);
+    }
+
+    #[test]
+    fn test_gemini_pro_thinking_support() {
+        // Setup request for Gemini Pro (no -thinking suffix)
+        let req = ClaudeRequest {
+            model: "gemini-3-pro-preview".to_string(), 
+            messages: vec![Message {
+                role: "user".to_string(),
+                content: MessageContent::String("Hello".to_string()),
+            }],
+            thinking: Some(ThinkingConfig {
+                type_: "enabled".to_string(),
+                budget_tokens: Some(16000),
+            }),
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            top_k: None,
+            stream: false,
+            system: None,
+            tools: None,
+            metadata: None,
+            output_config: None,
+            size: None,
+            quality: None,
+        };
+
+        // Transform
+        let result = transform_claude_request_in(&req, "proj", false).unwrap();
+        let gen_config = &result["request"]["generationConfig"];
+
+        // thinkingConfig should be present (not forced disabled)
+        assert!(gen_config.get("thinkingConfig").is_some(), "thinkingConfig should be preserved for gemini-3-pro");
+        
+        let budget = gen_config["thinkingConfig"]["thinkingBudget"].as_u64().unwrap();
+        assert_eq!(budget, 16000);
+    }
+
+    #[test]
+    fn test_gemini_pro_default_thinking() {
+        // Setup request for Gemini Pro WITHOUT thinking config
+        let req = ClaudeRequest {
+            model: "gemini-3-pro-preview".to_string(), 
+            messages: vec![Message {
+                role: "user".to_string(),
+                content: MessageContent::String("Hello".to_string()),
+            }],
+            thinking: None, // No thinking config provided by client
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            top_k: None,
+            stream: false,
+            system: None,
+            tools: None,
+            metadata: None,
+            output_config: None,
+            size: None,
+            quality: None,
+        };
+
+        // Transform
+        let result = transform_claude_request_in(&req, "proj", false).unwrap();
+        let gen_config = &result["request"]["generationConfig"];
+
+        // thinkingConfig SHOULD be injected because of default-on logic
+        assert!(gen_config.get("thinkingConfig").is_some(), "thinkingConfig should be auto-enabled for gemini-3-pro");
     }
 }
