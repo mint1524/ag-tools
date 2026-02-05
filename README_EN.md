@@ -250,6 +250,9 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.3 (2026-02-05)**:
+        -   **[Core Fix] Resolve Security Config and IP Management Failures in Web/Docker Mode (Issue #1560)**:
+            -   **Protocol Alignment**: Fixed the issue where the backend Axum interface could not parse nested parameter formats (e.g., `{"config": ...}`) wrapped by the frontend `invoke` method, ensuring security configurations are correctly persisted.
+            -   **Parameter Normalization**: Added `camelCase` renaming support for IP management interfaces, resolving failures in adding or deleting entries caused by case mismatches in Web-mode Query parameters.
         -   **[Core Fix] Restore Gemini Pro Thinking Blocks (Issue #1557)**:
             -   **Cross-Protocol Alignment**: Resolved the issue where `gemini-3-pro` and other reasoning models were missing thinking blocks in OpenAI, Claude, and Gemini protocols since v4.1.0.
             -   **Smart Injection Logic**: Implemented automatic `thinkingConfig` injection and default-enablement mechanisms, ensuring thinking features are correctly activated even when not explicitly requested by clients.

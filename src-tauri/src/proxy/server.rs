@@ -2876,6 +2876,7 @@ fn get_oauth_redirect_uri(port: u16, _host: Option<&str>, _proto: Option<&str>) 
 // ============================================================================
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct IpAccessLogQuery {
     page: usize,
     page_size: usize,
@@ -2964,9 +2965,15 @@ struct AddBlacklistRequest {
     expires_at: Option<i64>,
 }
 
+#[derive(Deserialize)]
+struct AddBlacklistWrapper {
+    request: AddBlacklistRequest,
+}
+
 async fn admin_add_ip_to_blacklist(
-    Json(req): Json<AddBlacklistRequest>,
+    Json(req_wrapper): Json<AddBlacklistWrapper>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let req = req_wrapper.request;
     security_db::add_to_blacklist(
         &req.ip_pattern,
         req.reason.as_deref(),
@@ -2978,6 +2985,7 @@ async fn admin_add_ip_to_blacklist(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct RemoveIpRequest {
     ip_pattern: String,
 }
@@ -3009,6 +3017,7 @@ async fn admin_clear_ip_blacklist() -> Result<impl IntoResponse, (StatusCode, Js
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CheckIpQuery {
     ip: String,
 }
@@ -3033,9 +3042,15 @@ struct AddWhitelistRequest {
     description: Option<String>,
 }
 
+#[derive(Deserialize)]
+struct AddWhitelistWrapper {
+    request: AddWhitelistRequest,
+}
+
 async fn admin_add_ip_to_whitelist(
-    Json(req): Json<AddWhitelistRequest>,
+    Json(req_wrapper): Json<AddWhitelistWrapper>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let req = req_wrapper.request;
     security_db::add_to_whitelist(
         &req.ip_pattern,
         req.description.as_deref(),
@@ -3085,10 +3100,16 @@ async fn admin_get_security_config(
     Ok(Json(app_config.proxy.security_monitor))
 }
 
+#[derive(Deserialize)]
+struct UpdateSecurityConfigWrapper {
+    config: crate::proxy::config::SecurityMonitorConfig,
+}
+
 async fn admin_update_security_config(
     State(state): State<AppState>,
-    Json(config): Json<crate::proxy::config::SecurityMonitorConfig>,
+    Json(payload): Json<UpdateSecurityConfigWrapper>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let config = payload.config;
     let mut app_config = crate::modules::config::load_app_config()
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() })))?;
         
