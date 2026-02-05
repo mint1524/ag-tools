@@ -64,10 +64,9 @@ jobs:
         shell: bash
         run: |
           VERSION="${{ github.ref_name }}"
-          # 去掉版本号前的 v (如果存在)
           VERSION_CLEAN=$(echo $VERSION | sed 's/^v//')
           
-          # 根据平台和参数确定架构标识 (Tauri v2 格式)
+          # 1. 确定架构标识
           if [[ "${{ matrix.platform }}" == "macos-latest" ]]; then
             if [[ "${{ matrix.args }}" == *"--target aarch64-apple-darwin"* ]]; then
               ARCH="darwin-aarch64"
@@ -79,22 +78,33 @@ jobs:
           else
             ARCH="windows-x86_64"
           fi
-
           echo "Detected architecture: $ARCH"
+
+          # 2. 调试：列出可能的 bundle 目录
+          echo "Debug: Searching for bundle files in src-tauri/target..."
+          # 列出所有包含 bundle 的目录层级，方便排查
+          find src-tauri/target -type d -name "bundle"
           
-          # 定位产物路径 (Tauri v2 路径结构)
-          # 寻找 .tar.gz 或 .msi.zip 及其签名
-          BUNDLE_PATH=$(find src-tauri/target -name "*.tar.gz" -o -name "*.msi.zip" | grep "release/bundle" | head -n 1)
+          # 3. 寻找安装包 (Tauri v2: macOS 使用 .tar.gz, Windows 使用 .zip 或 .msi)
+          # 我们尝试匹配任何在 release/bundle 目录下的 tar.gz, zip, 或 msi 文件
+          BUNDLE_PATH=$(find src-tauri/target -type f \( -name "*.tar.gz" -o -name "*.zip" -o -name "*.msi" \) | grep "release/bundle" | head -n 1)
+          
+          if [ -z "$BUNDLE_PATH" ]; then
+             echo "Error: Could not find any bundle file (.tar.gz, .zip, .msi) in release/bundle directory."
+             echo "Directory structure of src-tauri/target:"
+             ls -R src-tauri/target | grep "bundle" -A 5 || true
+             exit 1
+          fi
+          
+          echo "Found bundle: $BUNDLE_PATH"
           SIG_PATH="$BUNDLE_PATH.sig"
           
+          # 4. 检查签名并生成 JSON
           if [ -f "$SIG_PATH" ]; then
             SIGNATURE=$(cat "$SIG_PATH")
             FILENAME=$(basename "$BUNDLE_PATH")
-            # 构造 GitHub 下载镜像链接
             DOWNLOAD_URL="https://github.com/lbjlaq/Antigravity-Manager/releases/download/$VERSION/$FILENAME"
             
-            # 手动生成碎片 JSON
-            # 注意：这里构造的是局部结构，方便后续汇总
             mkdir -p updater_fragments
             cat <<EOF > updater_fragments/fragment.json
             {
@@ -113,6 +123,8 @@ jobs:
             cat updater_fragments/fragment.json
           else
             echo "Error: Signature file not found at $SIG_PATH"
+            # 如果没找到 .sig，列出当前目录下的所有文件帮助调试
+            ls -la "$(dirname "$BUNDLE_PATH")"
             exit 1
           fi
 
