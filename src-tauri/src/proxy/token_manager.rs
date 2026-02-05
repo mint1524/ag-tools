@@ -9,6 +9,13 @@ use tokio_util::sync::CancellationToken;
 use crate::proxy::rate_limit::RateLimitTracker;
 use crate::proxy::sticky_config::StickySessionConfig;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum OnDiskAccountState {
+    Enabled,
+    Disabled,
+    Unknown,
+}
+
 #[derive(Debug, Clone)]
 pub struct ProxyToken {
     pub account_id: String,
@@ -167,7 +174,20 @@ impl TokenManager {
                 self.clear_rate_limit(account_id);
                 Ok(())
             }
-            Ok(None) => Err("账号加载失败".to_string()),
+            Ok(None) => {
+                // load_single_account returning None means the account should be skipped in its
+                // current state (disabled / proxy_disabled / quota_protection / validation_blocked...).
+                // Purge any existing in-memory cache to avoid selecting a disabled account.
+                self.remove_account(account_id);
+                // Ensure preferred account flag is cleared even under contention.
+                {
+                    let mut preferred = self.preferred_account_id.write().await;
+                    if preferred.as_deref() == Some(account_id) {
+                        *preferred = None;
+                    }
+                }
+                Ok(())
+            }
             Err(e) => Err(format!("同步账号失败: {}", e)),
         }
     }
@@ -205,29 +225,80 @@ impl TokenManager {
         }
     }
 
+    /// Check if an account has been disabled on disk.
+    ///
+    /// Safety net: avoids selecting a disabled account when the in-memory pool hasn't been
+    /// reloaded yet (e.g. fixed account mode / sticky session).
+    ///
+    /// Note: this is intentionally tolerant to transient read/parse failures (e.g. concurrent
+    /// writes). Failures are reported as `Unknown` so callers can skip without purging the in-memory
+    /// token pool.
+    async fn get_account_state_on_disk(account_path: &std::path::PathBuf) -> OnDiskAccountState {
+        const MAX_RETRIES: usize = 2;
+        const RETRY_DELAY_MS: u64 = 5;
+
+        for attempt in 0..=MAX_RETRIES {
+            let content = match tokio::fs::read_to_string(account_path).await {
+                Ok(c) => c,
+                Err(e) => {
+                    // If the file is gone, the in-memory token is definitely stale.
+                    if e.kind() == std::io::ErrorKind::NotFound {
+                        return OnDiskAccountState::Disabled;
+                    }
+                    if attempt < MAX_RETRIES {
+                        tokio::time::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS)).await;
+                        continue;
+                    }
+                    tracing::debug!(
+                        "Failed to read account file on disk {:?}: {}",
+                        account_path,
+                        e
+                    );
+                    return OnDiskAccountState::Unknown;
+                }
+            };
+
+            let account = match serde_json::from_str::<serde_json::Value>(&content) {
+                Ok(v) => v,
+                Err(e) => {
+                    if attempt < MAX_RETRIES {
+                        tokio::time::sleep(std::time::Duration::from_millis(RETRY_DELAY_MS)).await;
+                        continue;
+                    }
+                    tracing::debug!(
+                        "Failed to parse account JSON on disk {:?}: {}",
+                        account_path,
+                        e
+                    );
+                    return OnDiskAccountState::Unknown;
+                }
+            };
+
+            let disabled = account
+                .get("disabled")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false)
+                || account
+                    .get("proxy_disabled")
+                    .and_then(|v| v.as_bool())
+                    .unwrap_or(false);
+
+            return if disabled {
+                OnDiskAccountState::Disabled
+            } else {
+                OnDiskAccountState::Enabled
+            };
+        }
+
+        OnDiskAccountState::Unknown
+    }
+
     /// 加载单个账号
     async fn load_single_account(&self, path: &PathBuf) -> Result<Option<ProxyToken>, String> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| format!("读取文件失败: {}", e))?;
+        let content = std::fs::read_to_string(path).map_err(|e| format!("读取文件失败: {}", e))?;
 
-        let mut account: serde_json::Value = serde_json::from_str(&content)
-            .map_err(|e| format!("解析 JSON 失败: {}", e))?;
-
-        if account
-            .get("disabled")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false)
-        {
-            tracing::debug!(
-                "Skipping disabled account file: {:?} (email={})",
-                path,
-                account
-                    .get("email")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("<unknown>")
-            );
-            return Ok(None);
-        }
+        let mut account: serde_json::Value =
+            serde_json::from_str(&content).map_err(|e| format!("解析 JSON 失败: {}", e))?;
 
         // [修复 #1344] 先检查账号是否被手动禁用(非配额保护原因)
         let is_proxy_disabled = account
@@ -235,12 +306,13 @@ impl TokenManager {
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
-        let disabled_reason = account.get("proxy_disabled_reason")
+        let disabled_reason = account
+            .get("proxy_disabled_reason")
             .and_then(|v| v.as_str())
             .unwrap_or("");
 
         if is_proxy_disabled && disabled_reason != "quota_protection" {
-            // 账号被手动禁用(非配额保护原因)
+            // Account manually disabled
             tracing::debug!(
                 "Account skipped due to manual disable: {:?} (email={}, reason={})",
                 path,
@@ -249,20 +321,6 @@ impl TokenManager {
                     .and_then(|v| v.as_str())
                     .unwrap_or("<unknown>"),
                 disabled_reason
-            );
-            return Ok(None);
-        }
-
-        // 配额保护检查 - 只处理配额保护逻辑
-        // 这样可以在加载时自动恢复配额已恢复的账号
-        if self.check_and_protect_quota(&mut account, path).await {
-            tracing::debug!(
-                "Account skipped due to quota protection: {:?} (email={})",
-                path,
-                account
-                    .get("email")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("<unknown>")
             );
             return Ok(None);
         }
@@ -285,7 +343,10 @@ impl TokenManager {
                 tracing::debug!(
                     "Skipping validation-blocked account: {:?} (email={}, blocked until {})",
                     path,
-                    account.get("email").and_then(|v| v.as_str()).unwrap_or("<unknown>"),
+                    account
+                        .get("email")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("<unknown>"),
                     chrono::DateTime::from_timestamp(block_until, 0)
                         .map(|dt| dt.format("%H:%M:%S").to_string())
                         .unwrap_or_else(|| block_until.to_string())
@@ -293,25 +354,61 @@ impl TokenManager {
                 return Ok(None);
             } else {
                 // Block expired - clear it
-                tracing::info!(
-                    "Validation block expired for account: {:?} (email={}), clearing...",
-                    path,
-                    account.get("email").and_then(|v| v.as_str()).unwrap_or("<unknown>")
-                );
-                account["validation_blocked"] = serde_json::Value::Bool(false);
-                account["validation_blocked_until"] = serde_json::Value::Null;
+                account["validation_blocked"] = serde_json::json!(false);
+                account["validation_blocked_until"] = serde_json::json!(0);
                 account["validation_blocked_reason"] = serde_json::Value::Null;
 
-                // Save cleared state
-                if let Ok(json_str) = serde_json::to_string_pretty(&account) {
-                    let _ = std::fs::write(path, json_str);
-                }
+                let updated_json =
+                    serde_json::to_string_pretty(&account).map_err(|e| e.to_string())?;
+                std::fs::write(path, updated_json).map_err(|e| e.to_string())?;
+                tracing::info!(
+                    "Validation block expired and cleared for account: {}",
+                    account
+                        .get("email")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("<unknown>")
+                );
             }
         }
 
-        // [兼容性] 检查旧版 proxy_disabled 标记(已被配额保护恢复的情况)
-        // 如果账号被旧版配额保护禁用,但配额已恢复,上面的检查会自动清除 proxy_disabled
-        // 这里再次检查,确保不会加载仍然被禁用的账号
+        // 最终检查账号主开关
+        if account
+            .get("disabled")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false)
+        {
+            tracing::debug!(
+                "Skipping disabled account file: {:?} (email={})",
+                path,
+                account
+                    .get("email")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("<unknown>")
+            );
+            return Ok(None);
+        }
+
+        // Safety check: verify state on disk again to handle concurrent mid-parse writes
+        if Self::get_account_state_on_disk(path).await == OnDiskAccountState::Disabled {
+            tracing::debug!("Account file {:?} is disabled on disk, skipping.", path);
+            return Ok(None);
+        }
+
+        // 配额保护检查 - 只处理配额保护逻辑
+        // 这样可以在加载时自动恢复配额已恢复的账号
+        if self.check_and_protect_quota(&mut account, path).await {
+            tracing::debug!(
+                "Account skipped due to quota protection: {:?} (email={})",
+                path,
+                account
+                    .get("email")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("<unknown>")
+            );
+            return Ok(None);
+        }
+
+        // [兼容性] 再次确认最终状态（可能被 check_and_protect_quota 修改）
         if account
             .get("proxy_disabled")
             .and_then(|v| v.as_bool())
@@ -883,7 +980,7 @@ impl TokenManager {
     ) -> Result<(String, String, String, String, u64), String> {
         let mut tokens_snapshot: Vec<ProxyToken> =
             self.tokens.iter().map(|e| e.value().clone()).collect();
-        let total = tokens_snapshot.len();
+        let mut total = tokens_snapshot.len();
         if total == 0 {
             return Err("Token pool is empty".to_string());
         }
@@ -974,12 +1071,51 @@ impl TokenManager {
         let preferred_id = self.preferred_account_id.read().await.clone();
         if let Some(ref pref_id) = preferred_id {
             // 查找优先账号
-            if let Some(preferred_token) = tokens_snapshot.iter().find(|t| &t.account_id == pref_id)
+            if let Some(preferred_token) = tokens_snapshot
+                .iter()
+                .find(|t| &t.account_id == pref_id)
+                .cloned()
             {
                 // 检查账号是否可用（未限流、未被配额保护）
-                let normalized_target =
-                    crate::proxy::common::model_mapping::normalize_to_standard_id(target_model)
-                        .unwrap_or_else(|| target_model.to_string());
+                match Self::get_account_state_on_disk(&preferred_token.account_path).await {
+                    OnDiskAccountState::Disabled => {
+                        tracing::warn!(
+                            "🔒 [FIX #820] Preferred account {} is disabled on disk, purging and falling back",
+                            preferred_token.email
+                        );
+                        self.remove_account(&preferred_token.account_id);
+                        tokens_snapshot.retain(|t| t.account_id != preferred_token.account_id);
+                        total = tokens_snapshot.len();
+
+                        {
+                            let mut preferred = self.preferred_account_id.write().await;
+                            if preferred.as_deref() == Some(pref_id.as_str()) {
+                                *preferred = None;
+                            }
+                        }
+
+                        if total == 0 {
+                            return Err("Token pool is empty".to_string());
+                        }
+                    }
+                    OnDiskAccountState::Unknown => {
+                        tracing::warn!(
+                            "🔒 [FIX #820] Preferred account {} state on disk is unavailable, falling back",
+                            preferred_token.email
+                        );
+                        // Don't purge on transient read/parse failures; just skip this token for this request.
+                        tokens_snapshot.retain(|t| t.account_id != preferred_token.account_id);
+                        total = tokens_snapshot.len();
+                        if total == 0 {
+                            return Err("Token pool is empty".to_string());
+                        }
+                    }
+                    OnDiskAccountState::Enabled => {
+                        let normalized_target =
+                            crate::proxy::common::model_mapping::normalize_to_standard_id(
+                                target_model,
+                            )
+                            .unwrap_or_else(|| target_model.to_string());
 
                 let is_rate_limited = self
                     .is_rate_limited(&preferred_token.account_id, Some(&normalized_target))
@@ -1050,6 +1186,8 @@ impl TokenManager {
                         tracing::warn!("🔒 [FIX #820] Preferred account {} is rate-limited, falling back to round-robin", preferred_token.email);
                     } else {
                         tracing::warn!("🔒 [FIX #820] Preferred account {} is quota-protected for {}, falling back to round-robin", preferred_token.email, target_model);
+                    }
+                }
                     }
                 }
             } else {
@@ -1300,6 +1438,29 @@ impl TokenManager {
                     }
                 }
             };
+
+            // Safety net: avoid selecting an account that has been disabled on disk but still
+            // exists in the in-memory snapshot (e.g. stale cache + sticky session binding).
+            match Self::get_account_state_on_disk(&token.account_path).await {
+                OnDiskAccountState::Disabled => {
+                    tracing::warn!(
+                        "Selected account {} is disabled on disk, purging and retrying",
+                        token.email
+                    );
+                    attempted.insert(token.account_id.clone());
+                    self.remove_account(&token.account_id);
+                    continue;
+                }
+                OnDiskAccountState::Unknown => {
+                    tracing::warn!(
+                        "Selected account {} state on disk is unavailable, skipping",
+                        token.email
+                    );
+                    attempted.insert(token.account_id.clone());
+                    continue;
+                }
+                OnDiskAccountState::Enabled => {}
+            }
 
             // 3. 检查 token 是否过期（提前5分钟刷新）
             let now = chrono::Utc::now().timestamp();
@@ -2225,6 +2386,199 @@ fn truncate_reason(reason: &str, max_len: usize) -> String {
 mod tests {
     use super::*;
     use std::cmp::Ordering;
+
+    #[tokio::test]
+    async fn test_reload_account_purges_cache_when_account_becomes_proxy_disabled() {
+        let tmp_root = std::env::temp_dir().join(format!(
+            "antigravity-token-manager-test-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let accounts_dir = tmp_root.join("accounts");
+        std::fs::create_dir_all(&accounts_dir).unwrap();
+
+        let account_id = "acc1";
+        let email = "a@test.com";
+        let now = chrono::Utc::now().timestamp();
+        let account_path = accounts_dir.join(format!("{}.json", account_id));
+
+        let account_json = serde_json::json!({
+            "id": account_id,
+            "email": email,
+            "token": {
+                "access_token": "atk",
+                "refresh_token": "rtk",
+                "expires_in": 3600,
+                "expiry_timestamp": now + 3600
+            },
+            "disabled": false,
+            "proxy_disabled": false,
+            "created_at": now,
+            "last_used": now
+        });
+        std::fs::write(&account_path, serde_json::to_string_pretty(&account_json).unwrap()).unwrap();
+
+        let manager = TokenManager::new(tmp_root.clone());
+        manager.load_accounts().await.unwrap();
+        assert!(manager.tokens.get(account_id).is_some());
+
+        // Prime extra caches to ensure remove_account() is really called.
+        manager
+            .session_accounts
+            .insert("sid1".to_string(), account_id.to_string());
+        {
+            let mut preferred = manager.preferred_account_id.write().await;
+            *preferred = Some(account_id.to_string());
+        }
+
+        // Mark account as proxy-disabled on disk (manual disable).
+        let mut disabled_json = account_json.clone();
+        disabled_json["proxy_disabled"] = serde_json::Value::Bool(true);
+        disabled_json["proxy_disabled_reason"] = serde_json::Value::String("manual".to_string());
+        disabled_json["proxy_disabled_at"] = serde_json::Value::Number(now.into());
+        std::fs::write(&account_path, serde_json::to_string_pretty(&disabled_json).unwrap()).unwrap();
+
+        manager.reload_account(account_id).await.unwrap();
+
+        assert!(manager.tokens.get(account_id).is_none());
+        assert!(manager.session_accounts.get("sid1").is_none());
+        assert!(manager.preferred_account_id.read().await.is_none());
+
+        let _ = std::fs::remove_dir_all(&tmp_root);
+    }
+
+    #[tokio::test]
+    async fn test_fixed_account_mode_skips_preferred_when_disabled_on_disk_without_reload() {
+        let tmp_root = std::env::temp_dir().join(format!(
+            "antigravity-token-manager-test-fixed-mode-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let accounts_dir = tmp_root.join("accounts");
+        std::fs::create_dir_all(&accounts_dir).unwrap();
+
+        let now = chrono::Utc::now().timestamp();
+
+        let write_account = |id: &str, email: &str, proxy_disabled: bool| {
+            let account_path = accounts_dir.join(format!("{}.json", id));
+            let json = serde_json::json!({
+                "id": id,
+                "email": email,
+                "token": {
+                    "access_token": format!("atk-{}", id),
+                    "refresh_token": format!("rtk-{}", id),
+                    "expires_in": 3600,
+                    "expiry_timestamp": now + 3600,
+                    "project_id": format!("pid-{}", id)
+                },
+                "disabled": false,
+                "proxy_disabled": proxy_disabled,
+                "proxy_disabled_reason": if proxy_disabled { "manual" } else { "" },
+                "created_at": now,
+                "last_used": now
+            });
+            std::fs::write(&account_path, serde_json::to_string_pretty(&json).unwrap()).unwrap();
+        };
+
+        // Two accounts in pool.
+        write_account("acc1", "a@test.com", false);
+        write_account("acc2", "b@test.com", false);
+
+        let manager = TokenManager::new(tmp_root.clone());
+        manager.load_accounts().await.unwrap();
+
+        // Enable fixed account mode for acc1.
+        manager.set_preferred_account(Some("acc1".to_string())).await;
+
+        // Disable acc1 on disk WITHOUT reloading the in-memory pool (simulates stale cache).
+        write_account("acc1", "a@test.com", true);
+
+        let (_token, _project_id, email, account_id, _wait_ms) = manager
+            .get_token("gemini", false, Some("sid1"), "gemini-1.5-flash")
+            .await
+            .unwrap();
+
+        // Should fall back to another account instead of using the disabled preferred one.
+        assert_eq!(account_id, "acc2");
+        assert_eq!(email, "b@test.com");
+        assert!(manager.tokens.get("acc1").is_none());
+        assert!(manager.get_preferred_account().await.is_none());
+
+        let _ = std::fs::remove_dir_all(&tmp_root);
+    }
+
+    #[tokio::test]
+    async fn test_sticky_session_skips_bound_account_when_disabled_on_disk_without_reload() {
+        let tmp_root = std::env::temp_dir().join(format!(
+            "antigravity-token-manager-test-sticky-disabled-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let accounts_dir = tmp_root.join("accounts");
+        std::fs::create_dir_all(&accounts_dir).unwrap();
+
+        let now = chrono::Utc::now().timestamp();
+
+        let write_account = |id: &str, email: &str, percentage: i64, proxy_disabled: bool| {
+            let account_path = accounts_dir.join(format!("{}.json", id));
+            let json = serde_json::json!({
+                "id": id,
+                "email": email,
+                "token": {
+                    "access_token": format!("atk-{}", id),
+                    "refresh_token": format!("rtk-{}", id),
+                    "expires_in": 3600,
+                    "expiry_timestamp": now + 3600,
+                    "project_id": format!("pid-{}", id)
+                },
+                "quota": {
+                    "models": [
+                        { "name": "gemini-1.5-flash", "percentage": percentage }
+                    ]
+                },
+                "disabled": false,
+                "proxy_disabled": proxy_disabled,
+                "proxy_disabled_reason": if proxy_disabled { "manual" } else { "" },
+                "created_at": now,
+                "last_used": now
+            });
+            std::fs::write(&account_path, serde_json::to_string_pretty(&json).unwrap()).unwrap();
+        };
+
+        // Two accounts in pool. acc1 has higher quota -> should be selected and bound first.
+        write_account("acc1", "a@test.com", 90, false);
+        write_account("acc2", "b@test.com", 10, false);
+
+        let manager = TokenManager::new(tmp_root.clone());
+        manager.load_accounts().await.unwrap();
+
+        // Prime: first request should bind the session to acc1.
+        let (_token, _project_id, _email, account_id, _wait_ms) = manager
+            .get_token("gemini", false, Some("sid1"), "gemini-1.5-flash")
+            .await
+            .unwrap();
+        assert_eq!(account_id, "acc1");
+        assert_eq!(
+            manager.session_accounts.get("sid1").map(|v| v.clone()),
+            Some("acc1".to_string())
+        );
+
+        // Disable acc1 on disk WITHOUT reloading the in-memory pool (simulates stale cache).
+        write_account("acc1", "a@test.com", 90, true);
+
+        let (_token, _project_id, email, account_id, _wait_ms) = manager
+            .get_token("gemini", false, Some("sid1"), "gemini-1.5-flash")
+            .await
+            .unwrap();
+
+        // Should fall back to another account instead of reusing the disabled bound one.
+        assert_eq!(account_id, "acc2");
+        assert_eq!(email, "b@test.com");
+        assert!(manager.tokens.get("acc1").is_none());
+        assert_ne!(
+            manager.session_accounts.get("sid1").map(|v| v.clone()),
+            Some("acc1".to_string())
+        );
+
+        let _ = std::fs::remove_dir_all(&tmp_root);
+    }
 
     /// 创建测试用的 ProxyToken
     fn create_test_token(

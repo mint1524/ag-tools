@@ -651,7 +651,7 @@ pub async fn handle_messages(
             0 // Don't record calibration data when content was purified
         };
 
-        request_with_mapped.model = mapped_model;
+        request_with_mapped.model = mapped_model.clone();
 
         // 生成 Trace ID (简单用时间戳后缀)
         // let _trace_id = format!("req_{}", chrono::Utc::now().timestamp_subsec_millis());
@@ -706,11 +706,11 @@ pub async fn handle_messages(
     
     let method = if actual_stream { "streamGenerateContent" } else { "generateContent" };
     let query = if actual_stream { Some("alt=sse") } else { None };
-        // [FIX #765] Prepare Beta Headers for Thinking + Tools
+        // [FIX #765/1522] Prepare Robust Beta Headers for Claude models
         let mut extra_headers = std::collections::HashMap::new();
-        if request_with_mapped.thinking.is_some() && request_with_mapped.tools.is_some() {
-            extra_headers.insert("anthropic-beta".to_string(), "interleaved-thinking-2025-05-14".to_string());
-            tracing::debug!("[{}] Added Beta Header: interleaved-thinking-2025-05-14", trace_id);
+        if mapped_model.to_lowercase().contains("claude") {
+            extra_headers.insert("anthropic-beta".to_string(), "claude-code-20250219".to_string());
+            tracing::debug!("[{}] Added Comprehensive Beta Headers for Claude model", trace_id);
         }
         
         // [NEW] Inject Beta Headers from Client Adapter
@@ -726,8 +726,9 @@ pub async fn handle_messages(
                 }
             }
         }
-        
-        // 5. 上游调用
+
+        // Upstream call configuration continued...
+
         let response = match upstream
             .call_v1_internal_with_headers(method, &access_token, gemini_body, query, extra_headers.clone(), Some(account_id.as_str()))
             .await {

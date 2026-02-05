@@ -136,8 +136,15 @@ pub async fn handle_generate(
         let query_string = if is_stream { Some("alt=sse") } else { None };
         let upstream_method = if is_stream { "streamGenerateContent" } else { "generateContent" };
 
+        // [FIX #1522] Inject Anthropic Beta Headers for Claude models
+        let mut extra_headers = std::collections::HashMap::new();
+        if mapped_model.to_lowercase().contains("claude") {
+            extra_headers.insert("anthropic-beta".to_string(), "claude-code-20250219,interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14".to_string());
+            tracing::debug!("[Gemini] Injected Anthropic beta headers for Claude model: {}", mapped_model);
+        }
+
         let response = match upstream
-            .call_v1_internal(upstream_method, &access_token, wrapped_body, query_string, Some(account_id.as_str()))
+            .call_v1_internal_with_headers(upstream_method, &access_token, wrapped_body, query_string, extra_headers.clone(), Some(account_id.as_str()))
             .await {
                 Ok(r) => r,
                 Err(e) => {
@@ -210,6 +217,7 @@ pub async fn handle_generate(
                 }
 
                 let s_id_for_stream = s_id.clone();
+                let model_name_for_stream = mapped_model.clone();
                 let stream = async_stream::stream! {
                     let mut first_data = first_chunk;
                     loop {
@@ -269,6 +277,9 @@ pub async fn handle_generate(
                                                 }
                                             }
 
+                                            // [FIX #1522] Inject Tool ID into Stream Response
+                                            crate::proxy::mappers::gemini::wrapper::inject_ids_to_response(&mut json, &model_name_for_stream);
+
                                             // Unwrap v1internal response wrapper
                                             if let Some(inner) = json.get_mut("response").map(|v| v.take()) {
                                                 let new_line = format!("data: {}\n\n", serde_json::to_string(&inner).unwrap_or_default());
@@ -324,10 +335,13 @@ pub async fn handle_generate(
                 }
             }
 
-            let gemini_resp: Value = response
+            let mut gemini_resp: Value = response
                 .json()
                 .await
                 .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Parse error: {}", e)))?;
+
+            // [FIX #1522] Inject Tool ID into Non-streaming Response
+            crate::proxy::mappers::gemini::wrapper::inject_ids_to_response(&mut gemini_resp, &mapped_model);
 
             // [FIX #765] Extract thoughtSignature from non-streaming response
             let inner_val = if gemini_resp.get("response").is_some() {

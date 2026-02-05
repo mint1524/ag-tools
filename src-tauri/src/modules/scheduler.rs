@@ -266,7 +266,6 @@ pub fn start_scheduler(app_handle: Option<tauri::AppHandle>, proxy_state: crate:
 
 /// Trigger immediate smart warmup check for a single account
 pub async fn trigger_warmup_for_account(account: &Account) {
-    // Skip disabled accounts
     if account.disabled || account.proxy_disabled {
         return;
     }

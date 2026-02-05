@@ -226,8 +226,15 @@ pub async fn handle_chat_completions(
         };
         let query_string = if actual_stream { Some("alt=sse") } else { None };
 
+        // [FIX #1522] Inject Anthropic Beta Headers for Claude models (OpenAI path)
+        let mut extra_headers = std::collections::HashMap::new();
+        if mapped_model.to_lowercase().contains("claude") {
+            extra_headers.insert("anthropic-beta".to_string(), "claude-code-20250219".to_string());
+            tracing::debug!("[{}] Injected Anthropic beta headers for Claude model (via OpenAI)", trace_id);
+        }
+
         let response = match upstream
-            .call_v1_internal(method, &access_token, gemini_body, query_string, Some(account_id.as_str()))
+            .call_v1_internal_with_headers(method, &access_token, gemini_body, query_string, extra_headers.clone(), Some(account_id.as_str()))
             .await
         {
             Ok(r) => r,

@@ -27,25 +27,53 @@ pub fn wrap_request(
     // 深度清理 [undefined] 字符串 (Cherry Studio 等客户端常见注入)
     crate::proxy::mappers::common_utils::deep_clean_undefined(&mut inner_request);
 
-    // [FIX #765] Inject thought_signature into functionCall parts
-    if let Some(s_id) = session_id {
-        if let Some(contents) = inner_request
-            .get_mut("contents")
-            .and_then(|c| c.as_array_mut())
-        {
-            for content in contents {
-                if let Some(parts) = content.get_mut("parts").and_then(|p| p.as_array_mut()) {
-                    for part in parts {
-                        if part.get("functionCall").is_some() {
-                            // Only inject if it doesn't already have one
-                            if part.get("thoughtSignature").is_none() {
-                                if let Some(sig) = crate::proxy::SignatureCache::global()
-                                    .get_session_signature(s_id)
-                                {
-                                    if let Some(obj) = part.as_object_mut() {
-                                        obj.insert("thoughtSignature".to_string(), json!(sig));
-                                        tracing::debug!("[Gemini-Wrap] Injected signature (len: {}) for session: {}", sig.len(), s_id);
-                                    }
+    // [FIX #1522] Inject dummy IDs for Claude models in Gemini protocol
+    // Google v1internal requires 'id' for tool calls when the model is Claude, 
+    // even though the standard Gemini protocol doesn't have it.
+    let is_target_claude = final_model_name.to_lowercase().contains("claude");
+    
+    if let Some(contents) = inner_request.get_mut("contents").and_then(|c| c.as_array_mut()) {
+        for content in contents {
+            // 每条消息维护独立的计数器，确保 Call 和对应的 Response 生成相同的 ID (兜底规则)
+            let mut name_counters: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+
+            if let Some(parts) = content.get_mut("parts").and_then(|p| p.as_array_mut()) {
+                for part in parts {
+                    if let Some(obj) = part.as_object_mut() {
+                        // 1. 处理 functionCall (Assistant 请求调用工具)
+                        if let Some(fc) = obj.get_mut("functionCall") {
+                            if fc.get("id").is_none() && is_target_claude {
+                                let name = fc.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
+                                let count = name_counters.entry(name.to_string()).or_insert(0);
+                                let call_id = format!("call_{}_{}", name, count);
+                                *count += 1;
+                                
+                                fc.as_object_mut().unwrap().insert("id".to_string(), json!(call_id));
+                                tracing::debug!("[Gemini-Wrap] Request stage: Injected missing call_id '{}' for Claude model", call_id);
+                            }
+                        }
+                        
+                        // 2. 处理 functionResponse (User 回复工具结果)
+                        if let Some(fr) = obj.get_mut("functionResponse") {
+                            if fr.get("id").is_none() && is_target_claude {
+                                // 启发：如果客户端（如 OpenCode）在响应时没带 ID，说明它收到响应时就没 ID。
+                                // 我们在这里生成的 ID 必须与我们在 inject_ids_to_response 中注入响应的 ID 一致。
+                                let name = fr.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
+                                let count = name_counters.entry(name.to_string()).or_insert(0);
+                                let call_id = format!("call_{}_{}", name, count);
+                                *count += 1;
+                                
+                                fr.as_object_mut().unwrap().insert("id".to_string(), json!(call_id));
+                                tracing::debug!("[Gemini-Wrap] Request stage: Injected synced response_id '{}' for Claude model", call_id);
+                            }
+                        }
+
+                        // 3. 处理 thoughtSignature (原有逻辑保持)
+                        if obj.contains_key("functionCall") && obj.get("thoughtSignature").is_none() {
+                            if let Some(s_id) = session_id {
+                                if let Some(sig) = crate::proxy::SignatureCache::global().get_session_signature(s_id) {
+                                    obj.insert("thoughtSignature".to_string(), json!(sig));
+                                    tracing::debug!("[Gemini-Wrap] Injected signature (len: {}) for session: {}", sig.len(), s_id);
                                 }
                             }
                         }
@@ -291,6 +319,37 @@ mod test_fixes {
 /// 解包响应（提取 response 字段）
 pub fn unwrap_response(response: &Value) -> Value {
     response.get("response").unwrap_or(response).clone()
+}
+
+/// [NEW v3.3.18] 为 Claude 模型的 Gemini 响应自动注入 Tool ID
+/// 
+/// 目点是为了让客户端（如 OpenCode/Vercel AI SDK）能感知到 ID，
+/// 并在下一轮对话中原样带回，从而满足 Google v1internal 对 Claude 模型的校验。
+pub fn inject_ids_to_response(response: &mut Value, model_name: &str) {
+    if !model_name.to_lowercase().contains("claude") {
+        return;
+    }
+
+    if let Some(candidates) = response.get_mut("candidates").and_then(|c| c.as_array_mut()) {
+        for candidate in candidates {
+            if let Some(parts) = candidate.get_mut("content").and_then(|c| c.get_mut("parts")).and_then(|p| p.as_array_mut()) {
+                let mut name_counters: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+                for part in parts {
+                    if let Some(fc) = part.get_mut("functionCall").and_then(|f| f.as_object_mut()) {
+                        if fc.get("id").is_none() {
+                            let name = fc.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
+                            let count = name_counters.entry(name.to_string()).or_insert(0);
+                            let call_id = format!("call_{}_{}", name, count);
+                            *count += 1;
+                            
+                            fc.insert("id".to_string(), json!(call_id));
+                            tracing::debug!("[Gemini-Wrap] Response stage: Injected synthetic call_id '{}' for client", call_id);
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[cfg(test)]
