@@ -256,6 +256,11 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.7 (2026-02-06)**:
+        -   **[Core Feature] Add Custom Label Support for Accounts (#1620)**:
+            -   **Label Management**: Supports setting personalized labels for each account for easier identification in multi-account environments.
+            -   **UI Optimization**: Directly view and edit labels inline in both account list and card views.
+            -   **I18n Support**: Full support for both Chinese and English localization.
+
         -   **[Core Fix] Claude 403 Error Handling & Account Rotation Optimization (#1616)**:
             -   **403 Status Mapping**: Mapped 403 (Forbidden) errors to 503 (Service Unavailable) to prevent clients (e.g., Claude Code) from automatically logging out.
             -   **Auto-Disable Logic**: Automatically marks accounts as `is_forbidden` and removes them from the active memory pool upon encountering 403 errors.
