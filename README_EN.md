@@ -1,6 +1,6 @@
 # Antigravity Tools 🚀
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.1.5)
+> Professional AI Account Management & Protocol Proxy System (v4.1.6)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -10,7 +10,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.5-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.6-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -249,6 +249,10 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.1.6 (2026-02-06)**:
+        -   **[Core Fix] Resolve HTTP 400 "thinking_budget out of range" error for Gemini 3 Pro / 2.0 Pro (#1592)**:
+            -   **Full Protocol Coverage**: Applied unified safety capping logic across OpenAI, Claude, and Gemini native protocol mappers.
+            -   **Smart Capping**: Refactored the mapping layer to enforce a 24576 token limit based on the final resolved model ID, ensuring full compatibility for newer reasoning models.
     *   **v4.1.5 (2026-02-05)**:
         -   **[Security Fix] Frontend API Key Storage Migration (LocalStorage -> SessionStorage)**:
             -   **Storage Upgrade**: Migrated the storage of the Admin API Key from persistent `localStorage` to session-based `sessionStorage`, significantly reducing security risks on shared devices.

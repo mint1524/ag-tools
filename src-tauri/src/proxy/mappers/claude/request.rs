@@ -535,7 +535,7 @@ pub fn transform_claude_request_in(
 
     // 4. Generation Config & Thinking (Pass final is_thinking_enabled)
     let generation_config =
-        build_generation_config(claude_req, has_web_search_tool, is_thinking_enabled);
+        build_generation_config(claude_req, &mapped_model, has_web_search_tool, is_thinking_enabled);
 
     // 2. Contents (Messages)
     let contents = build_google_contents(
@@ -1691,6 +1691,7 @@ fn build_tools(tools: &Option<Vec<Tool>>, has_web_search: bool) -> Result<Option
 /// 构建 Generation Config
 fn build_generation_config(
     claude_req: &ClaudeRequest,
+    mapped_model: &str,
     has_web_search: bool,
     is_thinking_enabled: bool,
 ) -> Value {
@@ -1706,8 +1707,10 @@ fn build_generation_config(
             crate::proxy::config::ThinkingBudgetMode::Passthrough => budget_tokens,
             crate::proxy::config::ThinkingBudgetMode::Custom => tb_config.custom_value,
             crate::proxy::config::ThinkingBudgetMode::Auto => {
-                let model_lower = claude_req.model.to_lowercase();
+                // [FIX #1592] Use mapped model for robust detection, same as OpenAI protocol
+                let model_lower = mapped_model.to_lowercase();
                 let is_gemini_limited = has_web_search
+                    || model_lower.contains("gemini")
                     || model_lower.contains("flash")
                     || model_lower.ends_with("-thinking");
                 if is_gemini_limited {
@@ -2572,13 +2575,14 @@ mod tests {
             quality: None,
         };
 
-        // Should NOT cap
+        // Should cap
         let result_pro = transform_claude_request_in(&req_pro, "proj", false).unwrap();
         let budget_pro = result_pro["request"]["generationConfig"]["thinkingConfig"]
             ["thinkingBudget"]
             .as_u64()
             .unwrap();
-        assert_eq!(budget_pro, 32000);
+        // [FIX #1592] Gemini Pro models are now also capped to 24576
+        assert_eq!(budget_pro, 24576);
     }
 
     #[test]
@@ -2615,6 +2619,7 @@ mod tests {
         assert!(gen_config.get("thinkingConfig").is_some(), "thinkingConfig should be preserved for gemini-3-pro");
         
         let budget = gen_config["thinkingConfig"]["thinkingBudget"].as_u64().unwrap();
+        // [FIX #1592] Since it's < 24576, it should be kept as 16000
         assert_eq!(budget, 16000);
     }
 

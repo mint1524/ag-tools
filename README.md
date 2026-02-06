@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业的 AI 账号管理与协议反代系统 (v4.1.5)
+> 专业的 AI 账号管理与协议反代系统 (v4.1.6)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.5-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.6-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -361,6 +361,10 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
+    *   **v4.1.6 (2026-02-06)**:
+        -   **[修复] 解决 Gemini 3 Pro / Gemini 2.0 Pro 系列型号由于 `thinking_budget` 越界导致的 HTTP 400 错误 (#1592)**:
+            -   **全协议覆盖**: 修复逻辑已同步应用至 OpenAI、Claude 和 Gemini 原生协议映射层，确保所有协议下的思维模型都能正确识别并应用 24576 的安全预算限额。
+            -   **自动适配**: 重构了协议转换逻辑，使其基于最终映射的模型型号进行动态限额，彻底解决了 `gemini-3-pro` 等新型号的兼容性问题。
     *   **v4.1.5 (2026-02-05)**:
         -   **[安全修复] 前端 API Key 存储迁移 (LocalStorage -> SessionStorage)**:
             -   **存储机制升级**: 将 Admin API Key 的存储位置从持久化的 `localStorage` 迁移至会话级的 `sessionStorage`，显著降低了在公共设备上的安全风险。

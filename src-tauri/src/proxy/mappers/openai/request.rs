@@ -412,7 +412,8 @@ pub fn transform_openai_request(
     if actual_include_thinking {
         // [CONFIGURABLE] 根据用户配置决定 thinking_budget 处理方式
         let tb_config = crate::proxy::config::get_thinking_budget_config();
-        let user_budget: i64 = user_thinking_budget.map(|b| b as i64).unwrap_or(32000);
+        // [FIX #1592] 下调默认 budget 到 24576，以更好地兼容不支持 32k 的 Gemini 原生模型 (如 gemini-3-pro)
+        let user_budget: i64 = user_thinking_budget.map(|b| b as i64).unwrap_or(24576);
         
         let budget = match tb_config.mode {
             crate::proxy::config::ThinkingBudgetMode::Passthrough => {
@@ -435,9 +436,9 @@ pub fn transform_openai_request(
             }
             crate::proxy::config::ThinkingBudgetMode::Auto => {
                 // 自动模式：保持原有 Flash capping 逻辑 (向后兼容)
-                let is_gemini_limited = mapped_model_lower.contains("flash") 
-                    || mapped_model_lower.contains("gemini-1.5")
-                    || is_claude_thinking;  // Claude thinking 模型转发到 Gemini，同样需要限流
+                // [FIX #1592] 拓宽判定逻辑，确保所有 Gemini 思考模型 (包含 gemini-3-pro 等) 都应用 24k 上限
+                let is_gemini_limited = mapped_model_lower.contains("gemini")
+                    || is_claude_thinking;  // Claude thinking 模型转发到 Gemini，同样需要限速
                 
                 if is_gemini_limited && user_budget > 24576 {
                     tracing::info!(
@@ -682,6 +683,47 @@ fn enforce_uppercase_types(value: &mut Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[test]
+    fn test_issue_1592_gemini_3_pro_budget_capping() {
+        // [FIX #1592] Regression test for gemini-3-pro thinking budget capping
+        let req = OpenAIRequest {
+            model: "gemini-3-pro".to_string(),
+            messages: vec![OpenAIMessage {
+                role: "user".to_string(),
+                content: Some(OpenAIContent::String("test".into())),
+                reasoning_content: None,
+                tool_calls: None,
+                tool_call_id: None,
+                name: None,
+            }],
+            stream: false,
+            n: None,
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            response_format: None,
+            tools: None,
+            tool_choice: None,
+            parallel_tool_calls: None,
+            instructions: None,
+            input: None,
+            prompt: None,
+            size: None,
+            quality: None,
+            person_generation: None,
+            thinking: None,
+        };
+
+        // Auto mode (default) should cap gemini-3-pro thinking budget to 24576
+        let (result, _sid, _msg_count) = transform_openai_request(&req, "test-v", "gemini-3-pro");
+        let budget = result["request"]["generationConfig"]["thinkingConfig"]["thinkingBudget"]
+            .as_i64()
+            .unwrap();
+        assert_eq!(budget, 24576, "Gemini-3-pro budget must be capped to 24576 in Auto mode");
+    }
 
     #[test]
     fn test_transform_openai_request_multimodal() {
