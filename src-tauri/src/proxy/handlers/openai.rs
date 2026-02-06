@@ -1630,7 +1630,7 @@ pub async fn handle_images_generations(
                             return Err(last_error);
                         }
                         match response.json::<Value>().await {
-                            Ok(json) => return Ok(json),
+                            Ok(json) => return Ok((json, email)),
                             Err(e) => return Err(format!("Parse error: {}", e)),
                         }
                     }
@@ -1649,11 +1649,16 @@ pub async fn handle_images_generations(
     // 5. 收集结果
     let mut images: Vec<Value> = Vec::new();
     let mut errors: Vec<String> = Vec::new();
+    let mut used_email: Option<String> = None;
 
     for (idx, task) in tasks.into_iter().enumerate() {
         match task.await {
             Ok(result) => match result {
-                Ok(gemini_resp) => {
+                Ok((gemini_resp, email_used)) => {
+                    // Capture the email from the first successful task for logging
+                    if used_email.is_none() {
+                        used_email = Some(email_used);
+                    }
                     let raw = gemini_resp.get("response").unwrap_or(&gemini_resp);
                     if let Some(parts) = raw
                         .get("candidates")
@@ -1740,9 +1745,13 @@ pub async fn handle_images_generations(
         "data": images
     });
 
+    let email_header = used_email.unwrap_or_default();
     Ok((
         StatusCode::OK,
-        [("X-Mapped-Model", "dall-e-3")],
+        [
+            ("X-Mapped-Model", "dall-e-3"),
+            ("X-Account-Email", email_header.as_str()),
+        ],
         Json(openai_response),
     )
         .into_response())
@@ -2010,7 +2019,7 @@ pub async fn handle_images_edits(
                             return Err(last_error);
                         }
                         match response.json::<Value>().await {
-                            Ok(json) => return Ok((json, response_format.clone())),
+                            Ok(json) => return Ok((json, response_format.clone(), email)),
                             Err(e) => return Err(format!("Parse error: {}", e)),
                         }
                     }
@@ -2027,11 +2036,15 @@ pub async fn handle_images_edits(
     // 5. Collect Results
     let mut images: Vec<Value> = Vec::new();
     let mut errors: Vec<String> = Vec::new();
+    let mut used_email: Option<String> = None;
 
     for (idx, task) in tasks.into_iter().enumerate() {
         match task.await {
             Ok(result) => match result {
-                Ok((gemini_resp, response_format)) => {
+                Ok((gemini_resp, response_format, email_used)) => {
+                    if used_email.is_none() {
+                        used_email = Some(email_used);
+                    }
                     let raw = gemini_resp.get("response").unwrap_or(&gemini_resp);
                     if let Some(parts) = raw
                         .get("candidates")
@@ -2110,9 +2123,13 @@ pub async fn handle_images_edits(
         "data": images
     });
 
+    let email_header = used_email.unwrap_or_default();
     Ok((
         StatusCode::OK,
-        [("X-Mapped-Model", "dall-e-3")],
+        [
+            ("X-Mapped-Model", "dall-e-3"),
+            ("X-Account-Email", email_header.as_str()),
+        ],
         Json(openai_response),
     )
         .into_response())
