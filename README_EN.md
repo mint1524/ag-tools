@@ -260,6 +260,9 @@ print(response.choices[0].message.content)
             -   **Label Management**: Supports setting personalized labels for each account for easier identification in multi-account environments.
             -   **UI Optimization**: Directly view and edit labels inline in both account list and card views.
             -   **I18n Support**: Full support for both Chinese and English localization.
+        -   **[Core Fix] Handle NULL values in `get_stats` when database is empty (#1578)**:
+            -   **NULL Handling**: Wrapped `SUM()` calls with `COALESCE(..., 0)` to ensure numeric values are always returned, fixing type conversion errors in `rusqlite` when no logs exist.
+            -   **Performance Retention**: Preserved the optimized single-query architecture from the local branch for statistical data retrieval.
 
         -   **[Core Fix] Claude 403 Error Handling & Account Rotation Optimization (#1616)**:
             -   **403 Status Mapping**: Mapped 403 (Forbidden) errors to 503 (Service Unavailable) to prevent clients (e.g., Claude Code) from automatically logging out.
