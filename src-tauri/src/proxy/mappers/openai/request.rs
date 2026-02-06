@@ -1,6 +1,6 @@
 // OpenAI → Gemini 请求转换
 use super::models::*;
-use super::streaming::get_thought_signature;
+
 use serde_json::{json, Value};
 
 pub fn transform_openai_request(
@@ -58,9 +58,11 @@ pub fn transform_openai_request(
                 .map(|s| s.is_empty())
                 .unwrap_or(true)
     });
+    let has_tool_history = request.messages.iter().any(|msg| {
+        msg.role == "tool" || msg.role == "function" || msg.tool_calls.is_some()
+    });
 
-    // 获取全局存储的思维签名
-    let global_thought_sig = get_thought_signature();
+
 
     // [NEW] 决定是否开启 Thinking 功能:
     // 1. 模型名包含 -thinking 时自动开启
@@ -189,13 +191,10 @@ pub fn transform_openai_request(
                 let is_invalid_placeholder = reasoning == "[undefined]" || reasoning.is_empty();
                 
                 if !is_invalid_placeholder {
-                    let mut thought_part = json!({
+                    let thought_part = json!({
                         "text": reasoning,
                         "thought": true,
                     });
-                    if let Some(ref sig) = thought_sig {
-                        thought_part["thoughtSignature"] = json!(sig);
-                    }
                     parts.push(thought_part);
                 }
             } else if actual_include_thinking && role == "model" {
@@ -208,11 +207,9 @@ pub fn transform_openai_request(
                     "thought": true,
                 });
                 
-                // [NEW] 优先使用 Session 缓存的思维签名 (如果可用)
-                if let Some(ref sig) = thought_sig {
-                    thought_part["thoughtSignature"] = json!(sig);
-                } else if !mapped_model.starts_with("projects/") && mapped_model.contains("gemini") {
-                    // [FIX] 仅针对 Gemini 思维模型注入跳过标签, Claude 不识别此标签
+                // [FIX #1575] 占位符永远不能使用真实签名（签名与真实思考内容绑定）
+                // 仅 Gemini 支持哨兵值跳过验证
+                if is_gemini_3_thinking {
                     thought_part["thoughtSignature"] = json!("skip_thought_signature_validator");
                 }
                 
@@ -371,6 +368,14 @@ pub fn transform_openai_request(
         })
         .filter(|msg| !msg["parts"].as_array().map(|a| a.is_empty()).unwrap_or(true))
         .collect();
+
+    // [FIX #1575] 针对思维模型的历史故障恢复
+    // 在带有工具的历史记录中，剥离旧的思考块，防止 API 因签名失效或结构冲突报 400
+    let mut contents = contents;
+    if actual_include_thinking && has_tool_history {
+        tracing::debug!("[OpenAI-Thinking] Applied thinking recovery (stripping old thought blocks) for tool history");
+        contents = super::thinking_recovery::strip_all_thinking_blocks(contents);
+    }
 
     // 合并连续相同角色的消息 (Gemini 强制要求 user/model 交替)
     let mut merged_contents: Vec<Value> = Vec::new();

@@ -250,6 +250,10 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.6 (2026-02-06)**:
+        -   **[Core Fix] Deep Refactor of Claude/Gemini Thinking Model Interruptions & Tool Loop Recovery (#1575)**:
+            -   **Thinking Recovery**: Introduced `thinking_recovery` mechanism. Automatically strips stale thinking blocks and guides the model when status loops or interruptions are detected, enhancing stability in complex tool-calling scenarios.
+            -   **Complete Fix for Signature Binding Errors**: Corrected the logic that incorrectly injected cached signatures into custom client-side thinking content. Since signatures are strictly bound to specific text, this completely resolves common `Invalid signature` (HTTP 400) errors after session interruptions or resets.
+            -   **Full Session Isolation**: Removed the global signature singleton, ensuring all thinking signatures are strictly isolated at the Session level, eliminating signature pollution across multiple accounts or concurrent sessions.
         -   **[Core Fix] Resolve HTTP 400 "thinking_budget out of range" error for Gemini 3 Pro / 2.0 Pro (#1592)**:
             -   **Full Protocol Coverage**: Applied unified safety capping logic across OpenAI, Claude, and Gemini native protocol mappers.
             -   **Smart Capping**: Refactored the mapping layer to enforce a 24576 token limit based on the final resolved model ID, ensuring full compatibility for newer reasoning models.
