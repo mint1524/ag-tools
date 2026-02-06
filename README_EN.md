@@ -1,6 +1,5 @@
 # Antigravity Tools 🚀
-# Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.1.5)
+> Professional AI Account Management & Protocol Proxy System (v4.1.7)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -10,7 +9,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.5-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.7-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -230,6 +229,13 @@ export ANTHROPIC_BASE_URL="http://127.0.0.1:8045"
 claude
 ```
 
+### How to use with OpenCode?
+1. Go to **API Proxy** → **External Providers** → click the **OpenCode Sync** card.
+2. Click **Sync** to generate `~/.config/opencode/opencode.json` with proxy baseURL and apiKey (supports both Anthropic and Google providers).
+3. Optional: Check **Sync accounts** to export `antigravity-accounts.json` for OpenCode plugin usage.
+4. On Windows, the path is `C:\Users\<User>\.config\opencode\` (same `~/.config/opencode` rule).
+5. Use the **Restore** button to revert from backup if needed.
+
 ### How to use in Python?
 ```python
 import openai
@@ -249,6 +255,28 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.1.7 (2026-02-06)**:
+        -   **[Core Fix] Claude 403 Error Handling & Account Rotation Optimization (#1616)**:
+            -   **403 Status Mapping**: Mapped 403 (Forbidden) errors to 503 (Service Unavailable) to prevent clients (e.g., Claude Code) from automatically logging out.
+            -   **Auto-Disable Logic**: Automatically marks accounts as `is_forbidden` and removes them from the active memory pool upon encountering 403 errors.
+            -   **Temporary Risk Control detection**: Identifies `VALIDATION_REQUIRED` errors and implements a 10-minute temporary block for affected accounts.
+            -   **Rotation Stability**: Fixed premature returns during `QUOTA_EXHAUSTED` errors, ensuring the system correctly attempts to rotate to the next available account.
+        -   **[Core Feature] OpenCode CLI Configuration Sync Integration (#1614)**:
+            -   **One-click Sync**: Automatically generates `~/.config/opencode/opencode.json` with proper provider settings for Anthropic and Google.
+            -   **Account Export**: Optionally syncs accounts to `antigravity-accounts.json` for OpenCode plugin compatibility.
+            -   **Backup & Restore**: Automatically creates a backup before syncing, with the ability to restore previous configurations.
+            -   **Cross-platform Support**: Consistent support across Windows, macOS, and Linux.
+    *   **v4.1.6 (2026-02-06)**:
+        -   **[Core Fix] Deep Refactor of Claude/Gemini Thinking Model Interruptions & Tool Loop Recovery (#1575)**:
+            -   **Thinking Recovery**: Introduced `thinking_recovery` mechanism. Automatically strips stale thinking blocks and guides the model when status loops or interruptions are detected, enhancing stability in complex tool-calling scenarios.
+            -   **Complete Fix for Signature Binding Errors**: Corrected the logic that incorrectly injected cached signatures into custom client-side thinking content. Since signatures are strictly bound to specific text, this completely resolves common `Invalid signature` (HTTP 400) errors after session interruptions or resets.
+            -   **Full Session Isolation**: Removed the global signature singleton, ensuring all thinking signatures are strictly isolated at the Session level, eliminating signature pollution across multiple accounts or concurrent sessions.
+        -   **[Core Fix] Resolve HTTP 400 "thinking_budget out of range" error for Gemini Series (#1592, #1602)**:
+            -   **Full-Path Hard Capping**: Fixed the missing quota protection in OpenAI and Claude protocol mappers when using "Custom" mode. Regardless of the selected mode (Auto/Custom/Passthrough), the backend now enforces a mandatory limit of 24576 for all Gemini models to ensure request success.
+            -   **Auto Adaptation & UI Sync**: Refactored the protocol conversion logic to dynamically apply limits based on the final mapped model; updated settings UI hints to clearly specify the physical limits of the Gemini protocol.
+        -   **[Core Fix] Web Mode Login Validation Fix & Logout Button (PR #1603)**:
+            -   **Login Validation**: Fixed exceptions in the Web mode login validation logic, ensuring stability of user authentication.
+            -   **Logout Support**: Added/fixed the logout button in the UI, completing the account management loop for Web mode.
     *   **v4.1.5 (2026-02-05)**:
         -   **[Security Fix] Frontend API Key Storage Migration (LocalStorage -> SessionStorage)**:
             -   **Storage Upgrade**: Migrated the storage of the Admin API Key from persistent `localStorage` to session-based `sessionStorage`, significantly reducing security risks on shared devices.

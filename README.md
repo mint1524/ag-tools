@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业的 AI 账号管理与协议反代系统 (v4.1.5)
+> 专业的 AI 账号管理与协议反代系统 (v4.1.7)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.5-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.7-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -240,6 +240,13 @@ export ANTHROPIC_BASE_URL="http://127.0.0.1:8045"
 claude
 ```
 
+### 如何接入 OpenCode?
+1.  进入 **API 反代**页面 → **外部 Providers** → 点击 **OpenCode Sync** 卡片。
+2.  点击 **Sync** 按钮，将自动生成 `~/.config/opencode/opencode.json` 配置文件（包含代理 baseURL 与 apiKey，支持 Anthropic/Google 双 Provider）。
+3.  可选：勾选 **Sync accounts** 可同时导出 `antigravity-accounts.json` 账号列表，供 OpenCode 插件直接导入使用。
+4.  Windows 用户路径为 `C:\Users\<用户名>\.config\opencode\`（与 `~/.config/opencode` 规则一致）。
+5.  如需回滚，可点击 **Restore** 按钮从备份恢复之前的配置。
+
 ### 如何接入 Kilo Code?
 1.  **协议选择**: 建议优先使用 **Gemini 协议**。
 2.  **Base URL**: 填写 `http://127.0.0.1:8045`。
@@ -361,6 +368,28 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
+    *   **v4.1.7 (2026-02-06)**:
+        -   **[核心修复] Claude 403 错误处理与账号轮换优化 (#1616)**:
+            -   **403 状态映射**: 将 403 (Forbidden) 错误映射为 503 (Service Unavailable)，防止客户端（如 Claude Code）因检测到 403 而自动登出。
+            -   **自动禁用逻辑**: 检测到 403 错误时自动将账号标记为 `is_forbidden` 并从活跃池中移除，避免该账号在接下来的请求中被继续选中。
+            -   **临时风控识别**: 识别 `VALIDATION_REQUIRED` 错误，并对相关账号执行 10 分钟的临时阻断。
+            -   **轮换稳定性**: 修复了在账号额度耗尽 (QUOTA_EXHAUSTED) 时的过早返回问题，确保系统能正确尝试轮换到下一个可用账号。
+        -   **[核心功能] OpenCode CLI 配置同步集成 (#1614)**:
+            -   **一键同步**: 自动生成 `~/.config/opencode/opencode.json`，支持 Anthropic 和 Google 双 Provider 自动配置。
+            -   **账号导出**: 可选同步账号列表至 `antigravity-accounts.json`，供 OpenCode 插件直接导入。
+            -   **备份与还原**: 同步前自动备份原有配置，支持一键还原。
+            -   **跨平台支持**: 统一适配 Windows、macOS 和 Linux 环境。
+    *   **v4.1.6 (2026-02-06)**:
+        -   **[核心修复] 深度重构 Claude/Gemini 思考模型中断与工具循环自愈逻辑 (#1575)**:
+            -   **思考异常恢复**: 引入了 `thinking_recovery` 机制。当检测到历史消息中包含陈旧思考块或陷入状态循环时，自动进行剥离与引导，提升了在复杂工具调用场景下的稳定性。
+            -   **彻底解决签名绑定错误**: 修正了误将缓存签名注入客户端自定义思考内容的逻辑。由于签名与文本强绑定，此举彻底解决了会话中断或重置后常见的 `Invalid signature` (HTTP 400) 报错。
+            -   **会话级完全隔离**: 删除了全局签名单例，确保所有思维签名严格在 Session 级别隔离，彻底杜绝了多账号、多会话并发时的签名污染。
+        -   **[修复] 彻底解决 Gemini 系列由于 `thinking_budget` 越界导致的 HTTP 400 错误 (#1592, #1602)**:
+            -   **全协议路径硬截断**: 修复了 OpenAI 和 Claude 协议映射器在「自定义模式」下缺失限额保护的问题。现在无论选择何种模式（自动/自定义/透传），只要目标模型为 Gemini，后端都会强制执行 24576 的物理上限保护。
+            -   **自动适配与前端同步**: 重构了协议转换逻辑，使其基于最终映射的模型型号进行动态限额；同步更新了设置界面的提示文案，明确了 Gemini 协议的物理限制。
+        -   **[核心修复] Web Mode 登录验证修复 & 登出按钮 (PR #1603)**:
+            -   **登录验证**: 修复了 Web 模式下登录验证逻辑的异常，确保用户身份验证的稳定性。
+            -   **登出功能**: 在界面中新增/修复了登出按钮，完善了 Web 模式下的账户管理闭环。
     *   **v4.1.5 (2026-02-05)**:
         -   **[安全修复] 前端 API Key 存储迁移 (LocalStorage -> SessionStorage)**:
             -   **存储机制升级**: 将 Admin API Key 的存储位置从持久化的 `localStorage` 迁移至会话级的 `sessionStorage`，显著降低了在公共设备上的安全风险。
