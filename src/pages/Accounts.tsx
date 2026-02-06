@@ -50,6 +50,7 @@ function Accounts() {
     reorderAccounts,
     warmUpAccounts,
     warmUpAccount,
+    updateAccountLabel,
   } = useAccountStore();
   const { config, showAllQuotas, toggleShowAllQuotas } = useConfigStore();
 
@@ -96,6 +97,15 @@ function Accounts() {
         next.delete(accountId);
         return next;
       });
+    }
+  };
+
+  const handleUpdateLabel = async (accountId: string, label: string) => {
+    try {
+      await updateAccountLabel(accountId, label);
+      showToast(t('accounts.label_updated', 'Label updated'), 'success');
+    } catch (error) {
+      showToast(`${t('common.error')}: ${error}`, 'error');
     }
   };
 
@@ -1063,6 +1073,7 @@ function Accounts() {
                 }
                 onReorder={reorderAccounts}
                 onWarmup={handleWarmup}
+                onUpdateLabel={handleUpdateLabel}
               />
             </div>
           </div>
@@ -1088,6 +1099,7 @@ function Accounts() {
                 )
               }
               onWarmup={handleWarmup}
+              onUpdateLabel={handleUpdateLabel}
             />
           </div>
         )}
