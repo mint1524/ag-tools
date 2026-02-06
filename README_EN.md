@@ -266,6 +266,9 @@ print(response.choices[0].message.content)
             -   **Account Export**: Optionally syncs accounts to `antigravity-accounts.json` for OpenCode plugin compatibility.
             -   **Backup & Restore**: Automatically creates a backup before syncing, with the ability to restore previous configurations.
             -   **Cross-platform Support**: Consistent support across Windows, macOS, and Linux.
+        -   **[Core Feature] Allow Hiding Unused Menu Items (#1610)**:
+            -   **Visibility Control**: Added "Menu Item Visibility Settings" in the settings page, allowing users to customize sidebar navigation items.
+            -   **UI Refinement**: Provides a cleaner interface for minimalist users by hiding unused feature entries.
     *   **v4.1.6 (2026-02-06)**:
         -   **[Core Fix] Deep Refactor of Claude/Gemini Thinking Model Interruptions & Tool Loop Recovery (#1575)**:
             -   **Thinking Recovery**: Introduced `thinking_recovery` mechanism. Automatically strips stale thinking blocks and guides the model when status loops or interruptions are detected, enhancing stability in complex tool-calling scenarios.
