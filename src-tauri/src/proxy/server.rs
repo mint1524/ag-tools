@@ -2486,6 +2486,7 @@ async fn admin_preview_generate_profile(
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BindDeviceProfileWrapper {
+    #[serde(default)]
     account_id: String,
     #[serde(alias = "profile")]
     profile_wrapper: DeviceProfileApiWrapper,
