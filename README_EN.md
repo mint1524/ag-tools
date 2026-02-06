@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.1.6)
+> Professional AI Account Management & Protocol Proxy System (v4.1.7)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -9,7 +9,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.6-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.7-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -248,6 +248,12 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.1.7 (2026-02-06)**:
+        -   **[Core Fix] Claude 403 Error Handling & Account Rotation Optimization (#1616)**:
+            -   **403 Status Mapping**: Mapped 403 (Forbidden) errors to 503 (Service Unavailable) to prevent clients (e.g., Claude Code) from automatically logging out.
+            -   **Auto-Disable Logic**: Automatically marks accounts as `is_forbidden` and removes them from the active memory pool upon encountering 403 errors.
+            -   **Temporary Risk Control detection**: Identifies `VALIDATION_REQUIRED` errors and implements a 10-minute temporary block for affected accounts.
+            -   **Rotation Stability**: Fixed premature returns during `QUOTA_EXHAUSTED` errors, ensuring the system correctly attempts to rotate to the next available account.
     *   **v4.1.6 (2026-02-06)**:
         -   **[Core Fix] Deep Refactor of Claude/Gemini Thinking Model Interruptions & Tool Loop Recovery (#1575)**:
             -   **Thinking Recovery**: Introduced `thinking_recovery` mechanism. Automatically strips stale thinking blocks and guides the model when status loops or interruptions are detected, enhancing stability in complex tool-calling scenarios.
