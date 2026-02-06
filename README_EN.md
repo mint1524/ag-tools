@@ -1,5 +1,4 @@
 # Antigravity Tools 🚀
-# Antigravity Tools 🚀
 > Professional AI Account Management & Protocol Proxy System (v4.1.6)
 
 <div align="center">
