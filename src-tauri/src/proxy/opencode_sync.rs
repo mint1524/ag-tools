@@ -1,10 +1,4 @@
 use serde::{Deserialize, Serialize};
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct GetOpencodeConfigRequest {
-    pub file_name: Option<String>,
-}
 use serde_json::Value;
 use std::path::PathBuf;
 use std::process::Command;
