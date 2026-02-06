@@ -256,26 +256,26 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.7 (2026-02-06)**:
-        -   **[Core Feature] Add Custom Label Support for Accounts (#1620)**:
+        -   **[Core Feature] Add Custom Label Support for Accounts (PR #1620)**:
             -   **Label Management**: Supports setting personalized labels for each account for easier identification in multi-account environments.
             -   **UI Optimization**: Directly view and edit labels inline in both account list and card views.
             -   **I18n Support**: Full support for both Chinese and English localization.
-        -   **[Core Fix] Handle NULL values in `get_stats` when database is empty (#1578)**:
+        -   **[Core Fix] Handle NULL values in `get_stats` when database is empty (PR #1578)**:
             -   **NULL Handling**: Wrapped `SUM()` calls with `COALESCE(..., 0)` to ensure numeric values are always returned, fixing type conversion errors in `rusqlite` when no logs exist.
             -   **Performance Retention**: Preserved the optimized single-query architecture from the local branch for statistical data retrieval.
 
-        -   **[Core Fix] Claude 403 Error Handling & Account Rotation Optimization (#1616)**:
+        -   **[Core Fix] Claude 403 Error Handling & Account Rotation Optimization (PR #1616)**:
             -   **403 Status Mapping**: Mapped 403 (Forbidden) errors to 503 (Service Unavailable) to prevent clients (e.g., Claude Code) from automatically logging out.
             -   **Auto-Disable Logic**: Automatically marks accounts as `is_forbidden` and removes them from the active memory pool upon encountering 403 errors.
             -   **Temporary Risk Control detection**: Identifies `VALIDATION_REQUIRED` errors and implements a 10-minute temporary block for affected accounts.
             -   **Rotation Stability**: Fixed premature returns during `QUOTA_EXHAUSTED` errors, ensuring the system correctly attempts to rotate to the next available account.
-        -   **[Core Feature] OpenCode CLI Configuration Sync Integration (#1614)**:
+        -   **[Core Feature] OpenCode CLI Configuration Sync Integration (PR #1614)**:
             -   **One-click Sync**: Automatically generates `~/.config/opencode/opencode.json` with proper provider settings for Anthropic and Google.
             -   **Account Export**: Optionally syncs accounts to `antigravity-accounts.json` for OpenCode plugin compatibility.
             -   **Backup & Restore**: Automatically creates a backup before syncing, with the ability to restore previous configurations.
             -   **Cross-platform Support**: Consistent support across Windows, macOS, and Linux.
             -   **Experience Optimization**: Fixed RPC parameter wrapping, completed i18n translations, and optimized view state when the configuration file is missing.
-        -   **[Core Feature] Allow Hiding Unused Menu Items (#1610)**:
+        -   **[Core Feature] Allow Hiding Unused Menu Items (PR #1610)**:
             -   **Visibility Control**: Added "Menu Item Visibility Settings" in the settings page, allowing users to customize sidebar navigation items.
             -   **UI Refinement**: Provides a cleaner interface for minimalist users by hiding unused feature entries.
     *   **v4.1.6 (2026-02-06)**:
