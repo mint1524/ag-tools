@@ -33,7 +33,6 @@ import { cn } from '../utils/cn';
 import { useProxyModels } from '../hooks/useProxyModels';
 import GroupedSelect, { SelectOption } from '../components/common/GroupedSelect';
 import { CliSyncCard } from '../components/proxy/CliSyncCard';
-import { OpenCodeSyncCard } from '../components/proxy/OpenCodeSyncCard';
 import DebouncedSlider from '../components/common/DebouncedSlider';
 import { listAccounts } from '../services/accountService';
 import CircuitBreaker from '../components/settings/CircuitBreaker';
@@ -1480,12 +1479,6 @@ print(response.text)`;
                                 apiKey={appConfig.proxy.api_key}
                             />
 
-                            {/* OpenCode 同步卡片 */}
-                            <OpenCodeSyncCard
-                                proxyUrl={status.running ? status.base_url : `http://127.0.0.1:${appConfig.proxy.port || 8045}`}
-                                apiKey={appConfig.proxy.api_key}
-                            />
-
                             {/* z.ai (GLM) Dispatcher */}
                             <CollapsibleCard
                                 title={t('proxy.config.zai.title')}
@@ -2213,8 +2206,8 @@ print(response.text)`;
                                                 }
                                             }}
                                             className={`p-2 rounded-lg transition-all h-9 w-9 flex items-center justify-center border border-transparent ${selectedPreset.startsWith('custom_')
-                                                    ? 'text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-100 dark:hover:border-red-900/30'
-                                                    : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                                                ? 'text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-100 dark:hover:border-red-900/30'
+                                                : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                                                 }`}
                                             title={selectedPreset.startsWith('custom_')
                                                 ? t('proxy.router.delete_preset')
