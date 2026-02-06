@@ -274,6 +274,7 @@ print(response.choices[0].message.content)
             -   **Account Export**: Optionally syncs accounts to `antigravity-accounts.json` for OpenCode plugin compatibility.
             -   **Backup & Restore**: Automatically creates a backup before syncing, with the ability to restore previous configurations.
             -   **Cross-platform Support**: Consistent support across Windows, macOS, and Linux.
+            -   **Experience Optimization**: Fixed RPC parameter wrapping, completed i18n translations, and optimized view state when the configuration file is missing.
         -   **[Core Feature] Allow Hiding Unused Menu Items (#1610)**:
             -   **Visibility Control**: Added "Menu Item Visibility Settings" in the settings page, allowing users to customize sidebar navigation items.
             -   **UI Refinement**: Provides a cleaner interface for minimalist users by hiding unused feature entries.
