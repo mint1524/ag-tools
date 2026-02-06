@@ -259,19 +259,22 @@ export const CliSyncCard = ({ proxyUrl, apiKey, className }: CliSyncCardProps) =
                     <div className="flex items-center gap-2">
                         {status?.installed && (
                             <>
-                                <button
-                                    onClick={() => handleViewConfig(app)}
-                                    className="btn btn-sm btn-square btn-ghost border border-gray-200 dark:border-white/10 text-gray-500 hover:text-blue-500 hover:bg-white dark:hover:bg-gray-700"
-                                    title={t('proxy.cli_sync.btn_view')}
-                                >
-                                    <Eye size={16} />
-                                </button>
+                                {/* 对于 OpenCode，如果未同步，则不显示查看按钮（因为文件尚未生成，后端会报错） */}
+                                {(app !== 'OpenCode' || status?.is_synced) && (
+                                    <button
+                                        onClick={() => handleViewConfig(app)}
+                                        className="p-1 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                                        title={t(app === 'OpenCode' ? 'proxy.opencode_sync.btn_view' : 'proxy.cli_sync.btn_view', { defaultValue: 'View Config' })}
+                                    >
+                                        <Eye size={14} />
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => handleRestore(app)}
-                                    className="btn btn-sm btn-square btn-ghost border border-gray-200 dark:border-white/10 text-gray-500 hover:text-orange-500 hover:bg-white dark:hover:bg-gray-700"
-                                    title={status.has_backup ? t('proxy.cli_sync.btn_restore_backup') : t('proxy.cli_sync.btn_restore')}
+                                    className="p-1 text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded transition-colors"
+                                    title={t(app === 'OpenCode' ? 'proxy.opencode_sync.btn_restore' : 'proxy.cli_sync.btn_restore', { defaultValue: 'Restore' })}
                                 >
-                                    <RotateCcw size={16} />
+                                    <RotateCcw size={14} />
                                 </button>
                             </>
                         )}
