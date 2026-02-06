@@ -431,6 +431,10 @@ pub fn run() {
             proxy::cli_sync::execute_cli_sync,
             proxy::cli_sync::execute_cli_restore,
             proxy::cli_sync::get_cli_config_content,
+            proxy::opencode_sync::get_opencode_sync_status,
+            proxy::opencode_sync::execute_opencode_sync,
+            proxy::opencode_sync::execute_opencode_restore,
+            proxy::opencode_sync::get_opencode_config_content,
             // Security/IP monitoring commands
             commands::security::get_ip_access_logs,
             commands::security::get_ip_stats,

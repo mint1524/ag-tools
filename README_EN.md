@@ -230,6 +230,13 @@ export ANTHROPIC_BASE_URL="http://127.0.0.1:8045"
 claude
 ```
 
+### How to use with OpenCode?
+1. Go to **API Proxy** → **External Providers** → click the **OpenCode Sync** card.
+2. Click **Sync** to generate `~/.config/opencode/opencode.json` with proxy baseURL and apiKey (supports both Anthropic and Google providers).
+3. Optional: Check **Sync accounts** to export `antigravity-accounts.json` for OpenCode plugin usage.
+4. On Windows, the path is `C:\Users\<User>\.config\opencode\` (same `~/.config/opencode` rule).
+5. Use the **Restore** button to revert from backup if needed.
+
 ### How to use in Python?
 ```python
 import openai
