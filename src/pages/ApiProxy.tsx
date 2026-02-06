@@ -33,6 +33,7 @@ import { cn } from '../utils/cn';
 import { useProxyModels } from '../hooks/useProxyModels';
 import GroupedSelect, { SelectOption } from '../components/common/GroupedSelect';
 import { CliSyncCard } from '../components/proxy/CliSyncCard';
+import { OpenCodeSyncCard } from '../components/proxy/OpenCodeSyncCard';
 import DebouncedSlider from '../components/common/DebouncedSlider';
 import { listAccounts } from '../services/accountService';
 import CircuitBreaker from '../components/settings/CircuitBreaker';
@@ -1475,6 +1476,12 @@ print(response.text)`;
 
                             {/* CLI 同步卡片 - 支持桌面端与 Web 端 */}
                             <CliSyncCard
+                                proxyUrl={status.running ? status.base_url : `http://127.0.0.1:${appConfig.proxy.port || 8045}`}
+                                apiKey={appConfig.proxy.api_key}
+                            />
+
+                            {/* OpenCode 同步卡片 */}
+                            <OpenCodeSyncCard
                                 proxyUrl={status.running ? status.base_url : `http://127.0.0.1:${appConfig.proxy.port || 8045}`}
                                 apiKey={appConfig.proxy.api_key}
                             />

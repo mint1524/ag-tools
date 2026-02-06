@@ -507,6 +507,10 @@ impl AxumServer {
             .route("/proxy/cli/sync", post(admin_execute_cli_sync))
             .route("/proxy/cli/restore", post(admin_execute_cli_restore))
             .route("/proxy/cli/config", post(admin_get_cli_config_content))
+            .route("/proxy/opencode/status", post(admin_get_opencode_sync_status))
+            .route("/proxy/opencode/sync", post(admin_execute_opencode_sync))
+            .route("/proxy/opencode/restore", post(admin_execute_opencode_restore))
+            .route("/proxy/opencode/config", post(admin_get_opencode_config_content))
             .route("/proxy/status", get(admin_get_proxy_status))
             .route("/proxy/pool/config", get(admin_get_proxy_pool_config))
             .route("/proxy/pool/bindings", get(admin_get_all_account_bindings))
@@ -3310,4 +3314,85 @@ async fn admin_clear_debug_console_logs() -> impl IntoResponse {
     StatusCode::OK
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OpencodeSyncStatusRequest {
+    proxy_url: String,
+}
 
+async fn admin_get_opencode_sync_status(
+    Json(payload): Json<OpencodeSyncStatusRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    crate::proxy::opencode_sync::get_opencode_sync_status(payload.proxy_url)
+        .await
+        .map(Json)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse { error: e }),
+            )
+        })
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OpencodeSyncRequest {
+    proxy_url: String,
+    api_key: String,
+    #[serde(default)]
+    sync_accounts: bool,
+}
+
+async fn admin_execute_opencode_sync(
+    Json(payload): Json<OpencodeSyncRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    crate::proxy::opencode_sync::execute_opencode_sync(
+        payload.proxy_url,
+        payload.api_key,
+        Some(payload.sync_accounts),
+    )
+    .await
+    .map(|_| StatusCode::OK)
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error: e }),
+        )
+    })
+}
+
+async fn admin_execute_opencode_restore(
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    crate::proxy::opencode_sync::execute_opencode_restore()
+        .await
+        .map(|_| StatusCode::OK)
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ErrorResponse { error: e }),
+            )
+        })
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GetOpencodeConfigRequest {
+    file_name: Option<String>,
+}
+
+async fn admin_get_opencode_config_content(
+    Json(payload): Json<GetOpencodeConfigRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let file_name = payload.file_name;
+    tokio::task::spawn_blocking(move || crate::proxy::opencode_sync::read_opencode_config_content(file_name))
+        .await
+        .map_err(|e| (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error: e.to_string() }),
+        ))?
+        .map(Json)
+        .map_err(|e| (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse { error: e }),
+        ))
+}
