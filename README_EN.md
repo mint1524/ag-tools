@@ -281,6 +281,10 @@ print(response.choices[0].message.content)
         -   **[Core Feature] Allow Hiding Unused Menu Items (PR #1610)**:
             -   **Visibility Control**: Added "Menu Item Visibility Settings" in the settings page, allowing users to customize sidebar navigation items.
             -   **UI Refinement**: Provides a cleaner interface for minimalist users by hiding unused feature entries.
+        -   **[Core Fix] Gemini Native Protocol Image Generation Full Fix (Issue #1573, #1625)**:
+            -   **400 Error Fix**: Resolved `INVALID_ARGUMENT` errors in Gemini native image generation caused by the missing `role: "user"` field in the `contents` array.
+            -   **Parameter Passthrough**: Ensured `generationConfig.imageConfig` (e.g., `aspectRatio`, `imageSize`) is correctly passed to the upstream API without getting filtered.
+            -   **Error Code Optimization**: Optimized error mapping for image generation services, ensuring 429/503 statuses correctly trigger client-side retries.
         -   **[Core Enhancement] Custom Mapping Supports Manual Input for Any Model ID**:
             -   **Flexible Input**: Added manual input functionality to the custom mapping target model selector. Users can now directly enter any model ID at the bottom of the dropdown menu.
             -   **Unreleased Model Experience**: Supports experiencing models not yet officially released by Antigravity, such as `claude-opus-4-6`. Users can route requests to these experimental models through custom mappings.
@@ -352,12 +356,7 @@ print(response.choices[0].message.content)
             -   **finish_reason Enforcement**: Fixed the issue where `finish_reason` was incorrectly set to `stop` during tool calls, causing OpenAI clients to prematurely terminate conversations. The system now forcibly sets `finish_reason` to `tool_calls` when tool calls are present, ensuring proper tool loop execution.
             -   **Tool Parameter Standardization**: Implemented automatic standardization of shell tool parameter names, converting non-standard names like `cmd`/`code`/`script` (which Gemini may generate) to the standard `command` parameter, improving tool call compatibility.
             -   **Impact Scope**: Fixed the tool call workflow for Thinking models (e.g., `claude-sonnet-4-5-thinking`) under the OpenAI protocol, resolving interruption issues in clients like OpenCode.
-    *   **v4.1.4 (2026-02-05)**:
-        - **Bug Fixes**:
-            - **Gemini Native Protocol Image Generation Parameter Support (Issue #1573)**: Fixed the issue where `generationConfig.imageConfig` parameters were ignored when using the Gemini native protocol. The system now correctly parses and applies image configuration parameters such as `aspectRatio` and `imageSize`.
-                - **Priority Strategy**: Prioritizes parsing parameters from the request body's `generationConfig.imageConfig`, while retaining model name suffix as a backward-compatible fallback.
-                - **Protocol Consistency**: Ensures unified parameter handling logic for image generation across Gemini, OpenAI, and Claude protocols.
-                - **Impact Scope**: Fixed the call chain across 9 files, including core modules like `common_utils.rs`, `gemini.rs`, and `wrapper.rs`.
+
     *   **v4.1.3 (2026-02-05)**:
         -   **[Core Fix] Resolve Security Config and IP Management Failures in Web/Docker Mode (Issue #1560)**:
             -   **Protocol Alignment**: Fixed the issue where the backend Axum interface could not parse nested parameter formats (e.g., `{"config": ...}`) wrapped by the frontend `invoke` method, ensuring security configurations are correctly persisted.

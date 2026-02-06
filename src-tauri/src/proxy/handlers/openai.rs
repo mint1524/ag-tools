@@ -1705,7 +1705,17 @@ pub async fn handle_images_generations(
             "No images generated".to_string()
         };
         tracing::error!("[Images] All {} requests failed. Errors: {}", n, error_msg);
-        return Err((StatusCode::BAD_GATEWAY, error_msg));
+
+        // [FIX] Map upstream status codes correctly instead of forcing 502
+        let status = if error_msg.contains("429") || error_msg.contains("Quota exhausted") {
+            StatusCode::TOO_MANY_REQUESTS
+        } else if error_msg.contains("503") || error_msg.contains("Service Unavailable") {
+            StatusCode::SERVICE_UNAVAILABLE
+        } else {
+            StatusCode::BAD_GATEWAY
+        };
+        
+        return Err((status, error_msg));
     }
 
     // 部分成功时记录警告

@@ -394,7 +394,11 @@ response = client.chat.completions.create(
         -   **[核心功能] 允许隐藏未使用的菜单项 (PR #1610)**:
             -   **可见性控制**: 在设置页面新增“菜单项显示设置”，允许用户自定义侧边栏显示的导航项。
             -   **界面美化**: 为极简用户提供更清爽的界面，隐藏不常用的功能入口。
-    *   **v4.1.7 (2026-02-06)**:
+
+        -   **[核心修复] Gemini 原生协议图像生成完全修复 (Issue #1573, #1625)**:
+            -   **400 错误修复**: 修复了 Gemini 原生协议生成图片时，因请求体 `contents` 数组缺失 `role: "user"` 字段导致的 `INVALID_ARGUMENT` 错误。
+            -   **参数透传支持**: 确保 `generationConfig.imageConfig` (如 `aspectRatio`, `imageSize`) 能正确透传给上游，不再被错误过滤。
+            -   **错误码优化**: 优化了图像生成服务的错误映射，确保 429/503 等状态码能正确触发客户端的重试机制。
         -   **[核心增强] 自定义映射支持手动输入任意模型 ID**:
             -   **灵活输入**: 在自定义映射的目标模型选择器中新增手动输入功能，用户现在可以在下拉菜单底部直接输入任意模型 ID。
             -   **未发布模型体验**: 支持体验 Antigravity 尚未正式发布的模型，例如 `claude-opus-4-6`。用户可以通过自定义映射将请求路由到这些实验性模型。
@@ -466,12 +470,7 @@ response = client.chat.completions.create(
             -   **finish_reason 强制修正**: 修复了工具调用时 `finish_reason` 被错误设置为 `stop` 导致 OpenAI 客户端提前终止对话的问题。现在系统会强制将有工具调用的响应 `finish_reason` 设置为 `tool_calls`，确保工具循环正常运行。
             -   **工具参数标准化**: 实现了 shell 工具参数名称的自动标准化，将 Gemini 可能生成的 `cmd`/`code`/`script` 等非标准参数名统一转换为 `command`，提升了工具调用的兼容性。
             -   **影响范围**: 修复了 OpenAI 协议下 Thinking 模型（如 `claude-sonnet-4-5-thinking`）的工具调用流程，解决了 OpenCode 等客户端的中断问题。
-    *   **v4.1.4 (2026-02-05)**:
-        - **Bug 修复 (Bug Fixes)**:
-            - **Gemini 原生协议图像生成参数支持 (Issue #1573)**: 修复了使用 Gemini 原生协议时 `generationConfig.imageConfig` 参数被忽略的问题。现在系统能正确解析并应用 `aspectRatio` 和 `imageSize` 等图像配置参数。
-                - **优先级策略**: 优先从请求体的 `generationConfig.imageConfig` 解析参数，保留模型名后缀作为向后兼容方案。
-                - **协议一致性**: 确保 Gemini、OpenAI、Claude 三大协议在图像生成场景下的参数处理逻辑统一。
-                - **影响范围**: 修复了 9 个文件的调用链，包括 `common_utils.rs`、`gemini.rs`、`wrapper.rs` 等核心模块。
+
     *   **v4.1.3 (2026-02-05)**:
         -   **[核心修复] 解决 Web/Docker 模式下安全配置与 IP 管理失效问题 (Issue #1560)**:
             -   **协议对齐**: 修复了后端 Axum 接口无法解析前端 `invoke` 封装的嵌套参数格式（如 `{"config": ...}`）的问题，确保安全配置能正确持久化。
