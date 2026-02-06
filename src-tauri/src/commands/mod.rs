@@ -838,6 +838,52 @@ pub async fn warm_up_account(account_id: String) -> Result<String, String> {
     modules::quota::warm_up_account(&account_id).await
 }
 
+/// 更新账号自定义标签
+#[tauri::command]
+pub async fn update_account_label(
+    account_id: String,
+    label: String,
+) -> Result<(), String> {
+    modules::logger::log_info(&format!(
+        "更新账号标签: {} -> {:?}",
+        account_id,
+        if label.is_empty() { "无" } else { &label }
+    ));
+
+    // 1. 读取账号文件
+    let data_dir = modules::account::get_data_dir()?;
+    let account_path = data_dir.join("accounts").join(format!("{}.json", account_id));
+
+    if !account_path.exists() {
+        return Err(format!("账号文件不存在: {}", account_id));
+    }
+
+    let content = std::fs::read_to_string(&account_path)
+        .map_err(|e| format!("读取账号文件失败: {}", e))?;
+
+    let mut account_json: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("解析账号文件失败: {}", e))?;
+
+    // 2. 更新 custom_label 字段
+    if label.is_empty() {
+        account_json["custom_label"] = serde_json::Value::Null;
+    } else {
+        account_json["custom_label"] = serde_json::Value::String(label.clone());
+    }
+
+    // 3. 保存到磁盘
+    std::fs::write(&account_path, serde_json::to_string_pretty(&account_json).unwrap())
+        .map_err(|e| format!("写入账号文件失败: {}", e))?;
+
+    modules::logger::log_info(&format!(
+        "账号标签已更新: {} ({})",
+        account_id,
+        if label.is_empty() { "已清除".to_string() } else { label }
+    ));
+
+    Ok(())
+}
+
 // ============================================================================
 // HTTP API 设置命令
 // ============================================================================
