@@ -104,6 +104,14 @@ pub fn run() {
                     // Force LAN access in headless/docker mode so it binds to 0.0.0.0
                     config.proxy.allow_lan_access = true;
 
+                    // [FIX] Force auth mode to AllExceptHealth in headless mode if it's Off or Auto
+                    // This ensures Web UI login validation works properly
+                    if matches!(config.proxy.auth_mode, crate::proxy::ProxyAuthMode::Off | crate::proxy::ProxyAuthMode::Auto) {
+                        info!("Headless mode: Forcing auth_mode to AllExceptHealth for Web UI security");
+                        config.proxy.auth_mode = crate::proxy::ProxyAuthMode::AllExceptHealth;
+                        modified = true;
+                    }
+
                     // [NEW] 支持通过环境变量注入 API Key
                     // 优先级：ABV_API_KEY > API_KEY > 配置文件
                     let env_key = std::env::var("ABV_API_KEY")

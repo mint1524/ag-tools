@@ -75,7 +75,8 @@
         "switch_to_spanish": "切换到西班牙语",
         "switch_to_spanish_short": "ES",
         "switch_to_malay": "切换到马来语",
-        "switch_to_malay_short": "MY"
+        "switch_to_malay_short": "MY",
+        "logout": "登出"
     },
     "dashboard": {
         "hello": "你好, 用户 👋",
@@ -1017,6 +1018,9 @@
         "desc": "当前运行在 Web 模式下，请输入管理密码或 API Key 以进入后台。",
         "placeholder": "请输入管理密码或 API Key",
         "btn_login": "验证并进入",
+        "btn_verifying": "验证中...",
+        "error_invalid_key": "密码或 API Key 错误，请重试",
+        "error_network": "网络连接失败，请检查服务是否正常运行",
         "note": "注意：如果设置了独立的管理密码，请输入管理密码；否则请输入 API_KEY。",
         "lookup_hint": "如果您忘记了，请运行 docker logs antigravity-manager 寻找 Current API Key 或 Web UI Password",
         "config_hint": "或执行 grep -E '\"api_key\"|\"admin_password\"' ~/.antigravity_tools/gui_config.json 查看。"
