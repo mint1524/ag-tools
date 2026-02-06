@@ -700,6 +700,35 @@
                 "context_compression_threshold_l2_tooltip": "压缩早期的思维链内容，保留签名。建议值: 0.55 (55%)",
                 "context_compression_threshold_l3": "L3 压缩阈值 (摘要重置)",
                 "context_compression_threshold_l3_tooltip": "强制生成 XML 状态摘要并重置会话。这是最省 token 的手段。建议值: 0.7 (70%)"
+            },
+            "opencode_sync": {
+                "card_title": "OpenCode",
+                "status": {
+                    "detecting": "检测中...",
+                    "installed": "已安装 ({{version}})",
+                    "not_installed": "未安装",
+                    "synced": "已同步",
+                    "not_synced": "未同步",
+                    "current_base_url": "当前接口地址 (BASE URL)"
+                },
+                "sync_accounts": "同步账号到 antigravity-accounts.json",
+                "btn_sync": "立即同步配置",
+                "btn_view": "查看配置",
+                "btn_restore": "还原配置",
+                "btn_restore_backup": "从备份还原",
+                "toast": {
+                    "config_missing": "请先生成 API Key 并启动服务",
+                    "sync_success": "OpenCode 配置同步成功",
+                    "sync_error": "OpenCode 同步失败: {{error}}"
+                },
+                "modal": {
+                    "view_title": "OpenCode 配置文件预览",
+                    "copy_success": "配置已复制"
+                },
+                "sync_confirm_title": "确认同步",
+                "sync_confirm_message": "将根据当前反代设置覆盖 OpenCode 配置。确定继续？",
+                "restore_confirm": "确定要将 OpenCode 还原为默认配置吗？",
+                "restore_backup_confirm": "确定要从备份还原 OpenCode 配置吗？"
             }
         },
         "cloudflared": {

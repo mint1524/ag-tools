@@ -709,6 +709,35 @@
                 "context_compression_threshold_l2_tooltip": "Compresses early thinking blocks while preserving signatures. Recommended: 0.55 (55%)",
                 "context_compression_threshold_l3": "L3 Compression Threshold (Summary Pivot)",
                 "context_compression_threshold_l3_tooltip": "Ultimate reset: generates an XML state summary and pivots to a fresh session. Most token-efficient. Recommended: 0.7 (70%)"
+            },
+            "opencode_sync": {
+                "card_title": "OpenCode",
+                "status": {
+                    "detecting": "Detecting...",
+                    "installed": "Installed ({{version}})",
+                    "not_installed": "Not Installed",
+                    "synced": "Synced",
+                    "not_synced": "Not Synced",
+                    "current_base_url": "Current Base URL"
+                },
+                "sync_accounts": "Sync accounts to antigravity-accounts.json",
+                "btn_sync": "Sync Config",
+                "btn_view": "View Config",
+                "btn_restore": "Restore",
+                "btn_restore_backup": "Restore Backup",
+                "toast": {
+                    "config_missing": "Please generate API Key and start service first",
+                    "sync_success": "OpenCode config synced successfully",
+                    "sync_error": "OpenCode sync failed: {{error}}"
+                },
+                "modal": {
+                    "view_title": "OpenCode Config Viewer",
+                    "copy_success": "Config copied"
+                },
+                "sync_confirm_title": "Confirm Sync",
+                "sync_confirm_message": "OpenCode config will be overwritten based on current proxy settings. Continue?",
+                "restore_confirm": "Are you sure you want to restore OpenCode to default settings?",
+                "restore_backup_confirm": "Are you sure you want to restore OpenCode config from backup?"
             }
         },
         "cloudflared": {

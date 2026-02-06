@@ -158,7 +158,7 @@ export const CliSyncCard = ({ proxyUrl, apiKey, className }: CliSyncCardProps) =
 
             const targetFile = fileName || status.files[0];
             const command = app === 'OpenCode' ? 'get_opencode_config_content' : 'get_cli_config_content';
-            const params = app === 'OpenCode' ? { fileName: targetFile } : { appType: app, fileName: targetFile };
+            const params = app === 'OpenCode' ? { request: { fileName: targetFile } } : { appType: app, fileName: targetFile };
 
             const content = await invoke<string>(command, params);
             setViewingConfig({
