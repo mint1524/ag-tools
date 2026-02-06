@@ -125,7 +125,12 @@ jobs:
             src-tauri/target/**/release/bundle/rpm/*.rpm
             src-tauri/target/**/release/bundle/macos/*.app.tar.gz
             src-tauri/target/**/release/bundle/macos/*.app.tar.gz.sig
-            src-tauri/target/**/release/bundle/**/*.sig
+            src-tauri/target/**/release/bundle/dmg/*.sig
+            src-tauri/target/**/release/bundle/deb/*.sig
+            src-tauri/target/**/release/bundle/appimage/*.sig
+            src-tauri/target/**/release/bundle/msi/*.sig
+            src-tauri/target/**/release/bundle/nsis/*.sig
+            src-tauri/target/**/release/bundle/rpm/*.sig
 
   publish-release:
     needs: build-tauri
@@ -211,18 +216,17 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push (AMD64)
-        uses: nick-fields/retry@v3
+        uses: docker/build-push-action@v6
         with:
-          timeout_minutes: 20
-          max_attempts: 3
-          command: |
-             npx -y docker-build-push-action@v6 \
-              --context . \
-              --file docker/Dockerfile \
-              --platforms linux/amd64 \
-              --push true \
-              --tags ${{ github.repository_owner }}/antigravity-manager:latest-amd64,${{ github.repository_owner }}/antigravity-manager:${{ github.ref_name }}-amd64 \
-              --build-args USE_MIRROR=false
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ github.repository_owner }}/antigravity-manager:latest-amd64
+            ${{ github.repository_owner }}/antigravity-manager:${{ github.ref_name }}-amd64
+          build-args: |
+            USE_MIRROR=false
 
   docker-build-arm64:
     runs-on: ubuntu-24.04-arm
@@ -241,18 +245,17 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and push (ARM64)
-        uses: nick-fields/retry@v3
+        uses: docker/build-push-action@v6
         with:
-          timeout_minutes: 40
-          max_attempts: 3
-          command: |
-            npx -y docker-build-push-action@v6 \
-              --context . \
-              --file docker/Dockerfile \
-              --platforms linux/arm64 \
-              --push true \
-              --tags ${{ github.repository_owner }}/antigravity-manager:latest-arm64,${{ github.repository_owner }}/antigravity-manager:${{ github.ref_name }}-arm64 \
-              --build-args USE_MIRROR=false
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ${{ github.repository_owner }}/antigravity-manager:latest-arm64
+            ${{ github.repository_owner }}/antigravity-manager:${{ github.ref_name }}-arm64
+          build-args: |
+            USE_MIRROR=false
 
   docker-manifest:
     needs: [docker-build-amd64, docker-build-arm64]
