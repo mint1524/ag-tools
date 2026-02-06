@@ -1151,7 +1151,10 @@ pub async fn handle_messages(
 
             // 不可重试的错误，直接返回
             error!("[{}] Non-retryable error {}: {}", trace_id, status_code, error_text);
-            return (status, [("X-Account-Email", email.as_str())], error_text).into_response();
+            return (status, [
+                ("X-Account-Email", email.as_str()),
+                ("X-Mapped-Model", request_with_mapped.model.as_str())
+            ], error_text).into_response();
         }
     }
     

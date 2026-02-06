@@ -443,7 +443,10 @@ pub async fn handle_generate(
         error!("Gemini Upstream non-retryable error {}: {}", status_code, error_text);
         return Ok((
             status, 
-            [("X-Account-Email", email.as_str())], 
+            [
+                ("X-Account-Email", email.as_str()),
+                ("X-Mapped-Model", mapped_model.as_str())
+            ], 
             // [FIX] Return JSON error
             Json(json!({
                 "error": {
