@@ -179,8 +179,13 @@ jobs:
           
           # 查找所有下载下来的 json 并合并
           find all-updaters -name "*.json" -type f | while read json_file; do
-            echo "Processing $json_file..."
-            jq -s '.[0] * .[1]' merged_updater.json "$json_file" > temp.json && mv temp.json merged_updater.json
+            if jq -e . "$json_file" >/dev/null 2>&1; then
+              echo "Merging valid JSON: $json_file..."
+              jq -s '.[0] * .[1]' merged_updater.json "$json_file" > temp.json && mv temp.json merged_updater.json
+            else
+              echo "Skipping invalid JSON: $json_file"
+              cat "$json_file"
+            fi
           done
           
           echo "Merged JSON content:"
