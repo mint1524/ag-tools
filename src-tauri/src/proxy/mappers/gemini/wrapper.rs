@@ -168,7 +168,10 @@ pub fn wrap_request(
                             // 自定义模式：使用全局配置的固定值
                             // [FIX #1592] Even in Custom mode, cap to 24576 for known Gemini thinking limit
                             let val = tb_config.custom_value as u64;
-                            if val > 24576 {
+                            let is_limited = (final_model_name.contains("gemini") || final_model_name.contains("thinking"))
+                                && !final_model_name.contains("-image");
+
+                            if is_limited && val > 24576 {
                                 tracing::warn!(
                                     "[Gemini-Wrap] Custom mode: capping thinking_budget from {} to 24576 for model {}",
                                     val, final_model_name
@@ -185,8 +188,11 @@ pub fn wrap_request(
                             }
                         }
                         crate::proxy::config::ThinkingBudgetMode::Auto => {
-                            // 自动模式：应用 24576 capping (向后兼容)
-                            if budget > 24576 {
+                            // 自动模式：应用 24576 capping (除画图模型外)
+                            let is_limited = (final_model_name.contains("gemini") || final_model_name.contains("thinking"))
+                                && !final_model_name.contains("-image");
+
+                            if is_limited && budget > 24576 {
                                 tracing::info!(
                                     "[Gemini-Wrap] Auto mode: capping thinking_budget from {} to 24576 for model {}", 
                                     budget, final_model_name

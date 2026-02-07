@@ -377,6 +377,10 @@ response = client.chat.completions.create(
             -   **逻辑校准**: 彻底解决了请求参数在反代过程中因浮点转换导致的微小偏差（如 `0.95` 变成 `0.949999...`），显著提升了上游调用的稳定性。
         -   **[核心重构] 实现应用名称国际化 (PR #1662)**:
             -   **UI 升级**: 移除了 `NavLogo` 和 `Settings` 页面中硬编码的 "Antigravity Tools"，全面采用 `app_name` 翻译键，确保 UI 语言切换的一致性。
+        -   **[核心修复] 彻底解决 gemini-3-pro-image 深度思考功能与 Token 限制冲突 (Issue #1675)**:
+            -   **功能恢复**: 在所有协议下（OpenAI/Gemini/Claude）全面恢复了画图模型的深度思考 (Thinking) 支持。
+            -   **Token 优化**: 针对画图模型实施了保守的 `maxOutputTokens` 自动配额策略，解决了开启思维时因触碰 128k 总量上限导致的 HTTP 400 错误，同时确保 4K 分辨率生成不受影响。
+            -   **预算灵活**: 移除了画图模型 24k 的物理预算上限，提升了模型的推理深度上限。
         -   **[国际化] 日语翻译实现 100% 同步 (PR #1662)**:
             -   **翻译补全**: 同步了 `en.json` 中的所有缺失键值，涵盖了 Cloudflared、断路器、OpenCode 同步等新功能。
         -   **[核心重构] 重构 UpstreamClient 响应处理逻辑**:
