@@ -256,6 +256,9 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.8 (2026-02-07)**:
+        -   **[UI Optimization] Navbar & Link Interaction Improvements (PR #1648)**:
+            -   **Dragging Restricted**: Added `draggable="false"` to all links and icons in the navigation bar and Logo to prevent accidental browser default dragging behavior, improving interaction stability.
+            -   **SmartWarmup Hover Enhancement**: Refined the hover color transition logic for the SmartWarmup component icon in its disabled state for better UI consistency.
         -   **[Core Feature] Enhanced Account Custom Label Support (PR #1620)**:
             -   **Length Limit**: Optimized label length limit from 20 to 15 characters, synchronized across frontend and backend.
             -   **Backend Validation**: Enhanced Rust command validation with Unicode character support and improved error handling.
