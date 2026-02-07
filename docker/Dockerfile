@@ -59,6 +59,9 @@ WORKDIR /app
 # Copy the whole project to build the Rust workspace
 COPY . .
 
+# Copy frontend dist from builder so Tauri can embed it
+COPY --from=frontend-builder /app/dist ./dist
+
 # Build the Rust backend in release mode (with BuildKit cache)
 WORKDIR /app/src-tauri
 RUN --mount=type=cache,target=/root/.cargo/registry \
