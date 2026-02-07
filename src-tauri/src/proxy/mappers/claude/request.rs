@@ -431,6 +431,7 @@ pub fn transform_claude_request_in(
         &tools_val,
         claude_req.size.as_deref(),    // [NEW] Pass size parameter
         claude_req.quality.as_deref(), // [NEW] Pass quality parameter
+        None,  // Claude uses size/quality params, not body.imageConfig
     );
 
     // [CRITICAL FIX] Disable dummy thought injection for Vertex AI
@@ -534,7 +535,7 @@ pub fn transform_claude_request_in(
 
     // 4. Generation Config & Thinking (Pass final is_thinking_enabled)
     let generation_config =
-        build_generation_config(claude_req, has_web_search_tool, is_thinking_enabled);
+        build_generation_config(claude_req, &mapped_model, has_web_search_tool, is_thinking_enabled);
 
     // 2. Contents (Messages)
     let contents = build_google_contents(
@@ -596,10 +597,11 @@ pub fn transform_claude_request_in(
             // 2. Remove systemInstruction (image generation does not support system prompts)
             obj.remove("systemInstruction");
 
-            // 3. Clean generationConfig (remove thinkingConfig, responseMimeType, responseModalities etc.)
+            // 3. Clean generationConfig (remove responseMimeType, responseModalities etc.)
             let gen_config = obj.entry("generationConfig").or_insert_with(|| json!({}));
             if let Some(gen_obj) = gen_config.as_object_mut() {
-                gen_obj.remove("thinkingConfig");
+                // [REMOVED] thinkingConfig 拦截已删除，允许图像生成时输出思维链
+                // gen_obj.remove("thinkingConfig");
                 gen_obj.remove("responseMimeType");
                 gen_obj.remove("responseModalities");
                 gen_obj.insert("imageConfig".to_string(), image_config);
@@ -1689,6 +1691,7 @@ fn build_tools(tools: &Option<Vec<Tool>>, has_web_search: bool) -> Result<Option
 /// 构建 Generation Config
 fn build_generation_config(
     claude_req: &ClaudeRequest,
+    mapped_model: &str,
     has_web_search: bool,
     is_thinking_enabled: bool,
 ) -> Value {
@@ -1702,14 +1705,37 @@ fn build_generation_config(
         let tb_config = crate::proxy::config::get_thinking_budget_config();
         let budget = match tb_config.mode {
             crate::proxy::config::ThinkingBudgetMode::Passthrough => budget_tokens,
-            crate::proxy::config::ThinkingBudgetMode::Custom => tb_config.custom_value,
-            crate::proxy::config::ThinkingBudgetMode::Auto => {
-                let model_lower = claude_req.model.to_lowercase();
+            crate::proxy::config::ThinkingBudgetMode::Custom => {
+                let mut custom_value = tb_config.custom_value;
+                // [FIX #1602] 针对 Gemini 系列模型，在自定义模式下也强制执行 24576 上限
+                let model_lower = mapped_model.to_lowercase();
                 let is_gemini_limited = has_web_search
+                    || model_lower.contains("gemini")
                     || model_lower.contains("flash")
                     || model_lower.ends_with("-thinking");
-                if is_gemini_limited {
-                    budget_tokens.min(24576)
+                
+                if is_gemini_limited && custom_value > 24576 {
+                    tracing::warn!(
+                        "[Claude-Request] Custom mode: capping thinking_budget from {} to 24576 for Gemini model {}",
+                        custom_value, mapped_model
+                    );
+                    custom_value = 24576;
+                }
+                custom_value
+            },
+            crate::proxy::config::ThinkingBudgetMode::Auto => {
+                // [FIX #1592] Use mapped model for robust detection, same as OpenAI protocol
+                let model_lower = mapped_model.to_lowercase();
+                let is_gemini_limited = has_web_search
+                    || model_lower.contains("gemini")
+                    || model_lower.contains("flash")
+                    || model_lower.ends_with("-thinking");
+                if is_gemini_limited && budget_tokens > 24576 {
+                    tracing::info!(
+                        "[Claude-Request] Auto mode: capping thinking_budget from {} to 24576 for Gemini model {}", 
+                        budget_tokens, mapped_model
+                    );
+                    24576
                 } else {
                     budget_tokens
                 }
@@ -2570,13 +2596,14 @@ mod tests {
             quality: None,
         };
 
-        // Should NOT cap
+        // Should cap
         let result_pro = transform_claude_request_in(&req_pro, "proj", false).unwrap();
         let budget_pro = result_pro["request"]["generationConfig"]["thinkingConfig"]
             ["thinkingBudget"]
             .as_u64()
             .unwrap();
-        assert_eq!(budget_pro, 32000);
+        // [FIX #1592] Gemini Pro models are now also capped to 24576
+        assert_eq!(budget_pro, 24576);
     }
 
     #[test]
@@ -2613,6 +2640,7 @@ mod tests {
         assert!(gen_config.get("thinkingConfig").is_some(), "thinkingConfig should be preserved for gemini-3-pro");
         
         let budget = gen_config["thinkingConfig"]["thinkingBudget"].as_u64().unwrap();
+        // [FIX #1592] Since it's < 24576, it should be kept as 16000
         assert_eq!(budget, 16000);
     }
 

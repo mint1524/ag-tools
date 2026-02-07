@@ -96,7 +96,8 @@ pub async fn handle_generate(
             &mapped_model,
             &tools_val,
             None,  // size (not applicable for Gemini native protocol)
-            None   // quality
+            None,  // quality
+            Some(&body),  // [NEW] Pass request body for imageConfig parsing
         );
 
         // 4. 获取 Token (使用准确的 request_type)
@@ -442,7 +443,10 @@ pub async fn handle_generate(
         error!("Gemini Upstream non-retryable error {}: {}", status_code, error_text);
         return Ok((
             status, 
-            [("X-Account-Email", email.as_str())], 
+            [
+                ("X-Account-Email", email.as_str()),
+                ("X-Mapped-Model", mapped_model.as_str())
+            ], 
             // [FIX] Return JSON error
             Json(json!({
                 "error": {

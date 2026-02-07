@@ -474,8 +474,10 @@ pub struct DeviceProfiles {
 }
 
 pub fn get_device_profiles(account_id: &str) -> Result<DeviceProfiles, String> {
-    let storage_path = crate::modules::device::get_storage_path()?;
-    let current = crate::modules::device::read_profile(&storage_path).ok();
+    // In headless/Docker mode, storage.json may not exist - handle gracefully
+    let current = crate::modules::device::get_storage_path()
+        .ok()
+        .and_then(|path| crate::modules::device::read_profile(&path).ok());
     let account = load_account(account_id)?;
     Ok(DeviceProfiles {
         current_storage: current,
@@ -1018,6 +1020,14 @@ pub async fn refresh_all_quotas_logic() -> Result<RefreshStats, String> {
                     "  - Skipping {} ({})",
                     account.email,
                     if account.disabled { "Disabled" } else { "Proxy Disabled" }
+                ));
+                return false;
+            }
+            // [FIX] 检查 proxy_disabled 状态
+            if account.proxy_disabled {
+                crate::modules::logger::log_info(&format!(
+                    "  - Skipping {} (Proxy Disabled)",
+                    account.email
                 ));
                 return false;
             }

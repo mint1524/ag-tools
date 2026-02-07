@@ -9,13 +9,7 @@ use std::sync::{Mutex, OnceLock};
 use tracing::debug;
 use uuid::Uuid;
 
-// === 全局 ThoughtSignature 存储 ===
-// 用于在流式响应和后续请求之间传递签名，避免嵌入到用户可见的文本中
-static GLOBAL_THOUGHT_SIG: OnceLock<Mutex<Option<String>>> = OnceLock::new();
 
-fn get_thought_sig_storage() -> &'static Mutex<Option<String>> {
-    GLOBAL_THOUGHT_SIG.get_or_init(|| Mutex::new(None))
-}
 
 /// 保存 thoughtSignature 到会话缓存
 pub fn store_thought_signature(sig: &str, session_id: &str, message_count: usize) {
@@ -23,16 +17,7 @@ pub fn store_thought_signature(sig: &str, session_id: &str, message_count: usize
         return;
     }
 
-    // 1. 存储到全局存储 (保持向后兼容)
-    if let Ok(mut guard) = get_thought_sig_storage().lock() {
-        let should_store = match &*guard {
-            None => true,
-            Some(existing) => sig.len() > existing.len(),
-        };
-        if should_store {
-            *guard = Some(sig.to_string());
-        }
-    }
+
 
     // 2. [CRITICAL] 存储到 Session 隔离缓存 (对齐 Claude 协议)
     crate::proxy::SignatureCache::global().cache_session_signature(session_id, sig.to_string(), message_count);
@@ -45,15 +30,7 @@ pub fn store_thought_signature(sig: &str, session_id: &str, message_count: usize
     );
 }
 
-/// 获取全局存储的 thoughtSignature（不清除）
-#[allow(dead_code)]
-pub fn get_thought_signature() -> Option<String> {
-    if let Ok(guard) = get_thought_sig_storage().lock() {
-        guard.clone()
-    } else {
-        None
-    }
-}
+
 
 /// Extract and convert Gemini usageMetadata to OpenAI usage format
 fn extract_usage_metadata(u: &Value) -> Option<super::models::OpenAIUsage> {
@@ -153,7 +130,25 @@ pub fn create_openai_sse_stream(
                                                                 if !emitted_tool_calls.contains(&call_key) {
                                                                     emitted_tool_calls.insert(call_key);
                                                                     let name = func_call.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
-                                                                    let args = func_call.get("args").unwrap_or(&json!({})).to_string();
+                                                                    let mut args = func_call.get("args").unwrap_or(&json!({})).clone();
+                                                                    
+                                                                    // [FIX #1575] 标准化 shell 工具参数名称
+                                                                    // Gemini 可能使用 cmd/code/script 等替代参数名，统一为 command
+                                                                    if name == "shell" || name == "bash" || name == "local_shell" {
+                                                                        if let Some(obj) = args.as_object_mut() {
+                                                                            if !obj.contains_key("command") {
+                                                                                for alt_key in &["cmd", "code", "script", "shell_command"] {
+                                                                                    if let Some(val) = obj.remove(*alt_key) {
+                                                                                        obj.insert("command".to_string(), val);
+                                                                                        debug!("[OpenAI-Stream] Normalized shell arg '{}' -> 'command'", alt_key);
+                                                                                        break;
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                    
+                                                                    let args_str = serde_json::to_string(&args).unwrap_or_default();
                                                                     let mut hasher = std::collections::hash_map::DefaultHasher::new();
                                                                     use std::hash::{Hash, Hasher};
                                                                     serde_json::to_string(func_call).unwrap_or_default().hash(&mut hasher);
@@ -172,7 +167,7 @@ pub fn create_openai_sse_stream(
                                                                                     "index": 0,
                                                                                     "id": call_id,
                                                                                     "type": "function",
-                                                                                    "function": { "name": name, "arguments": args }
+                                                                                    "function": { "name": name, "arguments": args_str }
                                                                                 }]
                                                                             },
                                                                             "finish_reason": serde_json::Value::Null
@@ -211,13 +206,21 @@ pub fn create_openai_sse_stream(
                                                         if !grounding_text.is_empty() { content_out.push_str(&grounding_text); }
                                                     }
 
-                                                    let finish_reason = candidate.get("finishReason").and_then(|f| f.as_str()).map(|f| match f {
+                                                    let gemini_finish_reason = candidate.get("finishReason").and_then(|f| f.as_str()).map(|f| match f {
                                                         "STOP" => "stop",
                                                         "MAX_TOKENS" => "length",
                                                         "SAFETY" => "content_filter",
                                                         "RECITATION" => "content_filter",
                                                         _ => f,
                                                     });
+
+                                                    // [FIX #1575] 如果发射了工具调用，强制设置为 tool_calls
+                                                    // 解决 Gemini 返回 STOP 但有工具调用时，OpenAI 客户端认为对话已结束的问题
+                                                    let finish_reason = if !emitted_tool_calls.is_empty() && gemini_finish_reason.is_some() {
+                                                        Some("tool_calls")
+                                                    } else {
+                                                        gemini_finish_reason
+                                                    };
 
                                                     if !thought_out.is_empty() {
                                                         let reasoning_chunk = json!({

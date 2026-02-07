@@ -37,6 +37,15 @@ pub struct Account {
     /// 受配额保护禁用的模型列表 [NEW #621]
     #[serde(default, skip_serializing_if = "HashSet::is_empty")]
     pub protected_models: HashSet<String>,
+    /// [NEW] 403 验证阻止状态 (VALIDATION_REQUIRED)
+    #[serde(default)]
+    pub validation_blocked: bool,
+    /// [NEW] 验证阻止截止时间戳
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validation_blocked_until: Option<i64>,
+    /// [NEW] 验证阻止原因
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub validation_blocked_reason: Option<String>,
     pub created_at: i64,
     pub last_used: i64,
     /// 绑定的代理 ID (None = 使用全局代理池)
@@ -45,6 +54,9 @@ pub struct Account {
     /// 代理绑定时间
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub proxy_bound_at: Option<i64>,
+    /// 用户自定义标签
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub custom_label: Option<String>,
 }
 
 impl Account {
@@ -65,10 +77,14 @@ impl Account {
             proxy_disabled_reason: None,
             proxy_disabled_at: None,
             protected_models: HashSet::new(),
+            validation_blocked: false,
+            validation_blocked_until: None,
+            validation_blocked_reason: None,
             created_at: now,
             last_used: now,
             proxy_id: None,
             proxy_bound_at: None,
+            custom_label: None,
         }
     }
 

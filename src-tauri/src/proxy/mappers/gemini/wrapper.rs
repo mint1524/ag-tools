@@ -126,7 +126,7 @@ pub fn wrap_request(
                  // Let's inject a reasonable default that triggers thinking.
                  gen_config.insert("thinkingConfig".to_string(), json!({
                      "includeThoughts": true,
-                     "thinkingBudget": 16000 // Default safe budget for auto-injected
+                     "thinkingBudget": 24576 // Default safe budget for auto-injected (aligned with other mappers)
                  }));
              }
         }
@@ -146,14 +146,23 @@ pub fn wrap_request(
                         }
                         crate::proxy::config::ThinkingBudgetMode::Custom => {
                             // 自定义模式：使用全局配置的固定值
-                            let custom_value = tb_config.custom_value as u64;
-                            if custom_value != budget {
-                                tracing::debug!(
-                                    "[Gemini-Wrap] Custom mode: overriding {} with {} for model {}",
-                                    budget, custom_value, final_model_name
+                            // [FIX #1592] Even in Custom mode, cap to 24576 for known Gemini thinking limit
+                            let val = tb_config.custom_value as u64;
+                            if val > 24576 {
+                                tracing::warn!(
+                                    "[Gemini-Wrap] Custom mode: capping thinking_budget from {} to 24576 for model {}",
+                                    val, final_model_name
                                 );
+                                24576
+                            } else {
+                                if val != budget {
+                                    tracing::debug!(
+                                        "[Gemini-Wrap] Custom mode: overriding {} with {} for model {}",
+                                        budget, val, final_model_name
+                                    );
+                                }
+                                val
                             }
-                            custom_value
                         }
                         crate::proxy::config::ThinkingBudgetMode::Auto => {
                             // 自动模式：应用 24576 capping (向后兼容)
@@ -187,13 +196,18 @@ pub fn wrap_request(
         .and_then(|t| t.as_array())
         .map(|arr| arr.clone());
 
+    // [FIX] Extract OpenAI-compatible image parameters from root (for gemini-3-pro-image)
+    let size = body.get("size").and_then(|v| v.as_str());
+    let quality = body.get("quality").and_then(|v| v.as_str());
+
     // Use shared grounding/config logic
     let config = crate::proxy::mappers::common_utils::resolve_request_config(
         original_model,
         final_model_name,
         &tools_val,
-        None,
-        None,
+        size,    // [FIX] Pass size parameter
+        quality, // [FIX] Pass quality parameter
+        Some(body),  // [NEW] Pass request body for imageConfig parsing
     );
 
     // Clean tool declarations (remove forbidden Schema fields like multipleOf, and remove redundant search decls)
@@ -261,10 +275,22 @@ pub fn wrap_request(
             // 2. Remove systemInstruction (image generation does not support system prompts)
             obj.remove("systemInstruction");
 
-            // 3. Clean generationConfig (remove thinkingConfig, responseMimeType, responseModalities etc.)
+            // [FIX] Ensure 'role' field exists for all contents (Native clients might omit it)
+            if let Some(contents) = obj.get_mut("contents").and_then(|c| c.as_array_mut()) {
+                for content in contents {
+                    if let Some(c_obj) = content.as_object_mut() {
+                        if !c_obj.contains_key("role") {
+                            c_obj.insert("role".to_string(), json!("user"));
+                        }
+                    }
+                }
+            }
+
+            // 3. Clean generationConfig (remove responseMimeType, responseModalities etc.)
             let gen_config = obj.entry("generationConfig").or_insert_with(|| json!({}));
             if let Some(gen_obj) = gen_config.as_object_mut() {
-                gen_obj.remove("thinkingConfig");
+                // [REMOVED] thinkingConfig 拦截已删除，允许图像生成时输出思维链
+                // gen_obj.remove("thinkingConfig");
                 gen_obj.remove("responseMimeType");
                 gen_obj.remove("responseModalities"); // Cherry Studio sends this, might conflict
                 gen_obj.insert("imageConfig".to_string(), image_config);
@@ -481,7 +507,8 @@ mod tests {
             ["thinkingBudget"]
             .as_u64()
             .unwrap();
-        assert_eq!(budget_pro, 32000);
+        // [FIX #1592] Pro models now also capped to 24576 in wrap_request logic
+        assert_eq!(budget_pro, 24576);
     }
 
     #[test]
@@ -626,7 +653,42 @@ mod tests {
             .as_u64()
             .unwrap();
             
-        // Default injected value is 16000
-        assert_eq!(budget, 16000);
+        // Default injected value is 1024 (based on Custom mode in previous test) or 24576 (default)
+        // Since we restored default config (Auto 24576) in previous test, it should be 24576
+        assert_eq!(budget, 24576);
+    }
+
+    #[test]
+    fn test_openai_image_params_support() {
+        // Test Case 1: Standard Size + Quality (HD/4K)
+        let body_1 = json!({
+            "model": "gemini-3-pro-image",
+            "size": "1920x1080",
+            "quality": "hd",
+            "prompt": "Test"
+        });
+        
+        let result_1 = wrap_request(&body_1, "test-proj", "gemini-3-pro-image", None);
+        let req_1 = result_1.get("request").unwrap();
+        let gen_config_1 = req_1.get("generationConfig").unwrap();
+        let image_config_1 = gen_config_1.get("imageConfig").unwrap();
+        
+        assert_eq!(image_config_1["aspectRatio"], "16:9");
+        assert_eq!(image_config_1["imageSize"], "4K");
+
+        // Test Case 2: Aspect Ratio String + Standard Quality
+        let body_2 = json!({
+            "model": "gemini-3-pro-image",
+            "size": "1:1",
+            "quality": "standard",
+             "prompt": "Test"
+        });
+        
+        let result_2 = wrap_request(&body_2, "test-proj", "gemini-3-pro-image", None);
+        let req_2 = result_2.get("request").unwrap();
+        let image_config_2 = req_2["generationConfig"]["imageConfig"].as_object().unwrap();
+        
+        assert_eq!(image_config_2["aspectRatio"], "1:1");
+        assert_eq!(image_config_2["imageSize"], "1K");
     }
 }

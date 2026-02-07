@@ -216,7 +216,7 @@ RUST_LOG=debug npm run tauri dev
 
 ### C. 方式 3：Google Gemini 原生协议
 
-Antigravity v4.1.3 新增支持。
+Antigravity v4.1.4 新增支持。
 
 1.  **配置**:
     ```bash
