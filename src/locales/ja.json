@@ -762,6 +762,17 @@
         "sync_confirm_message": "現在のプロキシ設定に基づき、OpenCode の設定が上書きされます。続行しますか？",
         "restore_confirm": "OpenCode をデフォルト設定に復元しますか？",
         "restore_backup_confirm": "バックアップから OpenCode の設定を復元しますか？"
+      },
+      "droid_sync": {
+        "modal_title": "Droid にモデルを追加",
+        "modal_desc": "選択したモデルは customModels として settings.json に書き込まれます",
+        "selected": "選択済み",
+        "btn_confirm_sync": "選択したモデルを追加",
+        "toast": {
+          "no_models_selected": "少なくとも1つのモデルを選択してください",
+          "sync_success_count": "{{count}} 個のモデルを Droid に追加しました",
+          "sync_error": "同期に失敗しました: {{error}}"
+        }
       }
     },
     "cloudflared": {
