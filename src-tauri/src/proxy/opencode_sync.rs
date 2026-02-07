@@ -599,6 +599,7 @@ pub fn sync_opencode_config(
     proxy_url: &str,
     api_key: &str,
     sync_accounts: bool,
+    models_to_sync: Option<Vec<String>>,
 ) -> Result<(), String> {
     let Some((config_path, _ag_config_path, ag_accounts_path)) = get_config_paths() else {
         return Err("Failed to get OpenCode config directory".to_string());
@@ -635,13 +636,33 @@ pub fn sync_opencode_config(
         ensure_provider_object(provider, "anthropic");
         if let Some(anthropic) = provider.get_mut("anthropic") {
             merge_provider_options(anthropic, &normalized_url, api_key);
-            add_missing_models(anthropic, ANTHROPIC_MODELS);
+            if let Some(ref m_list) = models_to_sync {
+                // 如果传入了模型列表，过滤出属于 anthropic 的模型进行同步 (或者全部同步，取决于策略)
+                // 这里暂且采取：如果传入了列表，则按需更新，如果列表为空则不处理，如果列表中有匹配的前缀则优先
+                let filtered: Vec<&str> = m_list.iter().map(|s| s.as_str()).filter(|m| m.contains("claude")).collect();
+                if !filtered.is_empty() {
+                    add_missing_models(anthropic, &filtered);
+                } else {
+                    add_missing_models(anthropic, ANTHROPIC_MODELS);
+                }
+            } else {
+                add_missing_models(anthropic, ANTHROPIC_MODELS);
+            }
         }
 
         ensure_provider_object(provider, "google");
         if let Some(google) = provider.get_mut("google") {
             merge_provider_options(google, &normalized_url, api_key);
-            add_missing_models(google, GOOGLE_MODELS);
+            if let Some(ref m_list) = models_to_sync {
+                let filtered: Vec<&str> = m_list.iter().map(|s| s.as_str()).filter(|m| m.contains("gemini")).collect();
+                if !filtered.is_empty() {
+                    add_missing_models(google, &filtered);
+                } else {
+                    add_missing_models(google, GOOGLE_MODELS);
+                }
+            } else {
+                add_missing_models(google, GOOGLE_MODELS);
+            }
         }
     }
 
@@ -854,8 +875,9 @@ pub async fn execute_opencode_sync(
     proxy_url: String,
     api_key: String,
     sync_accounts: Option<bool>,
+    models: Option<Vec<String>>,
 ) -> Result<(), String> {
-    sync_opencode_config(&proxy_url, &api_key, sync_accounts.unwrap_or(false))
+    sync_opencode_config(&proxy_url, &api_key, sync_accounts.unwrap_or(false), models)
 }
 
 #[tauri::command]

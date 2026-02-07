@@ -368,11 +368,13 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
-    *   **v4.1.9 (2026-02-07)**:
-        -   **[核心功能] 新增 Droid CLI 配置快速同步支持 (PR #1680)**:
-            -   **一键集成**: 实现了对 Droid (Factory CLI) 配置的自动检测与同步，支持生成 `~/.factory/settings.json`。
-            -   **模型管理**: 支持通过拖拽排序（Drag-and-Drop）自定义 Droid 的模型列表及顺序。
-            -   **备份安全性**: 同步前自动备份原有配置，支持一键还原及导出。
+    *   **v4.1.9 (2026-02-08)**:
+        -   **[核心功能] 扩展 CLI 配置快速同步支持 (PR #1680, #1685)**:
+            -   **更多工具集成**: 现已支持同步配置到 **Claude Code**, **Gemini CLI**, **Codex AI**, **OpenCode** 以及 **Droid**。
+            -   **模型选择定制**: 为单模型 CLI (Claude, Codex, Gemini) 增加了模型选择下拉框，支持同步自定义模型 ID；为多模型 CLI (OpenCode, Droid) 实现了拖拽式模型列表管理。
+            -   **逻辑校准**: 深度适配了各 CLI 的预设逻辑（如 Claude 根节点的 `model` 字段及镜像环境清理），确保同步后的兼容性。
+            -   **交互优化**: 同步面板现支持默认折叠并适配平滑动画，同时优化了同步前后的 UI 状态反馈。
+            -   **备份安全性**: 同步前自动生成 `.antigravity.bak` 备份，支持一键还原。
         -   **[核心功能] 新增全局系统提示词 (Global System Prompt) 支持 (PR #1669)**:
             -   **统一指令注入**: 在“系统设置”中新增全局系统提示词配置，支持将自定义指令自动注入到所有 OpenAI、Claude 和 Gemini 协议请求中。
             -   **前端界面**: 新增 `GlobalSystemPrompt` 组件，支持一键启用及多行内容编辑。

@@ -738,7 +738,10 @@
                 "sync_confirm_title": "确认同步",
                 "sync_confirm_message": "将根据当前反代设置覆盖 OpenCode 配置。确定继续？",
                 "restore_confirm": "确定要将 OpenCode 还原为默认配置吗？",
-                "restore_backup_confirm": "确定要从备份还原 OpenCode 配置吗？"
+                "restore_backup_confirm": "确定要从备份还原 OpenCode 配置吗？",
+                "modal_title": "选择 OpenCode 模型",
+                "select_models": "选择要同步的模型",
+                "btn_confirm_sync": "确认同步"
             },
             "droid_sync": {
                 "modal_title": "添加模型到 Droid",
@@ -976,6 +979,7 @@
                 "detecting": "检测中...",
                 "current_base_url": "当前接口地址 (Base URL)"
             },
+            "model_select": "选择同步模型",
             "btn_sync": "立即同步配置",
             "btn_view": "查看当前配置",
             "btn_restore": "恢复默认配置",

@@ -747,7 +747,10 @@
                 "sync_confirm_title": "Confirm Sync",
                 "sync_confirm_message": "OpenCode config will be overwritten based on current proxy settings. Continue?",
                 "restore_confirm": "Are you sure you want to restore OpenCode to default settings?",
-                "restore_backup_confirm": "Are you sure you want to restore OpenCode config from backup?"
+                "restore_backup_confirm": "Are you sure you want to restore OpenCode config from backup?",
+                "modal_title": "Select OpenCode Models",
+                "select_models": "Select models to sync",
+                "btn_confirm_sync": "Confirm Sync"
             },
             "droid_sync": {
                 "modal_title": "Add models to Droid",
@@ -985,6 +988,7 @@
                 "detecting": "Detecting...",
                 "current_base_url": "Current Base URL"
             },
+            "model_select": "Select Model",
             "btn_sync": "Sync Config Now",
             "btn_view": "View Config",
             "btn_restore": "Restore Defaults",

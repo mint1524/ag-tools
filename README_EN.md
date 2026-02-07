@@ -255,11 +255,13 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
-    *   **v4.1.9 (2026-02-07)**:
-        -   **[Core Feature] Add Droid CLI Config Quick Sync Support (PR #1680)**:
-            -   **One-click Integration**: Implemented automatic detection and synchronization for Droid (Factory CLI) configuration, supporting `~/.factory/settings.json` generation.
-            -   **Model Management**: Supports custom model listing and reordering for Droid via drag-and-drop.
-            -   **Backup & Security**: Automatically backs up original configurations before syncing, with one-click restore and export support.
+    *   **v4.1.9 (2026-02-08)**:
+        -   **[Core Feature] Expand CLI Config Quick Sync Support (PR #1680, #1685)**:
+            -   **Multi-Tool Integration**: Now supports syncing configurations to **Claude Code**, **Gemini CLI**, **Codex AI**, **OpenCode**, and **Droid**.
+            -   **Custom Model Selection**: Added model selection dropdowns for single-model CLIs (Claude, Codex, Gemini) and drag-and-drop management for multi-model CLIs (OpenCode, Droid).
+            -   **Logic Calibration**: Deeply adapted the preset logic for each CLI (e.g., root-level `model` field and mirror environment cleanup for Claude) to ensure post-sync compatibility.
+            -   **Interaction Optimization**: Synced panel now supports default collapse with smooth animations and improved UI feedback.
+            -   **Backup & Security**: Automatically generates `.antigravity.bak` backups before syncing, with one-click restore support.
         -   **[Core Feature] Global System Prompt Support (PR #1669)**:
             -   **Unified Instruction Injection**: Added a new configuration in System Settings to inject custom system instructions into all OpenAI, Claude, and Gemini protocol requests.
             -   **Frontend UI**: Introduced the `GlobalSystemPrompt` component with one-click enable and multi-line content editing.

@@ -2758,12 +2758,13 @@ struct CliSyncRequest {
     app_type: crate::proxy::cli_sync::CliApp,
     proxy_url: String,
     api_key: String,
+    pub model: Option<String>,
 }
 
 async fn admin_execute_cli_sync(
     Json(payload): Json<CliSyncRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
-    crate::proxy::cli_sync::execute_cli_sync(payload.app_type, payload.proxy_url, payload.api_key)
+    crate::proxy::cli_sync::execute_cli_sync(payload.app_type, payload.proxy_url, payload.api_key, payload.model)
         .await
         .map(|_| StatusCode::OK)
         .map_err(|e| {
@@ -3345,6 +3346,7 @@ struct OpencodeSyncRequest {
     api_key: String,
     #[serde(default)]
     sync_accounts: bool,
+    pub models: Option<Vec<String>>,
 }
 
 async fn admin_execute_opencode_sync(
@@ -3354,6 +3356,7 @@ async fn admin_execute_opencode_sync(
         payload.proxy_url,
         payload.api_key,
         Some(payload.sync_accounts),
+        payload.models,
     )
     .await
     .map(|_| StatusCode::OK)
