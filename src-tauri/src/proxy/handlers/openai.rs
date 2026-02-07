@@ -13,6 +13,7 @@ use crate::proxy::mappers::openai::{
 // use crate::proxy::upstream::client::UpstreamClient; // 通过 state 获取
 use crate::proxy::debug_logger;
 use crate::proxy::server::AppState;
+use crate::proxy::upstream::client::mask_email;
 
 const MAX_RETRY_ATTEMPTS: usize = 3;
 use super::common::{
@@ -259,7 +260,7 @@ pub async fn handle_chat_completions(
             );
         }
 
-        let response = match upstream
+        let call_result = match upstream
             .call_v1_internal_with_headers(
                 method,
                 &access_token,
@@ -283,6 +284,39 @@ pub async fn handle_chat_completions(
             }
         };
 
+        // [NEW] 记录端点降级日志到 debug 文件
+        if !call_result.fallback_attempts.is_empty() && debug_logger::is_enabled(&debug_cfg) {
+            let fallback_entries: Vec<Value> = call_result
+                .fallback_attempts
+                .iter()
+                .map(|a| {
+                    json!({
+                        "endpoint_url": a.endpoint_url,
+                        "status": a.status,
+                        "error": a.error,
+                    })
+                })
+                .collect();
+            let payload = json!({
+                "kind": "endpoint_fallback",
+                "protocol": "openai",
+                "trace_id": trace_id,
+                "original_model": openai_req.model,
+                "mapped_model": mapped_model,
+                "attempt": attempt,
+                "account": mask_email(&email),
+                "fallback_attempts": fallback_entries,
+            });
+            debug_logger::write_debug_payload(
+                &debug_cfg,
+                Some(&trace_id),
+                "endpoint_fallback",
+                &payload,
+            )
+            .await;
+        }
+
+        let response = call_result.response;
         // [NEW] 提取实际请求的上游端点 URL，用于日志记录和排查
         let upstream_url = response.url().to_string();
         let status = response.status();
@@ -483,6 +517,7 @@ pub async fn handle_chat_completions(
                 "attempt": attempt,
                 "status": status_code,
                 "upstream_url": upstream_url,
+                "account": mask_email(&email),
                 "error_text": error_text,
             });
             debug_logger::write_debug_payload(
@@ -1168,7 +1203,7 @@ pub async fn handle_completions(
         };
         let query_string = if list_response { Some("alt=sse") } else { None };
 
-        let response = match upstream
+        let call_result = match upstream
             .call_v1_internal(
                 method,
                 &access_token,
@@ -1191,6 +1226,7 @@ pub async fn handle_completions(
             }
         };
 
+        let response = call_result.response;
         let status = response.status();
         if status.is_success() {
             // [智能限流] 请求成功，重置该账号的连续失败计数
@@ -1687,7 +1723,8 @@ pub async fn handle_images_generations(
                     )
                     .await
                 {
-                    Ok(response) => {
+                    Ok(call_result) => {
+                        let response = call_result.response;
                         let status = response.status();
                         if !status.is_success() {
                             let err_text = response.text().await.unwrap_or_default();
@@ -2089,7 +2126,8 @@ pub async fn handle_images_edits(
                     )
                     .await
                 {
-                    Ok(response) => {
+                    Ok(call_result) => {
+                        let response = call_result.response;
                         let status = response.status();
                         if !status.is_success() {
                             let err_text = response.text().await.unwrap_or_default();
