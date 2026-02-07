@@ -14,6 +14,8 @@ import { useDebugConsole } from '../stores/useDebugConsole';
 
 import { useTranslation } from 'react-i18next';
 import { isTauri } from '../utils/env';
+import { relaunch } from '@tauri-apps/plugin-process';
+
 import DebugConsole from '../components/debug/DebugConsole';
 import ProxyPoolSettings from '../components/settings/ProxyPoolSettings';
 
@@ -98,6 +100,7 @@ function Settings() {
     const [isBrewInstalled, setIsBrewInstalled] = useState(false);
     const [isBrewUpgrading, setIsBrewUpgrading] = useState(false);
     const [isBrewConfirmOpen, setIsBrewConfirmOpen] = useState(false);
+    const [isBrewSuccessOpen, setIsBrewSuccessOpen] = useState(false);
 
 
     useEffect(() => {
@@ -288,8 +291,8 @@ function Settings() {
         setIsBrewUpgrading(true);
         try {
             await invoke<string>('brew_upgrade_cask');
-            showToast(t('settings.about.brew_upgrade_success'), 'success');
             setUpdateInfo(null);
+            setIsBrewSuccessOpen(true);
         } catch (error) {
             const errKey = String(error);
             const errMsg = t(`settings.about.brew_error_${errKey}`, t('settings.about.brew_upgrade_failed'));
@@ -1379,6 +1382,26 @@ function Settings() {
                             </div>
                         </div>
                     </div>
+                </ModalDialog>
+
+                {/* Homebrew Upgrade Success Modal */}
+                <ModalDialog
+                    isOpen={isBrewSuccessOpen}
+                    title={t('settings.about.brew_success_title')}
+                    type="success"
+                    confirmText={t('settings.about.brew_restart_btn')}
+                    onConfirm={async () => {
+                        try {
+                            await relaunch();
+                        } catch {
+                            setIsBrewSuccessOpen(false);
+                            showToast(t('settings.about.brew_restart_failed'), 'error');
+                        }
+                    }}
+                >
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {t('settings.about.brew_upgrade_success')}
+                    </p>
                 </ModalDialog>
 
                 {/* Support Modal */}

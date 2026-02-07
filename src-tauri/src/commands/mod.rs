@@ -735,6 +735,7 @@ pub async fn brew_upgrade_cask() -> Result<String, String> {
     crate::modules::update_checker::brew_upgrade_cask().await
 }
 
+
 /// 获取更新设置
 #[tauri::command]
 pub async fn get_update_settings() -> Result<crate::modules::update_checker::UpdateSettings, String> {
