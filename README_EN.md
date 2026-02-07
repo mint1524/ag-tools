@@ -256,6 +256,9 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.8 (2026-02-07)**:
+        -   **[Core Fix] Resolve missing tool call content in monitoring logs**:
+            -   **Multi-Protocol Support**: Refactored SSE parsing logic to fully support OpenAI `tool_calls` and Claude `tool_use`.
+            -   **Incremental Accumulation**: Implemented streaming accumulation for tool parameters, ensuring long tool calls are correctly captured and displayed in the monitoring panel.
         -   **[UI Optimization] Navbar & Link Interaction Improvements (PR #1648)**:
             -   **Dragging Restricted**: Added `draggable="false"` to all links and icons in the navigation bar and Logo to prevent accidental browser default dragging behavior, improving interaction stability.
             -   **SmartWarmup Hover Enhancement**: Refined the hover color transition logic for the SmartWarmup component icon in its disabled state for better UI consistency.
