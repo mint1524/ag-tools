@@ -30,6 +30,8 @@ RUN if [ "$USE_MIRROR" = "true" ] || ( [ "$USE_MIRROR" = "auto" ] && ! timeout 3
     fi
 
 # Install build dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
     build-essential \
     curl \
     wget \
