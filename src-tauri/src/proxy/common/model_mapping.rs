@@ -307,7 +307,7 @@ mod tests {
         );
         assert_eq!(
             map_claude_model_to_gemini("unknown-model"),
-            "claude-sonnet-4-5"
+            "unknown-model"
         );
     }
 
@@ -351,7 +351,7 @@ mod tests {
         // Negative case: *thinking* should NOT match models without "thinking"
         assert_eq!(
             resolve_model_route("random-model-name", &custom),
-            "claude-sonnet-4-5"  // Falls back to system default
+            "random-model-name"  // Falls back to system default (pass-through)
         );
     }
 
