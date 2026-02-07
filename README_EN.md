@@ -256,6 +256,10 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.9 (2026-02-07)**:
+        -   **[Core Feature] Add Droid CLI Config Quick Sync Support (PR #1680)**:
+            -   **One-click Integration**: Implemented automatic detection and synchronization for Droid (Factory CLI) configuration, supporting `~/.factory/settings.json` generation.
+            -   **Model Management**: Supports custom model listing and reordering for Droid via drag-and-drop.
+            -   **Backup & Security**: Automatically backs up original configurations before syncing, with one-click restore and export support.
         -   **[Core Feature] Global System Prompt Support (PR #1669)**:
             -   **Unified Instruction Injection**: Added a new configuration in System Settings to inject custom system instructions into all OpenAI, Claude, and Gemini protocol requests.
             -   **Frontend UI**: Introduced the `GlobalSystemPrompt` component with one-click enable and multi-line content editing.

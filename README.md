@@ -369,6 +369,10 @@ response = client.chat.completions.create(
 
 *   **版本演进 (Changelog)**:
     *   **v4.1.9 (2026-02-07)**:
+        -   **[核心功能] 新增 Droid CLI 配置快速同步支持 (PR #1680)**:
+            -   **一键集成**: 实现了对 Droid (Factory CLI) 配置的自动检测与同步，支持生成 `~/.factory/settings.json`。
+            -   **模型管理**: 支持通过拖拽排序（Drag-and-Drop）自定义 Droid 的模型列表及顺序。
+            -   **备份安全性**: 同步前自动备份原有配置，支持一键还原及导出。
         -   **[核心功能] 新增全局系统提示词 (Global System Prompt) 支持 (PR #1669)**:
             -   **统一指令注入**: 在“系统设置”中新增全局系统提示词配置，支持将自定义指令自动注入到所有 OpenAI、Claude 和 Gemini 协议请求中。
             -   **前端界面**: 新增 `GlobalSystemPrompt` 组件，支持一键启用及多行内容编辑。
