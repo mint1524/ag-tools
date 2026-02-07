@@ -262,6 +262,10 @@ print(response.choices[0].message.content)
         -   **[Core Fix] Resolve Floating-point Precision Loss (PR #1669)**:
             -   **Precision Upgrade**: Upgraded `temperature` and `top_p` data types from `f32` to `f64` in the backend.
             -   **Accuracy Calibration**: Completely eliminated minor deviations (e.g., `0.95` becoming `0.949999...`) during proxy serialization, improving upstream compatibility.
+        -   **[Core Refactoring] Implement App Name Internationalization (PR #1662)**:
+            -   **UI Upgrade**: Removed hardcoded "Antigravity Tools" from `NavLogo` and `Settings` pages, utilizing the `app_name` translation key for consistent UI language switching.
+        -   **[i18n] Synchronize Japanese Translations to 100% (PR #1662)**:
+            -   **Translation Completion**: Synchronized all missing keys from `en.json`, covering new features like Cloudflared, Circuit Breaker, and OpenCode Sync.
         -   **[Refactoring] Restructured UpstreamClient Response Logic**:
             -   **Structured Results**: Introduced `UpstreamCallResult` to unify upstream request management and optimize streaming/non-streaming response paths.
     *   **v4.1.8 (2026-02-07)**:
