@@ -27,6 +27,7 @@ export function NavMenu({ navItems }: NavMenuProps) {
                     <Link
                         key={item.path}
                         to={item.path}
+                        draggable="false"
                         className={`
                             px-4 xl:px-6
                             py-2 
@@ -52,6 +53,7 @@ export function NavMenu({ navItems }: NavMenuProps) {
                     <Link
                         key={item.path}
                         to={item.path}
+                        draggable="false"
                         className={`
                             p-2
                             rounded-full
@@ -74,6 +76,7 @@ export function NavMenu({ navItems }: NavMenuProps) {
                     <Link
                         key={item.path}
                         to={item.path}
+                        draggable="false"
                         className={`
                             p-2
                             rounded-full
@@ -96,6 +99,7 @@ export function NavMenu({ navItems }: NavMenuProps) {
                     <Link
                         key={item.path}
                         to={item.path}
+                        draggable="false"
                         className={`
                             p-2
                             rounded-full
