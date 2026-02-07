@@ -14,7 +14,6 @@ import {
     Terminal,
     Trash2,
     BrainCircuit,
-    Layers,
     Puzzle,
     Zap,
     ArrowRight,
