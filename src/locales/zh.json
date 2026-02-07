@@ -511,6 +511,13 @@
             "custom_value_hint": "范围：1024 - 65536。推荐值：24576（Flash 上限）或 51200（标准扩展思考）。",
             "high_value_warning": "当前值超过 24576，某些模型（Flash、-thinking）可能不支持并导致请求失败。",
             "tokens": "tokens"
+        },
+        "global_system_prompt": {
+            "title": "全局系统提示词 (Global System Prompt)",
+            "description": "设置一段全局提示词，将自动注入到所有 API 请求的 systemInstruction 中，位于 Antigravity 身份之后、客户端提示词之前。",
+            "placeholder": "输入全局系统提示词...\n例如：你是一位资深的全栈开发工程师，擅长 React 和 Rust。请使用简体中文回复。",
+            "char_count": "{{count}} 字符",
+            "long_prompt_warning": "提示词较长（超过 2000 字符），可能会占用较多的上下文窗口空间，影响模型可用的对话长度。"
         }
     },
     "tray": {

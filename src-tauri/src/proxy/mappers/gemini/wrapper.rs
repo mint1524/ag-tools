@@ -28,14 +28,18 @@ pub fn wrap_request(
     crate::proxy::mappers::common_utils::deep_clean_undefined(&mut inner_request);
 
     // [FIX #1522] Inject dummy IDs for Claude models in Gemini protocol
-    // Google v1internal requires 'id' for tool calls when the model is Claude, 
+    // Google v1internal requires 'id' for tool calls when the model is Claude,
     // even though the standard Gemini protocol doesn't have it.
     let is_target_claude = final_model_name.to_lowercase().contains("claude");
-    
-    if let Some(contents) = inner_request.get_mut("contents").and_then(|c| c.as_array_mut()) {
+
+    if let Some(contents) = inner_request
+        .get_mut("contents")
+        .and_then(|c| c.as_array_mut())
+    {
         for content in contents {
             // 每条消息维护独立的计数器，确保 Call 和对应的 Response 生成相同的 ID (兜底规则)
-            let mut name_counters: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+            let mut name_counters: std::collections::HashMap<String, usize> =
+                std::collections::HashMap::new();
 
             if let Some(parts) = content.get_mut("parts").and_then(|p| p.as_array_mut()) {
                 for part in parts {
@@ -43,35 +47,44 @@ pub fn wrap_request(
                         // 1. 处理 functionCall (Assistant 请求调用工具)
                         if let Some(fc) = obj.get_mut("functionCall") {
                             if fc.get("id").is_none() && is_target_claude {
-                                let name = fc.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
+                                let name =
+                                    fc.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
                                 let count = name_counters.entry(name.to_string()).or_insert(0);
                                 let call_id = format!("call_{}_{}", name, count);
                                 *count += 1;
-                                
-                                fc.as_object_mut().unwrap().insert("id".to_string(), json!(call_id));
+
+                                fc.as_object_mut()
+                                    .unwrap()
+                                    .insert("id".to_string(), json!(call_id));
                                 tracing::debug!("[Gemini-Wrap] Request stage: Injected missing call_id '{}' for Claude model", call_id);
                             }
                         }
-                        
+
                         // 2. 处理 functionResponse (User 回复工具结果)
                         if let Some(fr) = obj.get_mut("functionResponse") {
                             if fr.get("id").is_none() && is_target_claude {
                                 // 启发：如果客户端（如 OpenCode）在响应时没带 ID，说明它收到响应时就没 ID。
                                 // 我们在这里生成的 ID 必须与我们在 inject_ids_to_response 中注入响应的 ID 一致。
-                                let name = fr.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
+                                let name =
+                                    fr.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
                                 let count = name_counters.entry(name.to_string()).or_insert(0);
                                 let call_id = format!("call_{}_{}", name, count);
                                 *count += 1;
-                                
-                                fr.as_object_mut().unwrap().insert("id".to_string(), json!(call_id));
+
+                                fr.as_object_mut()
+                                    .unwrap()
+                                    .insert("id".to_string(), json!(call_id));
                                 tracing::debug!("[Gemini-Wrap] Request stage: Injected synced response_id '{}' for Claude model", call_id);
                             }
                         }
 
                         // 3. 处理 thoughtSignature (原有逻辑保持)
-                        if obj.contains_key("functionCall") && obj.get("thoughtSignature").is_none() {
+                        if obj.contains_key("functionCall") && obj.get("thoughtSignature").is_none()
+                        {
                             if let Some(s_id) = session_id {
-                                if let Some(sig) = crate::proxy::SignatureCache::global().get_session_signature(s_id) {
+                                if let Some(sig) = crate::proxy::SignatureCache::global()
+                                    .get_session_signature(s_id)
+                                {
                                     obj.insert("thoughtSignature".to_string(), json!(sig));
                                     tracing::debug!("[Gemini-Wrap] Injected signature (len: {}) for session: {}", sig.len(), s_id);
                                 }
@@ -109,26 +122,32 @@ pub fn wrap_request(
         // Safest is to target specific high-reasoning lines or just rely on upstream to ignore.
         // But for "gemini-3-pro" specifically, we NEED it.
         if gen_config.get("thinkingConfig").is_none() {
-             // For safety, only auto-inject for models we usually want thinking on:
-             // - any with "thinking" in name
-             // - gemini-3-pro / gemini-2.0-pro
-             let should_inject = lower_model.contains("thinking") || 
-                                 lower_model.contains("gemini-2.0-pro") || 
-                                 lower_model.contains("gemini-3-pro");
-                                 
-             if should_inject {
-                 tracing::debug!("[Gemini-Wrap] Auto-injecting default thinkingConfig for {}", final_model_name);
-                 
-                 // Use a safe default budget or let auto-capping handle it (if we set something high)
-                 // But wait, if we set it here, the capping logic below will see it and clamp it if needed.
-                 // Let's rely on global default logic if possible, or hardcode a safe default.
-                 // The capping logic reads from it.
-                 // Let's inject a reasonable default that triggers thinking.
-                 gen_config.insert("thinkingConfig".to_string(), json!({
-                     "includeThoughts": true,
-                     "thinkingBudget": 24576 // Default safe budget for auto-injected (aligned with other mappers)
-                 }));
-             }
+            // For safety, only auto-inject for models we usually want thinking on:
+            // - any with "thinking" in name
+            // - gemini-3-pro / gemini-2.0-pro
+            let should_inject = lower_model.contains("thinking")
+                || lower_model.contains("gemini-2.0-pro")
+                || lower_model.contains("gemini-3-pro");
+
+            if should_inject {
+                tracing::debug!(
+                    "[Gemini-Wrap] Auto-injecting default thinkingConfig for {}",
+                    final_model_name
+                );
+
+                // Use a safe default budget or let auto-capping handle it (if we set something high)
+                // But wait, if we set it here, the capping logic below will see it and clamp it if needed.
+                // Let's rely on global default logic if possible, or hardcode a safe default.
+                // The capping logic reads from it.
+                // Let's inject a reasonable default that triggers thinking.
+                gen_config.insert(
+                    "thinkingConfig".to_string(),
+                    json!({
+                        "includeThoughts": true,
+                        "thinkingBudget": 24576 // Default safe budget for auto-injected (aligned with other mappers)
+                    }),
+                );
+            }
         }
 
         if let Some(thinking_config) = gen_config.get_mut("thinkingConfig") {
@@ -140,7 +159,8 @@ pub fn wrap_request(
                             // 透传模式：不做任何修改，完全使用上游传入值
                             tracing::debug!(
                                 "[Gemini-Wrap] Passthrough mode: keeping budget {} for model {}",
-                                budget, final_model_name
+                                budget,
+                                final_model_name
                             );
                             budget
                         }
@@ -205,9 +225,9 @@ pub fn wrap_request(
         original_model,
         final_model_name,
         &tools_val,
-        size,    // [FIX] Pass size parameter
-        quality, // [FIX] Pass quality parameter
-        Some(body),  // [NEW] Pass request body for imageConfig parsing
+        size,       // [FIX] Pass size parameter
+        quality,    // [FIX] Pass quality parameter
+        Some(body), // [NEW] Pass request body for imageConfig parsing
     );
 
     // Clean tool declarations (remove forbidden Schema fields like multipleOf, and remove redundant search decls)
@@ -326,13 +346,34 @@ pub fn wrap_request(
                         // 在前面插入 Antigravity 身份
                         parts_array.insert(0, json!({"text": antigravity_identity}));
                     }
+
+                    // [NEW] 注入全局系统提示词 (紧跟 Antigravity 身份之后，用户指令之前)
+                    let global_prompt_config = crate::proxy::config::get_global_system_prompt();
+                    if global_prompt_config.enabled
+                        && !global_prompt_config.content.trim().is_empty()
+                    {
+                        // 插入位置：Antigravity 身份之后 (index 1)
+                        let insert_pos = if has_antigravity { 1 } else { 1 };
+                        if insert_pos <= parts_array.len() {
+                            parts_array
+                                .insert(insert_pos, json!({"text": global_prompt_config.content}));
+                        } else {
+                            parts_array.push(json!({"text": global_prompt_config.content}));
+                        }
+                    }
                 }
             }
         } else {
             // 没有 systemInstruction,创建一个新的
+            let mut parts = vec![json!({"text": antigravity_identity})];
+            // [NEW] 注入全局系统提示词
+            let global_prompt_config = crate::proxy::config::get_global_system_prompt();
+            if global_prompt_config.enabled && !global_prompt_config.content.trim().is_empty() {
+                parts.push(json!({"text": global_prompt_config.content}));
+            }
             inner_request["systemInstruction"] = json!({
                 "role": "user",
-                "parts": [{"text": antigravity_identity}]
+                "parts": parts
             });
         }
     }
@@ -391,7 +432,7 @@ pub fn unwrap_response(response: &Value) -> Value {
 }
 
 /// [NEW v3.3.18] 为 Claude 模型的 Gemini 响应自动注入 Tool ID
-/// 
+///
 /// 目点是为了让客户端（如 OpenCode/Vercel AI SDK）能感知到 ID，
 /// 并在下一轮对话中原样带回，从而满足 Google v1internal 对 Claude 模型的校验。
 pub fn inject_ids_to_response(response: &mut Value, model_name: &str) {
@@ -399,10 +440,18 @@ pub fn inject_ids_to_response(response: &mut Value, model_name: &str) {
         return;
     }
 
-    if let Some(candidates) = response.get_mut("candidates").and_then(|c| c.as_array_mut()) {
+    if let Some(candidates) = response
+        .get_mut("candidates")
+        .and_then(|c| c.as_array_mut())
+    {
         for candidate in candidates {
-            if let Some(parts) = candidate.get_mut("content").and_then(|c| c.get_mut("parts")).and_then(|p| p.as_array_mut()) {
-                let mut name_counters: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+            if let Some(parts) = candidate
+                .get_mut("content")
+                .and_then(|c| c.get_mut("parts"))
+                .and_then(|p| p.as_array_mut())
+            {
+                let mut name_counters: std::collections::HashMap<String, usize> =
+                    std::collections::HashMap::new();
                 for part in parts {
                     if let Some(fc) = part.get_mut("functionCall").and_then(|f| f.as_object_mut()) {
                         if fc.get("id").is_none() {
@@ -410,7 +459,7 @@ pub fn inject_ids_to_response(response: &mut Value, model_name: &str) {
                             let count = name_counters.entry(name.to_string()).or_insert(0);
                             let call_id = format!("call_{}_{}", name, count);
                             *count += 1;
-                            
+
                             fc.insert("id".to_string(), json!(call_id));
                             tracing::debug!("[Gemini-Wrap] Response stage: Injected synthetic call_id '{}' for client", call_id);
                         }
@@ -597,8 +646,10 @@ mod tests {
     #[test]
     fn test_gemini_pro_thinking_budget_processing() {
         // Update global config to Custom mode to verify logic execution
-        use crate::proxy::config::{ThinkingBudgetConfig, ThinkingBudgetMode, update_thinking_budget_config};
-        
+        use crate::proxy::config::{
+            update_thinking_budget_config, ThinkingBudgetConfig, ThinkingBudgetMode,
+        };
+
         // Save old config (optional, but good practice if tests ran in parallel, but here it's fine)
         update_thinking_budget_config(ThinkingBudgetConfig {
             mode: ThinkingBudgetMode::Custom,
@@ -619,14 +670,17 @@ mod tests {
         let result = wrap_request(&body, "test-proj", "gemini-3-pro-preview", None);
         let req = result.get("request").unwrap();
         let gen_config = req.get("generationConfig").unwrap();
-        
+
         let budget = gen_config["thinkingConfig"]["thinkingBudget"]
             .as_u64()
             .unwrap();
 
         // If logic executes, it sees Custom mode and sets 1024
         // If logic skipped, it keeps 32000
-        assert_eq!(budget, 1024, "Budget should be overridden to 1024 by custom config, proving logic execution");
+        assert_eq!(
+            budget, 1024,
+            "Budget should be overridden to 1024 by custom config, proving logic execution"
+        );
 
         // Restore default (Auto 24576)
         update_thinking_budget_config(ThinkingBudgetConfig::default());
@@ -639,7 +693,7 @@ mod tests {
             crate::proxy::config::ThinkingBudgetConfig {
                 mode: crate::proxy::config::ThinkingBudgetMode::Auto,
                 custom_value: 24576,
-            }
+            },
         );
 
         // Request WITHOUT thinkingConfig
@@ -653,14 +707,17 @@ mod tests {
         let result = wrap_request(&body, "test-proj", "gemini-3-pro-preview", None);
         let req = result.get("request").unwrap();
         let gen_config = req.get("generationConfig").unwrap();
-        
+
         // Should have auto-injected thinkingConfig
-        assert!(gen_config.get("thinkingConfig").is_some(), "Should auto-inject thinkingConfig for gemini-3-pro");
-        
+        assert!(
+            gen_config.get("thinkingConfig").is_some(),
+            "Should auto-inject thinkingConfig for gemini-3-pro"
+        );
+
         let budget = gen_config["thinkingConfig"]["thinkingBudget"]
             .as_u64()
             .unwrap();
-            
+
         // Default injected value is 1024 (based on Custom mode in previous test) or 24576 (default)
         // Since we restored default config (Auto 24576) in previous test, it should be 24576
         assert_eq!(budget, 24576);
@@ -675,12 +732,12 @@ mod tests {
             "quality": "hd",
             "prompt": "Test"
         });
-        
+
         let result_1 = wrap_request(&body_1, "test-proj", "gemini-3-pro-image", None);
         let req_1 = result_1.get("request").unwrap();
         let gen_config_1 = req_1.get("generationConfig").unwrap();
         let image_config_1 = gen_config_1.get("imageConfig").unwrap();
-        
+
         assert_eq!(image_config_1["aspectRatio"], "16:9");
         assert_eq!(image_config_1["imageSize"], "4K");
 
@@ -691,11 +748,13 @@ mod tests {
             "quality": "standard",
              "prompt": "Test"
         });
-        
+
         let result_2 = wrap_request(&body_2, "test-proj", "gemini-3-pro-image", None);
         let req_2 = result_2.get("request").unwrap();
-        let image_config_2 = req_2["generationConfig"]["imageConfig"].as_object().unwrap();
-        
+        let image_config_2 = req_2["generationConfig"]["imageConfig"]
+            .as_object()
+            .unwrap();
+
         assert_eq!(image_config_2["aspectRatio"], "1:1");
         assert_eq!(image_config_2["imageSize"], "1K");
     }
