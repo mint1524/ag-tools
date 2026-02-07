@@ -264,10 +264,10 @@ print(response.choices[0].message.content)
             -   **Accuracy Calibration**: Completely eliminated minor deviations (e.g., `0.95` becoming `0.949999...`) during proxy serialization, improving upstream compatibility.
         -   **[Core Refactoring] Implement App Name Internationalization (PR #1662)**:
             -   **UI Upgrade**: Removed hardcoded "Antigravity Tools" from `NavLogo` and `Settings` pages, utilizing the `app_name` translation key for consistent UI language switching.
-        -   **[Core Fix] Resolve Conflict Between Thinking Mode and Token Limits for gemini-3-pro-image (Issue #1675)**:
-            -   **Functionality Restored**: Fully restored Deep Thinking (Thinking) support for image generation models across all protocols (OpenAI/Gemini/Claude).
-            -   **Token Optimization**: Implemented a conservative `maxOutputTokens` quota strategy for image models. This resolves HTTP 400 errors triggered by the 128k total token limit when Thinking is enabled, while ensuring 4K resolution remains unaffected.
-            -   **Flexible Budget**: Removed the 24k physical budget cap for image models, allowing for greater reasoning depth.
+        -   **[Core Fix] Correct Misidentification of gemini-3-pro-image as a Thinking Model (Issue #1675)**:
+            -   **Root Cause**: `gemini-3-pro-image` and its 4k/2k variants were incorrectly identified as "Thinking Models" because they contain the `gemini-3-pro` keyword.
+            -   **Conflict Resolved**: Fixed the conflict caused by the incorrect injection of `thinkingConfig` alongside `imageConfig`, which led to backend resolution downgrades (to 1k).
+            -   **Token Optimization**: Resolved the "Token limit exceeded (131072)" 400 errors triggered by placeholders or specific limits injected for thinking models.
         -   **[i18n] Synchronize Japanese Translations to 100% (PR #1662)**:
             -   **Translation Completion**: Synchronized all missing keys from `en.json`, covering new features like Cloudflared, Circuit Breaker, and OpenCode Sync.
         -   **[Refactoring] Restructured UpstreamClient Response Logic**:
