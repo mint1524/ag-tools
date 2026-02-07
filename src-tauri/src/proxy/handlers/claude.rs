@@ -741,6 +741,8 @@ pub async fn handle_messages(
             }
         };
         
+        // [NEW] 提取实际请求的上游端点 URL，用于日志记录和排查
+        let upstream_url = response.url().to_string();
         let status = response.status();
         last_status = status;
         
@@ -762,6 +764,7 @@ pub async fn handle_messages(
                     "request_type": config.request_type,
                     "attempt": attempt,
                     "status": status.as_u16(),
+                    "upstream_url": upstream_url,
                 });
                 let gemini_stream = debug_logger::wrap_reqwest_stream_with_debug(
                     Box::pin(response.bytes_stream()),
@@ -974,6 +977,7 @@ pub async fn handle_messages(
                 "request_type": config.request_type,
                 "attempt": attempt,
                 "status": status_code,
+                "upstream_url": upstream_url,
                 "error_text": error_text,
             });
             debug_logger::write_debug_payload(&debug_cfg, Some(&trace_id), "upstream_response_error", &payload).await;

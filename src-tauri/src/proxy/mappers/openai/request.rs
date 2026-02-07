@@ -634,7 +634,13 @@ pub fn transform_openai_request(
         parts.push(json!({"text": antigravity_identity}));
     }
 
-    // 2. 追加用户指令 (作为独立 Parts)
+    // 2. [NEW] 注入全局系统提示词 (紧跟 Antigravity 身份之后)
+    let global_prompt_config = crate::proxy::config::get_global_system_prompt();
+    if global_prompt_config.enabled && !global_prompt_config.content.trim().is_empty() {
+        parts.push(json!({"text": global_prompt_config.content}));
+    }
+
+    // 3. 追加用户指令 (作为独立 Parts)
     for inst in system_instructions {
         parts.push(json!({"text": inst}));
     }
