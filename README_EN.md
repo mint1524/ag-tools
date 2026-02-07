@@ -256,7 +256,7 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.8 (2026-02-07)**:
-        -   **[Core Feature] Integrated Claude Opus 4.6 Thinking Model Support (PR #1641 CLIProxyAPI)**:
+        -   **[Core Feature] Integrated Claude Opus 4.6 Thinking Model Support (PR #1641)**:
             -   **Hybrid Architecture**: Implemented a "Static Config + Dynamic Fetch" dual-mode architecture. Model lists are dynamically fetched via Antigravity API, while advanced metadata like Thinking Mode is supplemented by the local registry, perfectly balancing flexibility and stability.
             -   **Zero-Config Access**: `claude-opus-4-6` series models automatically enable Thinking Mode with preset Budgets, allowing users to enjoy the latest reasoning capabilities without manual intervention.
             -   **Cutting-edge Mapping**: Added support for `claude-opus-4-6-thinking` and its aliases (`claude-opus-4-6`, `20260201`), managing them under the `claude-sonnet-4.5` quota group.
@@ -283,6 +283,8 @@ print(response.choices[0].message.content)
             -   **Translation Completion**: Completed missing i18n keys for editing labels, custom label placeholders, and update success messages in Traditional Chinese and other locales.
         -   **[UI Fix] Fixed missing hover effect for SmartWarmup icon (PR #1568)**:
             -   **Hover Effect**: Added hover background and text color changes for the disabled icon state, aligning it with other setting components.
+        -   **[Core Fix] Fix Missing Signature for Vertex AI Thinking Models in OpenAI Protocol (Issue #1650)**:
+            -   **Sentinel Injection**: Removed the restriction on sentinel signature injection for Vertex AI (`projects/...`) models. The system now automatically injects `skip_thought_signature_validator` even if a real signature is missing, preventing the `Field required for thinking signature` error.
     *   **v4.1.7 (2026-02-06)**:
         -   **[Core Fix] Fixed Image API Account Rotation on 429/500/503 Errors (Issue #1622)**:
             -   **Automatic Retry**: Implemented automatic retry and account rotation logic for `images/generations` and `images/edits`, aligning with the robustness of the Chat API.
