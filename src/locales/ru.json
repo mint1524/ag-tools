@@ -118,6 +118,9 @@
         "ultra": "ULTRA",
         "pro": "PRO",
         "free": "FREE",
+        "edit_label": "Редактировать метку",
+        "custom_label_placeholder": "Введите пользовательскую метку",
+        "label_updated": "Метка обновлена",
         "add_account": "Добавить аккаунт",
         "refresh_all": "Обновить все",
         "refresh_selected": "Обновить ({{count}})",
@@ -191,7 +194,9 @@
         "warmup_batch_triggered": "Задачи разогрева запущены для {{count}} аккаунтов",
         "quota_protected": "Защищено",
         "details": {
-            "title": "Детали квоты"
+            "title": "Детали квоты",
+            "model_quota": "Квота модели",
+            "protected_models": "Защищенные модели"
         },
         "toast": {
             "proxy_enabled": "Включен прокси для {{count}} аккаунтов",

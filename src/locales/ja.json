@@ -125,6 +125,9 @@
         "ultra": "ULTRA",
         "pro": "PRO",
         "free": "FREE",
+        "edit_label": "ラベルを編集",
+        "custom_label_placeholder": "カスタムラベルを入力",
+        "label_updated": "ラベルが更新されました",
         "add_account": "アカウント追加",
         "refresh_all": "すべて更新",
         "refresh_selected": "更新 ({{count}})",
@@ -193,7 +196,9 @@
         },
         "quota_protected": "保護中",
         "details": {
-            "title": "クォータ詳細"
+            "title": "クォータ詳細",
+            "model_quota": "モデルクォータ",
+            "protected_models": "保護されたモデル"
         },
         "toast": {
             "proxy_enabled": "{{count}} 個のアカウントのプロキシを有効にしました",
@@ -1065,6 +1070,9 @@
         "desc": "現在 Web モードで実行されています。管理パスワードまたは API キーを入力してアクセスしてください。",
         "placeholder": "管理パスワードまたは API キーを入力してください",
         "btn_login": "認証してアクセス",
+        "btn_verifying": "認証中...",
+        "error_invalid_key": "パスワードまたは API キーが無効です。再試行してください",
+        "error_network": "ネットワーク接続に失敗しました。サービスが実行中か確認してください",
         "note": "注意：独立した管理パスワードが設定されている場合は管理パスワードを入力してください。そうでない場合は API_KEY を入力してください。",
         "lookup_hint": "お忘れの場合は、docker logs antigravity-manager を実行して Current API Key または Web UI Password を探してください",
         "config_hint": "または grep -E '\"api_key\"|\"admin_password\"' ~/.antigravity_tools/gui_config.json を実行して確認してください。"

@@ -3,6 +3,7 @@ use tokio::sync::RwLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use dashmap::DashMap;
 use reqwest::Client;
+use futures::{stream, StreamExt};
 use std::time::Duration;
 use crate::proxy::config::{ProxyPoolConfig, ProxySelectionStrategy, ProxyEntry};
 
@@ -24,8 +25,9 @@ pub fn init_global_proxy_pool(config: Arc<RwLock<ProxyPoolConfig>>) -> Arc<Proxy
 }
 
 /// 代理配置 (用于构建 reqwest Client)
+/// 注意：重命名为 PoolProxyConfig 以避免与 config::ProxyConfig 冲突
 #[derive(Debug, Clone)]
-pub struct ProxyConfig {
+pub struct PoolProxyConfig {
     pub proxy: reqwest::Proxy,
     pub entry_id: String,
 }
@@ -46,10 +48,24 @@ pub struct ProxyPoolManager {
 
 impl ProxyPoolManager {
     pub fn new(config: Arc<RwLock<ProxyPoolConfig>>) -> Self {
+        // 从配置中加载已保存的绑定关系
+        let account_bindings = Arc::new(DashMap::new());
+
+        // 使用 blocking 方式读取配置（因为 new 不是 async）
+        // 注意：这里使用 try_read 避免死锁
+        if let Ok(cfg) = config.try_read() {
+            for (account_id, proxy_id) in &cfg.account_bindings {
+                account_bindings.insert(account_id.clone(), proxy_id.clone());
+            }
+            if !cfg.account_bindings.is_empty() {
+                tracing::info!("[ProxyPool] Loaded {} account bindings from config", cfg.account_bindings.len());
+            }
+        }
+
         Self {
             config,
             usage_counter: Arc::new(DashMap::new()),
-            account_bindings: Arc::new(DashMap::new()),
+            account_bindings,
             round_robin_index: Arc::new(AtomicUsize::new(0)),
         }
     }
@@ -72,9 +88,13 @@ impl ProxyPoolManager {
                 let res = self.select_proxy_from_pool(&config).await.ok().flatten();
                 if let Some(ref p) = res {
                     tracing::info!("[Proxy] Route: Generic Request -> Proxy {} (Pool)", p.entry_id);
+                } else {
+                    // [FIX #1583] 明确记录池中无可用代理的情况
+                    tracing::warn!("[Proxy] Route: Generic Request -> No available proxy in pool, falling back to upstream or direct");
                 }
                 res
             } else {
+                tracing::debug!("[Proxy] Route: Generic Request -> Proxy pool disabled");
                 None
             }
         };
@@ -105,7 +125,7 @@ impl ProxyPoolManager {
     pub async fn get_proxy_for_account(
         &self,
         account_id: &str,
-    ) -> Result<Option<ProxyConfig>, String> {
+    ) -> Result<Option<PoolProxyConfig>, String> {
         let config = self.config.read().await;
         
         if !config.enabled || config.proxies.is_empty() {
@@ -131,7 +151,7 @@ impl ProxyPoolManager {
         &self,
         account_id: &str,
         config: &ProxyPoolConfig,
-    ) -> Result<Option<ProxyConfig>, String> {
+    ) -> Result<Option<PoolProxyConfig>, String> {
         if let Some(proxy_id) = self.account_bindings.get(account_id) {
             if let Some(entry) = config.proxies.iter().find(|p| p.id == *proxy_id.value()) {
                 if entry.enabled {
@@ -150,7 +170,7 @@ impl ProxyPoolManager {
     async fn select_proxy_from_pool(
         &self,
         config: &ProxyPoolConfig,
-    ) -> Result<Option<ProxyConfig>, String> {
+    ) -> Result<Option<PoolProxyConfig>, String> {
         // [FIX] 专属隔离逻辑：剔除所有已被绑定的代理，保护专属 IP 账号的安全
         let bound_ids: std::collections::HashSet<String> = self.account_bindings
             .iter()
@@ -230,7 +250,7 @@ impl ProxyPoolManager {
     }
 
     /// 构建 reqwest::Proxy 配置
-    fn build_proxy_config(&self, entry: &ProxyEntry) -> Result<ProxyConfig, String> {
+    fn build_proxy_config(&self, entry: &ProxyEntry) -> Result<PoolProxyConfig, String> {
         // [FIX] Handle missing protocol scheme (e.g. "ip:port" -> "http://ip:port")
         let url = if !entry.url.contains("://") && !entry.url.is_empty() {
             format!("http://{}", entry.url)
@@ -246,7 +266,7 @@ impl ProxyPoolManager {
             proxy = proxy.basic_auth(&auth.username, &auth.password);
         }
         
-        Ok(ProxyConfig {
+        Ok(PoolProxyConfig {
             proxy,
             entry_id: entry.id.clone(),
         })
@@ -259,32 +279,45 @@ impl ProxyPoolManager {
         proxy_id: String,
     ) -> Result<(), String> {
         // 检查代理是否存在
-        let config = self.config.read().await;
-        if !config.proxies.iter().any(|p| p.id == proxy_id) {
-            return Err(format!("Proxy {} not found", proxy_id));
-        }
-        
-        // 检查代理最大账号数限制
-        if let Some(entry) = config.proxies.iter().find(|p| p.id == proxy_id) {
-            if let Some(max) = entry.max_accounts {
-                if max > 0 {
-                    let current_count = self.account_bindings.iter()
-                        .filter(|kv| *kv.value() == proxy_id)
-                        .count();
-                    if current_count >= max {
-                        return Err(format!("Proxy {} has reached max accounts limit", proxy_id));
+        {
+            let config = self.config.read().await;
+            if !config.proxies.iter().any(|p| p.id == proxy_id) {
+                return Err(format!("Proxy {} not found", proxy_id));
+            }
+
+            // 检查代理最大账号数限制
+            if let Some(entry) = config.proxies.iter().find(|p| p.id == proxy_id) {
+                if let Some(max) = entry.max_accounts {
+                    if max > 0 {
+                        let current_count = self.account_bindings.iter()
+                            .filter(|kv| *kv.value() == proxy_id)
+                            .count();
+                        if current_count >= max {
+                            return Err(format!("Proxy {} has reached max accounts limit", proxy_id));
+                        }
                     }
                 }
             }
         }
-        
-        self.account_bindings.insert(account_id, proxy_id);
+
+        // 更新内存中的绑定
+        self.account_bindings.insert(account_id.clone(), proxy_id.clone());
+
+        // 持久化到配置文件
+        self.persist_bindings().await;
+
+        tracing::info!("[ProxyPool] Bound account {} to proxy {}", account_id, proxy_id);
         Ok(())
     }
 
     /// 解绑账号代理
     pub async fn unbind_account_proxy(&self, account_id: String) {
         self.account_bindings.remove(&account_id);
+
+        // 持久化到配置文件
+        self.persist_bindings().await;
+
+        tracing::info!("[ProxyPool] Unbound account {}", account_id);
     }
 
     /// 获取账号当前绑定的代理ID
@@ -298,7 +331,28 @@ impl ProxyPoolManager {
             .map(|kv| (kv.key().clone(), kv.value().clone()))
             .collect()
     }
-    
+
+    /// 持久化绑定关系到配置文件
+    async fn persist_bindings(&self) {
+        // 获取当前绑定快照
+        let bindings = self.get_all_bindings_snapshot();
+
+        // 更新配置中的绑定关系
+        {
+            let mut config = self.config.write().await;
+            config.account_bindings = bindings;
+        }
+
+        // 保存到磁盘
+        if let Ok(mut app_config) = crate::modules::config::load_app_config() {
+            let config = self.config.read().await;
+            app_config.proxy.proxy_pool = config.clone();
+            if let Err(e) = crate::modules::config::save_app_config(&app_config) {
+                tracing::error!("[ProxyPool] Failed to persist bindings: {}", e);
+            }
+        }
+    }
+
     /// 健康检查
     pub async fn health_check(&self) -> Result<(), String> {
         // 由于需要异步并发检查，且不能锁住 config 太久，
@@ -311,25 +365,30 @@ impl ProxyPoolManager {
                 .collect()
         };
 
-        let mut results = Vec::new();
-        for proxy in proxies_to_check {
-            let (is_healthy, latency) = self.check_proxy_health(&proxy).await;
-            results.push((proxy.id, is_healthy, latency));
-            
-            let latency_msg = if let Some(ms) = latency {
-                format!("{}ms", ms)
-            } else {
-                "-".to_string()
-            };
+        let concurrency_limit = 20usize;
+        let results = stream::iter(proxies_to_check)
+            .map(|proxy| async move {
+                let (is_healthy, latency) = self.check_proxy_health(&proxy).await;
+                
+                let latency_msg = if let Some(ms) = latency {
+                    format!("{}ms", ms)
+                } else {
+                    "-".to_string()
+                };
 
-            tracing::info!(
-                "Proxy {} ({}) health check: {} (Latency: {})",
-                proxy.name,
-                proxy.url,
-                if is_healthy { "✓ OK" } else { "✗ FAILED" },
-                latency_msg
-            );
-        }
+                tracing::info!(
+                    "Proxy {} ({}) health check: {} (Latency: {})",
+                    proxy.name,
+                    proxy.url,
+                    if is_healthy { "✓ OK" } else { "✗ FAILED" },
+                    latency_msg
+                );
+
+                (proxy.id, is_healthy, latency)
+            })
+            .buffer_unordered(concurrency_limit)
+            .collect::<Vec<_>>()
+            .await;
 
         // 统一更新状态
         let mut config = self.config.write().await;

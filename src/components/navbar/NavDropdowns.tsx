@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, MoreVertical, Sun, Moon } from 'lucide-react';
+import { ChevronDown, MoreVertical, Sun, Moon, LogOut } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { NavItem, Language } from './constants';
+import { isTauri } from '../../utils/env';
 
 // useClickOutside Hook
 export function useClickOutside(
@@ -141,6 +142,7 @@ export function NavigationDropdown({
                         <Link
                             key={item.path}
                             to={item.path}
+                            draggable="false"
                             onClick={handleNavItemClick}
                             className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-gray-50 dark:hover:bg-base-100 transition-colors ${isActive(item.path)
                                 ? 'text-blue-500 font-medium bg-blue-50 dark:bg-blue-900/10'
@@ -187,6 +189,12 @@ export function MoreDropdown({
     const handleLanguageChange = (langCode: string) => {
         onLanguageChange(langCode);
         setIsOpen(false);
+    };
+
+    const handleLogout = () => {
+        sessionStorage.removeItem('abv_admin_api_key');
+        localStorage.removeItem('abv_admin_api_key');
+        window.location.reload();
     };
 
     return (
@@ -237,6 +245,20 @@ export function MoreDropdown({
                             )}
                         </button>
                     ))}
+
+                    {/* 登出按钮 - 仅 Web 模式显示 */}
+                    {!isTauri() && (
+                        <>
+                            <div className="my-1 border-t border-gray-100 dark:border-base-100"></div>
+                            <button
+                                onClick={handleLogout}
+                                className="w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-red-600 dark:text-red-400"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                <span>{t('nav.logout', '登出')}</span>
+                            </button>
+                        </>
+                    )}
                 </div>
             )}
         </div>

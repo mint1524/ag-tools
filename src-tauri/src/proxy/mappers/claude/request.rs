@@ -431,6 +431,7 @@ pub fn transform_claude_request_in(
         &tools_val,
         claude_req.size.as_deref(),    // [NEW] Pass size parameter
         claude_req.quality.as_deref(), // [NEW] Pass quality parameter
+        None,  // Claude uses size/quality params, not body.imageConfig
     );
 
     // [CRITICAL FIX] Disable dummy thought injection for Vertex AI
@@ -453,8 +454,11 @@ pub fn transform_claude_request_in(
     // [NEW FIX] Check if target model supports thinking
     // Only models with "-thinking" suffix or Claude models support thinking
     // Regular Gemini models (gemini-2.5-flash, gemini-2.5-pro) do NOT support thinking
-    let target_model_supports_thinking =
-        mapped_model.contains("-thinking") || mapped_model.starts_with("claude-");
+    // [FIX #1557] Allow "pro" models (e.g. gemini-3-pro, gemini-2.0-pro) to be recognized as thinking capable
+    let target_model_supports_thinking = mapped_model.contains("-thinking")
+        || mapped_model.starts_with("claude-")
+        || mapped_model.contains("gemini-2.0-pro")
+        || mapped_model.contains("gemini-3-pro");
 
     if is_thinking_enabled && !target_model_supports_thinking {
         tracing::warn!(
@@ -531,7 +535,7 @@ pub fn transform_claude_request_in(
 
     // 4. Generation Config & Thinking (Pass final is_thinking_enabled)
     let generation_config =
-        build_generation_config(claude_req, has_web_search_tool, is_thinking_enabled);
+        build_generation_config(claude_req, &mapped_model, has_web_search_tool, is_thinking_enabled);
 
     // 2. Contents (Messages)
     let contents = build_google_contents(
@@ -593,10 +597,11 @@ pub fn transform_claude_request_in(
             // 2. Remove systemInstruction (image generation does not support system prompts)
             obj.remove("systemInstruction");
 
-            // 3. Clean generationConfig (remove thinkingConfig, responseMimeType, responseModalities etc.)
+            // 3. Clean generationConfig (remove responseMimeType, responseModalities etc.)
             let gen_config = obj.entry("generationConfig").or_insert_with(|| json!({}));
             if let Some(gen_obj) = gen_config.as_object_mut() {
-                gen_obj.remove("thinkingConfig");
+                // [REMOVED] thinkingConfig 拦截已删除，允许图像生成时输出思维链
+                // gen_obj.remove("thinkingConfig");
                 gen_obj.remove("responseMimeType");
                 gen_obj.remove("responseModalities");
                 gen_obj.insert("imageConfig".to_string(), image_config);
@@ -672,10 +677,11 @@ fn should_disable_thinking_due_to_history(messages: &[Message]) -> bool {
 fn should_enable_thinking_by_default(model: &str) -> bool {
     let model_lower = model.to_lowercase();
 
-    // Enable thinking by default for Opus 4.5 variants
-    if model_lower.contains("opus-4-5") || model_lower.contains("opus-4.5") {
+    // Enable thinking by default for Opus 4.5 and 4.6 variants
+    if model_lower.contains("opus-4-5") || model_lower.contains("opus-4.5")
+        || model_lower.contains("opus-4-6") || model_lower.contains("opus-4.6") {
         tracing::debug!(
-            "[Thinking-Mode] Auto-enabling thinking for Opus 4.5 model: {}",
+            "[Thinking-Mode] Auto-enabling thinking for Opus model: {}",
             model
         );
         return true;
@@ -683,6 +689,17 @@ fn should_enable_thinking_by_default(model: &str) -> bool {
 
     // Also enable for explicit thinking model variants
     if model_lower.contains("-thinking") {
+        return true;
+    }
+
+    // [FIX #1557] Enable thinking by default for Gemini Pro models (gemini-3-pro, gemini-2.0-pro)
+    // These models prioritize reasoning but clients might not send thinking config for them
+    // unless they have "-thinking" suffix (which they don't in Antigravity mapping)
+    if model_lower.contains("gemini-2.0-pro") || model_lower.contains("gemini-3-pro") {
+        tracing::debug!(
+            "[Thinking-Mode] Auto-enabling thinking for Gemini Pro model: {}",
+            model
+        );
         return true;
     }
 
@@ -1675,66 +1692,58 @@ fn build_tools(tools: &Option<Vec<Tool>>, has_web_search: bool) -> Result<Option
 /// 构建 Generation Config
 fn build_generation_config(
     claude_req: &ClaudeRequest,
+    mapped_model: &str,
     has_web_search: bool,
     is_thinking_enabled: bool,
 ) -> Value {
     let mut config = json!({});
 
     // Thinking 配置
-    if let Some(thinking) = &claude_req.thinking {
-        // [New Check] 必须 is_thinking_enabled 为真才生成 thinkingConfig
-        if thinking.type_ == "enabled" && is_thinking_enabled {
-            let mut thinking_config = json!({"includeThoughts": true});
+    if is_thinking_enabled {
+        let mut thinking_config = json!({"includeThoughts": true});
+        let budget_tokens = claude_req.thinking.as_ref().and_then(|t| t.budget_tokens).unwrap_or(16000);
 
-            if let Some(budget_tokens) = thinking.budget_tokens {
-                // [CONFIGURABLE] 根据用户配置决定 thinking_budget 处理方式
-                let tb_config = crate::proxy::config::get_thinking_budget_config();
-                let budget = match tb_config.mode {
-                    crate::proxy::config::ThinkingBudgetMode::Passthrough => {
-                        // 直接透传调用方传入的值
-                        tracing::debug!(
-                            "[Thinking-Budget] Passthrough mode: using caller's budget {}",
-                            budget_tokens
-                        );
-                        budget_tokens
-                    }
-                    crate::proxy::config::ThinkingBudgetMode::Custom => {
-                        // 使用用户设定的固定值
-                        let custom_value = tb_config.custom_value;
-                        tracing::debug!(
-                            "[Thinking-Budget] Custom mode: overriding {} with fixed value {}",
-                            budget_tokens,
-                            custom_value
-                        );
-                        custom_value
-                    }
-                    crate::proxy::config::ThinkingBudgetMode::Auto => {
-                        // 保留原有的自动限制逻辑 (向后兼容)
-                        let model_lower = claude_req.model.to_lowercase();
-                        let is_gemini_limited = has_web_search
-                            || model_lower.contains("flash")
-                            || model_lower.ends_with("-thinking");
-                        if is_gemini_limited {
-                            let capped = budget_tokens.min(24576);
-                            if capped < budget_tokens {
-                                tracing::debug!(
-                                    "[Thinking-Budget] Auto mode: capping {} to {} for model {}",
-                                    budget_tokens,
-                                    capped,
-                                    claude_req.model
-                                );
-                            }
-                            capped
-                        } else {
-                            budget_tokens
-                        }
-                    }
-                };
-                thinking_config["thinkingBudget"] = json!(budget);
+        let tb_config = crate::proxy::config::get_thinking_budget_config();
+        let budget = match tb_config.mode {
+            crate::proxy::config::ThinkingBudgetMode::Passthrough => budget_tokens,
+            crate::proxy::config::ThinkingBudgetMode::Custom => {
+                let mut custom_value = tb_config.custom_value;
+                // [FIX #1602] 针对 Gemini 系列模型，在自定义模式下也强制执行 24576 上限
+                let model_lower = mapped_model.to_lowercase();
+                let is_gemini_limited = has_web_search
+                    || model_lower.contains("gemini")
+                    || model_lower.contains("flash")
+                    || model_lower.ends_with("-thinking");
+                
+                if is_gemini_limited && custom_value > 24576 {
+                    tracing::warn!(
+                        "[Claude-Request] Custom mode: capping thinking_budget from {} to 24576 for Gemini model {}",
+                        custom_value, mapped_model
+                    );
+                    custom_value = 24576;
+                }
+                custom_value
+            },
+            crate::proxy::config::ThinkingBudgetMode::Auto => {
+                // [FIX #1592] Use mapped model for robust detection, same as OpenAI protocol
+                let model_lower = mapped_model.to_lowercase();
+                let is_gemini_limited = has_web_search
+                    || model_lower.contains("gemini")
+                    || model_lower.contains("flash")
+                    || model_lower.ends_with("-thinking");
+                if is_gemini_limited && budget_tokens > 24576 {
+                    tracing::info!(
+                        "[Claude-Request] Auto mode: capping thinking_budget from {} to 24576 for Gemini model {}", 
+                        budget_tokens, mapped_model
+                    );
+                    24576
+                } else {
+                    budget_tokens
+                }
             }
-
-            config["thinkingConfig"] = thinking_config;
-        }
+        };
+        thinking_config["thinkingBudget"] = json!(budget);
+        config["thinkingConfig"] = thinking_config;
     }
 
     // 其他参数
@@ -2588,12 +2597,82 @@ mod tests {
             quality: None,
         };
 
-        // Should NOT cap
+        // Should cap
         let result_pro = transform_claude_request_in(&req_pro, "proj", false).unwrap();
         let budget_pro = result_pro["request"]["generationConfig"]["thinkingConfig"]
             ["thinkingBudget"]
             .as_u64()
             .unwrap();
-        assert_eq!(budget_pro, 32000);
+        // [FIX #1592] Gemini Pro models are now also capped to 24576
+        assert_eq!(budget_pro, 24576);
+    }
+
+    #[test]
+    fn test_gemini_pro_thinking_support() {
+        // Setup request for Gemini Pro (no -thinking suffix)
+        let req = ClaudeRequest {
+            model: "gemini-3-pro-preview".to_string(), 
+            messages: vec![Message {
+                role: "user".to_string(),
+                content: MessageContent::String("Hello".to_string()),
+            }],
+            thinking: Some(ThinkingConfig {
+                type_: "enabled".to_string(),
+                budget_tokens: Some(16000),
+            }),
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            top_k: None,
+            stream: false,
+            system: None,
+            tools: None,
+            metadata: None,
+            output_config: None,
+            size: None,
+            quality: None,
+        };
+
+        // Transform
+        let result = transform_claude_request_in(&req, "proj", false).unwrap();
+        let gen_config = &result["request"]["generationConfig"];
+
+        // thinkingConfig should be present (not forced disabled)
+        assert!(gen_config.get("thinkingConfig").is_some(), "thinkingConfig should be preserved for gemini-3-pro");
+        
+        let budget = gen_config["thinkingConfig"]["thinkingBudget"].as_u64().unwrap();
+        // [FIX #1592] Since it's < 24576, it should be kept as 16000
+        assert_eq!(budget, 16000);
+    }
+
+    #[test]
+    fn test_gemini_pro_default_thinking() {
+        // Setup request for Gemini Pro WITHOUT thinking config
+        let req = ClaudeRequest {
+            model: "gemini-3-pro-preview".to_string(), 
+            messages: vec![Message {
+                role: "user".to_string(),
+                content: MessageContent::String("Hello".to_string()),
+            }],
+            thinking: None, // No thinking config provided by client
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            top_k: None,
+            stream: false,
+            system: None,
+            tools: None,
+            metadata: None,
+            output_config: None,
+            size: None,
+            quality: None,
+        };
+
+        // Transform
+        let result = transform_claude_request_in(&req, "proj", false).unwrap();
+        let gen_config = &result["request"]["generationConfig"];
+
+        // thinkingConfig SHOULD be injected because of default-on logic
+        assert!(gen_config.get("thinkingConfig").is_some(), "thinkingConfig should be auto-enabled for gemini-3-pro");
     }
 }

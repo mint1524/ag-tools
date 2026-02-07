@@ -4,6 +4,7 @@ import { Plus, Trash2, RefreshCw, Copy, Activity, User, Settings, Shield, Clock,
 import { motion, AnimatePresence } from 'framer-motion';
 import { request as invoke } from '../utils/request';
 import { showToast } from '../components/common/ToastContainer';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface UserToken {
     id: string;
@@ -88,14 +89,12 @@ const UserToken: React.FC = () => {
         setCreating(true);
         try {
             await invoke('create_user_token', {
-                request: {
-                    username: newUsername,
-                    expires_type: newExpiresType,
-                    description: newDesc || undefined,
-                    max_ips: newMaxIps,
-                    curfew_start: newCurfewStart || undefined,
-                    curfew_end: newCurfewEnd || undefined
-                }
+                username: newUsername,
+                expires_type: newExpiresType,
+                description: newDesc || undefined,
+                max_ips: newMaxIps,
+                curfew_start: newCurfewStart || undefined,
+                curfew_end: newCurfewEnd || undefined
             });
             showToast(t('common.create_success') || 'Created successfully', 'success');
             setShowCreateModal(false);
@@ -167,7 +166,7 @@ const UserToken: React.FC = () => {
 
     const handleRenew = async (id: string, type: string) => {
         try {
-            await invoke('renew_user_token', { id, expiresType: type });
+            await invoke('renew_user_token', { id, expires_type: type });
             showToast(t('user_token.renew_success') || 'Renewed successfully', 'success');
             loadData();
         } catch (e) {
@@ -175,9 +174,13 @@ const UserToken: React.FC = () => {
         }
     };
 
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        showToast(t('common.copied') || 'Copied to clipboard', 'success');
+    const handleCopyToken = async (text: string) => {
+        const success = await copyToClipboard(text);
+        if (success) {
+            showToast(t('common.copied') || 'Copied to clipboard', 'success');
+        } else {
+            showToast(t('common.copy_failed') || 'Failed to copy to clipboard', 'error');
+        }
     };
 
     const formatTime = (ts?: number) => {
@@ -334,7 +337,7 @@ const UserToken: React.FC = () => {
                                                 {token.token.substring(0, 8)}••••••••
                                             </code>
                                             <button
-                                                onClick={() => copyToClipboard(token.token)}
+                                                onClick={() => handleCopyToken(token.token)}
                                                 className="p-1.5 hover:bg-gray-200 dark:hover:bg-base-300 rounded-md transition-all text-gray-400 hover:text-gray-600 dark:hover:text-white"
                                             >
                                                 <Copy size={13} />

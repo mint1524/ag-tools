@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
-import { ArrowRightLeft, RefreshCw, Trash2, Download, Info, Lock, Ban, Diamond, Gem, Circle, ToggleLeft, ToggleRight, Fingerprint, Sparkles } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ArrowRightLeft, RefreshCw, Trash2, Download, Info, Lock, Ban, Diamond, Gem, Circle, ToggleLeft, ToggleRight, Fingerprint, Sparkles, Tag, X, Check } from 'lucide-react';
 import { Account } from '../../types/account';
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 import { useConfigStore } from '../../stores/useConfigStore';
 import { QuotaItem } from './QuotaItem';
+import { MODEL_CONFIG, sortModels } from '../../config/modelConfig';
 
 interface AccountCardProps {
     account: Account;
@@ -21,45 +22,85 @@ interface AccountCardProps {
     onDelete: () => void;
     onToggleProxy: () => void;
     onWarmup?: () => void;
+    onUpdateLabel?: (label: string) => void;
 }
 
-const DEFAULT_MODELS = [
-    { id: 'gemini-3-pro-high', label: 'G3 Pro', protectedKey: 'gemini-pro' },
-    { id: 'gemini-3-flash', label: 'G3 Flash', protectedKey: 'gemini-flash' },
-    { id: 'gemini-3-pro-image', label: 'G3 Image', protectedKey: 'gemini-image' },
-    { id: 'claude-sonnet-4-5-thinking', label: 'Claude 4.5', protectedKey: 'claude' }
-];
+// 使用统一的模型配置
+const DEFAULT_MODELS = Object.entries(MODEL_CONFIG).map(([id, config]) => ({
+    id,
+    label: config.label,
+    protectedKey: config.protectedKey,
+    Icon: config.Icon
+}));
 
-function AccountCard({ account, selected, onSelect, isCurrent: propIsCurrent, isRefreshing, isSwitching = false, onSwitch, onRefresh, onViewDetails, onExport, onDelete, onToggleProxy, onViewDevice, onWarmup }: AccountCardProps) {
+function AccountCard({ account, selected, onSelect, isCurrent: propIsCurrent, isRefreshing, isSwitching = false, onSwitch, onRefresh, onViewDetails, onExport, onDelete, onToggleProxy, onViewDevice, onWarmup, onUpdateLabel }: AccountCardProps) {
     const { t } = useTranslation();
     const { config, showAllQuotas } = useConfigStore();
     const isDisabled = Boolean(account.disabled);
 
+    // 自定义标签编辑状态
+    const [isEditingLabel, setIsEditingLabel] = useState(false);
+    const [labelInput, setLabelInput] = useState(account.custom_label || '');
+
     // Use the prop directly from parent component
     const isCurrent = propIsCurrent;
 
+    const handleSaveLabel = () => {
+        if (onUpdateLabel) {
+            onUpdateLabel(labelInput.trim());
+        }
+        setIsEditingLabel(false);
+    };
+
+    const handleCancelLabel = () => {
+        setLabelInput(account.custom_label || '');
+        setIsEditingLabel(false);
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            handleSaveLabel();
+        } else if (e.key === 'Escape') {
+            handleCancelLabel();
+        }
+    };
+
     const displayModels = useMemo(() => {
-        // Build map of friendly labels from DEFAULT_MODELS
-        const labelMap = new Map(DEFAULT_MODELS.map(m => [m.id, m.label]));
+        // Build map of friendly labels and icons from DEFAULT_MODELS
+        const iconMap = new Map(DEFAULT_MODELS.map(m => [m.id, m.Icon]));
 
         // Get all models from account (source of truth)
-        const accountModels = account.quota?.models?.map(m => ({
-            id: m.name,
-            label: labelMap.get(m.name) || m.name,
-            protectedKey: DEFAULT_MODELS.find(d => d.id === m.name)?.protectedKey,
-            data: m
-        })) || [];
+        const accountModels = account.quota?.models?.map(m => {
+            // 注意：DEFAULT_MODELS 现在应该包含 shortLabel，我们需要确保它被正确映射
+            // 但 DEFAULT_MODELS 是从 MODEL_CONFIG 生成的，我们需要确保它包含 shortLabel
+            // 这里为了安全，直接从 MODEL_CONFIG 获取
+            const fullConfig = MODEL_CONFIG[m.name.toLowerCase()];
+            return {
+                id: m.name,
+                label: fullConfig?.shortLabel || fullConfig?.label || m.name,
+                protectedKey: fullConfig?.protectedKey,
+                Icon: iconMap.get(m.name),
+                data: m
+            };
+        }) || [];
 
-        if (showAllQuotas) return accountModels;
+        let models: typeof accountModels;
 
-        // Filter for pinned or defaults
-        const pinned = config?.pinned_quota_models?.models;
-        if (pinned && pinned.length > 0) {
-            return accountModels.filter(m => pinned.includes(m.id));
+        if (showAllQuotas) {
+            models = accountModels;
+        } else {
+            // Filter for pinned or defaults
+            const pinned = config?.pinned_quota_models?.models;
+            if (pinned && pinned.length > 0) {
+                models = accountModels.filter(m => pinned.includes(m.id));
+            } else {
+                // Default fallback: show known default models
+                models = accountModels.filter(m => DEFAULT_MODELS.some(d => d.id === m.id));
+            }
         }
 
-        // Default fallback: show known default models
-        return accountModels.filter(m => DEFAULT_MODELS.some(d => d.id === m.id));
+        // 应用排序
+        return sortModels(models);
     }, [config, account, showAllQuotas]);
 
     const isModelProtected = (key?: string) => {
@@ -149,6 +190,13 @@ function AccountCard({ account, selected, onSelect, isCurrent: propIsCurrent, is
                                     );
                                 }
                             })()}
+                            {/* 自定义标签 */}
+                            {account.custom_label && (
+                                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 text-[9px] font-bold shadow-sm border border-orange-200/50 dark:border-orange-800/50">
+                                    <Tag className="w-2.5 h-2.5" />
+                                    {account.custom_label}
+                                </span>
+                            )}
                         </div>
                         <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono shrink-0 whitespace-nowrap">
                             {new Date(account.last_used * 1000).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
@@ -173,6 +221,7 @@ function AccountCard({ account, selected, onSelect, isCurrent: propIsCurrent, is
                                 percentage={model.data?.percentage || 0}
                                 resetTime={model.data?.reset_time}
                                 isProtected={isModelProtected(model.protectedKey)}
+                                Icon={model.Icon}
                             />
                         ))}
                     </div>
@@ -181,6 +230,37 @@ function AccountCard({ account, selected, onSelect, isCurrent: propIsCurrent, is
 
             {/* Footer: Actions Only */}
             <div className="flex-none flex items-center justify-center pt-2 pb-1 border-t border-gray-100 dark:border-base-200">
+                {/* 标签编辑弹出框 */}
+                {isEditingLabel && (
+                    <div className="absolute inset-0 bg-white/95 dark:bg-base-100/95 rounded-xl z-10 flex items-center justify-center p-4">
+                        <div className="flex items-center gap-2 w-full max-w-xs">
+                            <input
+                                type="text"
+                                className="flex-1 px-2 py-1 text-sm border border-orange-300 dark:border-orange-700 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white dark:bg-base-200"
+                                placeholder={t('accounts.custom_label_placeholder', 'Enter custom label')}
+                                value={labelInput}
+                                onChange={(e) => setLabelInput(e.target.value)}
+                                onKeyDown={handleKeyDown}
+                                autoFocus
+                                maxLength={15}
+                            />
+                            <button
+                                className="p-1.5 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/30 rounded-lg transition-all"
+                                onClick={handleSaveLabel}
+                                title={t('common.save', 'Save')}
+                            >
+                                <Check className="w-4 h-4" />
+                            </button>
+                            <button
+                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-all"
+                                onClick={handleCancelLabel}
+                                title={t('common.cancel', 'Cancel')}
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
                 <div className="flex flex-wrap items-center justify-center gap-1 w-full">
                     <button
                         className="p-1.5 text-gray-400 hover:text-sky-600 dark:hover:text-sky-400 hover:bg-sky-50 dark:hover:bg-sky-900/30 rounded-lg transition-all"
@@ -196,6 +276,21 @@ function AccountCard({ account, selected, onSelect, isCurrent: propIsCurrent, is
                     >
                         <Fingerprint className="w-3.5 h-3.5" />
                     </button>
+                    {/* 自定义标签按钮 */}
+                    {onUpdateLabel && (
+                        <button
+                            className={cn(
+                                "p-1.5 rounded-lg transition-all",
+                                account.custom_label
+                                    ? "text-orange-500 hover:text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/30"
+                                    : "text-gray-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/30"
+                            )}
+                            onClick={(e) => { e.stopPropagation(); setIsEditingLabel(true); }}
+                            title={t('accounts.edit_label', 'Edit Label')}
+                        >
+                            <Tag className="w-3.5 h-3.5" />
+                        </button>
+                    )}
                     <button
                         className={`p-1.5 rounded-lg transition-all ${(isSwitching || isDisabled) ? 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-900/10 cursor-not-allowed' : 'text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30'}`}
                         onClick={(e) => { e.stopPropagation(); onSwitch(); }}

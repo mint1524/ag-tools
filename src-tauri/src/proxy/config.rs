@@ -544,6 +544,9 @@ pub struct ProxyPoolConfig {
     pub health_check_interval: u64,    // 健康检查间隔 (秒)
     pub auto_failover: bool,           // 自动故障转移
     pub strategy: ProxySelectionStrategy, // 代理选择策略
+    /// 账号到代理的绑定关系 (account_id -> proxy_id)，持久化存储
+    #[serde(default)]
+    pub account_bindings: HashMap<String, String>,
 }
 
 impl Default for ProxyPoolConfig {
@@ -555,6 +558,7 @@ impl Default for ProxyPoolConfig {
             health_check_interval: 300,
             auto_failover: true,
             strategy: ProxySelectionStrategy::Priority,
+            account_bindings: HashMap::new(),
         }
     }
 }

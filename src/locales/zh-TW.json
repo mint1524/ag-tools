@@ -119,6 +119,9 @@
         "ultra": "ULTRA",
         "pro": "PRO",
         "free": "FREE",
+        "edit_label": "編輯標籤",
+        "custom_label_placeholder": "輸入自訂標籤",
+        "label_updated": "標籤已更新",
         "add_account": "新增帳號",
         "refresh_all": "重新整理所有",
         "refresh_selected": "重新整理 ({{count}})",
@@ -192,7 +195,9 @@
         "warmup_batch_triggered": "已成功為 {{count}} 個帳號觸發預熱任務",
         "quota_protected": "受保護",
         "details": {
-            "title": "配額詳情"
+            "title": "配額詳情",
+            "model_quota": "模型配額",
+            "protected_models": "受保護模型"
         },
         "toast": {
             "proxy_enabled": "成功啟用 {{count}} 個帳號的反向代理功能",
@@ -998,6 +1003,9 @@
         "desc": "當前運行在 Web 模式下，請輸入管理密碼或 API Key 以進入後台。",
         "placeholder": "請輸入管理密碼或 API Key",
         "btn_login": "驗證並進入",
+        "btn_verifying": "驗證中...",
+        "error_invalid_key": "密碼或 API Key 錯誤，請重試",
+        "error_network": "網路連線失敗，請檢查服務是否正常運行",
         "note": "注意：如果設置了獨立的管理密碼，請輸入管理密碼；否則請輸入 API_KEY。",
         "lookup_hint": "如果您忘記了，請運行 docker logs antigravity-manager 尋找 Current API Key 或 Web UI Password",
         "config_hint": "或執行 grep -E '\"api_key\"|\"admin_password\"' ~/.antigravity_tools/gui_config.json 查看。"

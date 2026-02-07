@@ -117,6 +117,9 @@
         "ultra": "ULTRA",
         "pro": "PRO",
         "free": "FREE",
+        "edit_label": "تعديل التصنيف",
+        "custom_label_placeholder": "أدخل تصنيفًا مخصصًا",
+        "label_updated": "تم تحديث التصنيف",
         "add_account": "إضافة حساب",
         "refresh_all": "تحديث الكل",
         "refresh_selected": "تحديث ({{count}})",
@@ -194,7 +197,9 @@
         "warmup_batch_triggered": "تم إطلاق مهام التنشيط لـ {{count}} حساب",
         "quota_protected": "محمي",
         "details": {
-            "title": "تفاصيل الحصة"
+            "title": "تفاصيل الحصة",
+            "model_quota": "حصة النموذج",
+            "protected_models": "النماذج المحمية"
         },
         "toast": {
             "proxy_enabled": "تم تفعيل الوكيل لـ {{count}} حساب",

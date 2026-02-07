@@ -118,6 +118,9 @@
         "ultra": "ULTRA",
         "pro": "PRO",
         "free": "MIỄN PHÍ",
+        "edit_label": "Chỉnh sửa nhãn",
+        "custom_label_placeholder": "Nhập nhãn tùy chỉnh",
+        "label_updated": "Đã cập nhật nhãn",
         "add_account": "Thêm Tài khoản",
         "refresh_all": "Làm mới Tất cả",
         "refresh_selected": "Làm mới ({{count}})",
@@ -191,7 +194,9 @@
         "warmup_batch_triggered": "Đã kích hoạt làm nóng cho {{count}} tài khoản",
         "quota_protected": "Được bảo vệ",
         "details": {
-            "title": "Chi tiết Hạn mức"
+            "title": "Chi tiết Hạn mức",
+            "model_quota": "Hạn mức Mô hình",
+            "protected_models": "Mô hình Được Bảo vệ"
         },
         "toast": {
             "proxy_enabled": "Đã bật proxy cho {{count}} tài khoản",

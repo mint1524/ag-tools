@@ -90,7 +90,7 @@ dependencies = [
 
 [[package]]
 name = "antigravity_tools"
-version = "4.1.0"
+version = "4.1.8"
 dependencies = [
  "aes-gcm",
  "anyhow",
@@ -112,6 +112,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "pin-project",
+ "plist",
  "rand 0.8.5",
  "regex",
  "reqwest",

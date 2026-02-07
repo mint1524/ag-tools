@@ -253,6 +253,7 @@ mod integration_tests {
             api_key_hash: None,
             blocked: true,
             block_reason: Some("IP in blacklist".to_string()),
+            username: None,
         };
 
         let save_result = security_db::save_ip_access_log(&log);
@@ -427,6 +428,7 @@ mod stress_tests {
                 api_key_hash: Some("hash".to_string()),
                 blocked: false,
                 block_reason: None,
+                username: None,
             };
             let _ = save_ip_access_log(&log);
         }

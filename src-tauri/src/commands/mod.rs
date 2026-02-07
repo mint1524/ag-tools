@@ -547,15 +547,45 @@ pub async fn sync_account_from_db(
     Ok(Some(account))
 }
 
+fn validate_path(path: &str) -> Result<(), String> {
+    if path.contains("..") {
+        return Err("非法路径: 不允许目录遍历".to_string());
+    }
+
+    // 检查是否指向系统敏感路径 (基础黑名单)
+    let lower_path = path.to_lowercase();
+    let sensitive_prefixes = [
+        "/etc/",
+        "/var/spool/cron",
+        "/root/",
+        "/proc/",
+        "/sys/",
+        "/dev/",
+        "c:\\windows",
+        "c:\\users\\administrator",
+        "c:\\pagefile.sys",
+    ];
+
+    for prefix in sensitive_prefixes {
+        if lower_path.starts_with(prefix) {
+            return Err(format!("安全拒绝: 禁止访问系统敏感路径 ({})", prefix));
+        }
+    }
+
+    Ok(())
+}
+
 /// 保存文本文件 (绕过前端 Scope 限制)
 #[tauri::command]
 pub async fn save_text_file(path: String, content: String) -> Result<(), String> {
+    validate_path(&path)?;
     std::fs::write(&path, content).map_err(|e| format!("写入文件失败: {}", e))
 }
 
 /// 读取文本文件 (绕过前端 Scope 限制)
 #[tauri::command]
 pub async fn read_text_file(path: String) -> Result<String, String> {
+    validate_path(&path)?;
     std::fs::read_to_string(&path).map_err(|e| format!("读取文件失败: {}", e))
 }
 
@@ -754,7 +784,9 @@ pub async fn toggle_proxy_status(
     }
 
     // 3. 保存到磁盘
-    std::fs::write(&account_path, serde_json::to_string_pretty(&account_json).unwrap())
+    let json_str = serde_json::to_string_pretty(&account_json)
+        .map_err(|e| format!("序列化账号数据失败: {}", e))?;
+    std::fs::write(&account_path, json_str)
         .map_err(|e| format!("写入账号文件失败: {}", e))?;
 
     modules::logger::log_info(&format!(
@@ -763,8 +795,32 @@ pub async fn toggle_proxy_status(
         if enable { "已启用" } else { "已禁用" }
     ));
 
-    // 4. 如果反代服务正在运行,重新加载账号池
-    let _ = crate::commands::proxy::reload_proxy_accounts(proxy_state).await;
+    // 4. 如果反代服务正在运行,立刻同步到内存池（避免禁用后仍被选中）
+    {
+        let instance_lock = proxy_state.instance.read().await;
+        if let Some(instance) = instance_lock.as_ref() {
+            // 如果禁用的是当前固定账号，则自动关闭固定模式（内存 + 配置持久化）
+            if !enable {
+                let pref_id = instance.token_manager.get_preferred_account().await;
+                if pref_id.as_deref() == Some(&account_id) {
+                    instance.token_manager.set_preferred_account(None).await;
+
+                    if let Ok(mut cfg) = crate::modules::config::load_app_config() {
+                        if cfg.proxy.preferred_account_id.as_deref() == Some(&account_id) {
+                            cfg.proxy.preferred_account_id = None;
+                            let _ = crate::modules::config::save_app_config(&cfg);
+                        }
+                    }
+                }
+            }
+
+            instance
+                .token_manager
+                .reload_account(&account_id)
+                .await
+                .map_err(|e| format!("同步账号失败: {}", e))?;
+        }
+    }
 
     // 5. 更新托盘菜单
     crate::modules::tray::update_tray_menus(&app);
@@ -782,6 +838,59 @@ pub async fn warm_up_all_accounts() -> Result<String, String> {
 #[tauri::command]
 pub async fn warm_up_account(account_id: String) -> Result<String, String> {
     modules::quota::warm_up_account(&account_id).await
+}
+
+/// 更新账号自定义标签
+#[tauri::command]
+pub async fn update_account_label(
+    account_id: String,
+    label: String,
+) -> Result<(), String> {
+    // 验证标签长度（按字符数计算，支持中文）
+    if label.chars().count() > 15 {
+        return Err("标签长度不能超过15个字符".to_string());
+    }
+
+    modules::logger::log_info(&format!(
+        "更新账号标签: {} -> {:?}",
+        account_id,
+        if label.is_empty() { "无" } else { &label }
+    ));
+
+    // 1. 读取账号文件
+    let data_dir = modules::account::get_data_dir()?;
+    let account_path = data_dir.join("accounts").join(format!("{}.json", account_id));
+
+    if !account_path.exists() {
+        return Err(format!("账号文件不存在: {}", account_id));
+    }
+
+    let content = std::fs::read_to_string(&account_path)
+        .map_err(|e| format!("读取账号文件失败: {}", e))?;
+
+    let mut account_json: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| format!("解析账号文件失败: {}", e))?;
+
+    // 2. 更新 custom_label 字段
+    if label.is_empty() {
+        account_json["custom_label"] = serde_json::Value::Null;
+    } else {
+        account_json["custom_label"] = serde_json::Value::String(label.clone());
+    }
+
+    // 3. 保存到磁盘
+    let json_str = serde_json::to_string_pretty(&account_json)
+        .map_err(|e| format!("序列化账号数据失败: {}", e))?;
+    std::fs::write(&account_path, json_str)
+        .map_err(|e| format!("写入账号文件失败: {}", e))?;
+
+    modules::logger::log_info(&format!(
+        "账号标签已更新: {} ({})",
+        account_id,
+        if label.is_empty() { "已清除".to_string() } else { label }
+    ));
+
+    Ok(())
 }
 
 // ============================================================================

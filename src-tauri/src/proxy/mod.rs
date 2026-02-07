@@ -10,6 +10,7 @@ pub mod token_manager;
 // 新架构模块
 pub mod audio; // 音频处理模块
 pub mod cli_sync; // CLI 配置同步 (v3.3.35)
+pub mod opencode_sync; // OpenCode 配置同步
 pub mod common; // 公共工具
 pub mod debug_logger;
 pub mod handlers; // API 端点处理器
@@ -39,6 +40,7 @@ pub use security::ProxySecurityConfig;
 pub use server::AxumServer;
 pub use signature_cache::SignatureCache;
 pub use token_manager::TokenManager;
+pub use proxy_pool::{ProxyPoolManager, get_global_proxy_pool, init_global_proxy_pool};
 
 #[cfg(test)]
 pub mod tests;

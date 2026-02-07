@@ -16,6 +16,12 @@ static CLAUDE_TO_GEMINI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|
     m.insert("claude-3-5-sonnet-20240620", "claude-sonnet-4-5");
     m.insert("claude-opus-4", "claude-opus-4-5-thinking");
     m.insert("claude-opus-4-5-20251101", "claude-opus-4-5-thinking");
+
+    // Claude Opus 4.6 (nuevo modelo thinking)
+    m.insert("claude-opus-4-6-thinking", "claude-opus-4-6-thinking");
+    m.insert("claude-opus-4-6", "claude-opus-4-6-thinking");
+    m.insert("claude-opus-4-6-20260201", "claude-opus-4-6-thinking");
+
     m.insert("claude-haiku-4", "claude-sonnet-4-5");
     m.insert("claude-3-haiku-20240307", "claude-sonnet-4-5");
     m.insert("claude-haiku-4-5-20251001", "claude-sonnet-4-5");
@@ -59,6 +65,32 @@ static CLAUDE_TO_GEMINI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|
     m
 });
 
+
+/// Map Claude model names to Gemini model names
+/// 
+/// # 映射策略
+/// 1. **精确匹配**: 检查 CLAUDE_TO_GEMINI 映射表
+/// 2. **已知前缀透传**: gemini-* 和 *-thinking 模型直接透传
+/// 3. **[NEW] 直接透传**: 未知模型 ID 直接传递给 Google API (支持体验未发布模型)
+/// 
+/// # 参数
+/// - `input`: 原始模型名称
+/// 
+/// # 返回
+/// 映射后的目标模型名称
+/// 
+/// # 示例
+/// ```
+/// // 精确匹配
+/// assert_eq!(map_claude_model_to_gemini("claude-opus-4"), "claude-opus-4-5-thinking");
+/// 
+/// // Gemini 模型透传
+/// assert_eq!(map_claude_model_to_gemini("gemini-2.5-flash"), "gemini-2.5-flash");
+/// 
+/// // 直接透传未知模型 (NEW!)
+/// assert_eq!(map_claude_model_to_gemini("claude-opus-4-6"), "claude-opus-4-6");
+/// assert_eq!(map_claude_model_to_gemini("claude-sonnet-5"), "claude-sonnet-5");
+/// ```
 pub fn map_claude_model_to_gemini(input: &str) -> String {
     // 1. Check exact match in map
     if let Some(mapped) = CLAUDE_TO_GEMINI.get(input) {
@@ -70,14 +102,11 @@ pub fn map_claude_model_to_gemini(input: &str) -> String {
         return input.to_string();
     }
 
-    // [NEW] Intelligent fallback based on model keywords
-    let lower = input.to_lowercase();
-    if lower.contains("opus") {
-        return "gemini-3-pro-preview".to_string();
-    }
 
-    // 3. Fallback to default
-    "claude-sonnet-4-5".to_string()
+    // 3. [ENHANCED] 直接透传未知模型 ID,而不是强制 fallback
+    // 这允许用户通过自定义映射体验未发布的模型 (如 claude-opus-4-6)
+    // Google API 会自动处理无效模型并返回错误,用户可以根据错误调整映射
+    input.to_string()
 }
 
 /// 获取所有内置支持的模型列表关键字
@@ -250,8 +279,8 @@ pub fn normalize_to_standard_id(model_name: &str) -> Option<String> {
         // Gemini 3 Pro High Group
         "gemini-3-pro-high" | "gemini-3-pro-low" => Some("gemini-3-pro-high".to_string()),
 
-        // Claude 4.5 Sonnet Group
-        "claude-sonnet-4-5" | "claude-sonnet-4-5-thinking" | "claude-opus-4-5-thinking" => Some("claude-sonnet-4-5".to_string()),
+        // Claude 4.5 Sonnet Group (includes Opus 4.5 and 4.6)
+        "claude-sonnet-4-5" | "claude-sonnet-4-5-thinking" | "claude-opus-4-5-thinking" | "claude-opus-4-6-thinking" => Some("claude-sonnet-4-5".to_string()),
 
         _ => None
     }
@@ -278,7 +307,7 @@ mod tests {
         );
         assert_eq!(
             map_claude_model_to_gemini("unknown-model"),
-            "claude-sonnet-4-5"
+            "unknown-model"
         );
     }
 
@@ -322,7 +351,7 @@ mod tests {
         // Negative case: *thinking* should NOT match models without "thinking"
         assert_eq!(
             resolve_model_route("random-model-name", &custom),
-            "claude-sonnet-4-5"  // Falls back to system default
+            "random-model-name"  // Falls back to system default (pass-through)
         );
     }
 

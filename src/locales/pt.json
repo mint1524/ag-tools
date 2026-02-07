@@ -116,6 +116,9 @@
         "ultra": "ULTRA",
         "pro": "PRO",
         "free": "GRÁTIS",
+        "edit_label": "Editar rótulo",
+        "custom_label_placeholder": "Digite um rótulo personalizado",
+        "label_updated": "Rótulo atualizado",
         "add_account": "Adicionar Conta",
         "refresh_all": "Atualizar Todas",
         "refresh_selected": "Atualizar ({{count}})",
@@ -188,7 +191,9 @@
         "warmup_batch_triggered": "Tarefas de aquecimento acionadas para {{count}} contas",
         "quota_protected": "Protegido",
         "details": {
-            "title": "Detalhes da Cota"
+            "title": "Detalhes da Cota",
+            "model_quota": "Cota do Modelo",
+            "protected_models": "Modelos Protegidos"
         },
         "toast": {
             "proxy_enabled": "Proxy habilitado para {{count}} contas",

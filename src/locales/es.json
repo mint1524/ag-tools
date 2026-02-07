@@ -115,6 +115,9 @@
         "ultra": "ULTRA",
         "pro": "PRO",
         "free": "GRATIS",
+        "edit_label": "Editar etiqueta",
+        "custom_label_placeholder": "Ingrese etiqueta personalizada",
+        "label_updated": "Etiqueta actualizada",
         "add_account": "Agregar Cuenta",
         "refresh_all": "Actualizar Todas",
         "refresh_selected": "Actualizar ({{count}})",
@@ -192,7 +195,9 @@
         "warmup_batch_triggered": "Tareas de calentamiento activadas para {{count}} cuentas",
         "quota_protected": "Protegida",
         "details": {
-            "title": "Detalles de Cuota"
+            "title": "Detalles de Cuota",
+            "model_quota": "Cuota de Modelo",
+            "protected_models": "Modelos Protegidos"
         },
         "toast": {
             "proxy_enabled": "Proxy habilitado para {{count}} cuentas",

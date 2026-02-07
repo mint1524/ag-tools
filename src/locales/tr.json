@@ -116,6 +116,9 @@
         "ultra": "ULTRA",
         "pro": "PRO",
         "free": "ÜCRETSİZ",
+        "edit_label": "Etiketi Düzenle",
+        "custom_label_placeholder": "Özel etiket girin",
+        "label_updated": "Etiket güncellendi",
         "add_account": "Hesap Ekle",
         "refresh_all": "Tümünü Yenile",
         "refresh_selected": "Yenile ({{count}})",
@@ -184,7 +187,9 @@
         },
         "quota_protected": "Korumalı",
         "details": {
-            "title": "Kota Detayları"
+            "title": "Kota Detayları",
+            "model_quota": "Model Kotası",
+            "protected_models": "Korumalı Modeller"
         },
         "toast": {
             "proxy_enabled": "{{count}} hesap için proxy etkinleştirildi",

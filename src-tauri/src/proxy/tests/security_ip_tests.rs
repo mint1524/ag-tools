@@ -335,6 +335,7 @@ mod security_db_tests {
             api_key_hash: Some("hash123".to_string()),
             blocked: false,
             block_reason: None,
+            username: None,
         };
 
         let save_result = save_ip_access_log(&log);
@@ -369,6 +370,7 @@ mod security_db_tests {
             api_key_hash: None,
             blocked: false,
             block_reason: None,
+            username: None,
         };
         let _ = save_ip_access_log(&normal_log);
 
@@ -385,6 +387,7 @@ mod security_db_tests {
             api_key_hash: None,
             blocked: true,
             block_reason: Some("IP in blacklist".to_string()),
+            username: None,
         };
         let _ = save_ip_access_log(&blocked_log);
 
@@ -420,6 +423,7 @@ mod security_db_tests {
                 api_key_hash: None,
                 blocked: i == 4, // 最后一个被阻止
                 block_reason: if i == 4 { Some("Test".to_string()) } else { None },
+                username: None,
             };
             let _ = save_ip_access_log(&log);
         }
@@ -465,6 +469,7 @@ mod security_db_tests {
             api_key_hash: None,
             blocked: false,
             block_reason: None,
+            username: None,
         };
         let _ = save_ip_access_log(&old_log);
 
@@ -481,6 +486,7 @@ mod security_db_tests {
             api_key_hash: None,
             blocked: false,
             block_reason: None,
+            username: None,
         };
         let _ = save_ip_access_log(&new_log);
 
