@@ -634,6 +634,14 @@ mod tests {
 
     #[test]
     fn test_gemini_pro_auto_inject_thinking() {
+        // Reset thinking budget to auto mode at the start to avoid interference from parallel tests
+        crate::proxy::config::update_thinking_budget_config(
+            crate::proxy::config::ThinkingBudgetConfig {
+                mode: crate::proxy::config::ThinkingBudgetMode::Auto,
+                custom_value: 24576,
+            }
+        );
+
         // Request WITHOUT thinkingConfig
         let body = json!({
             "model": "gemini-3-pro-preview",
