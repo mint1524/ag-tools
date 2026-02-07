@@ -260,6 +260,9 @@ print(response.choices[0].message.content)
             -   **Length Limit**: Optimized label length limit from 20 to 15 characters, synchronized across frontend and backend.
             -   **Backend Validation**: Enhanced Rust command validation with Unicode character support and improved error handling.
             -   **Frontend Alignment**: Synchronized `maxLength={15}` for edit inputs in both account list and card views.
+        -   **[Core Optimization] Optimize Token Sorting Performance & Reduce Disk I/O (PR #1627)**:
+            -   **In-Memory Quota Cache**: Introduced model quota caching within the `ProxyToken` struct to eliminate disk reads during the `get_token` sorting hot path.
+            -   **Throughput Improvement**: Completely removed blocking synchronous I/O (`std::fs::read_to_string`) from request processing, significantly improving latency and throughput under high concurrency.
     *   **v4.1.7 (2026-02-06)**:
         -   **[Core Fix] Fixed Image API Account Rotation on 429/500/503 Errors (Issue #1622)**:
             -   **Automatic Retry**: Implemented automatic retry and account rotation logic for `images/generations` and `images/edits`, aligning with the robustness of the Chat API.
