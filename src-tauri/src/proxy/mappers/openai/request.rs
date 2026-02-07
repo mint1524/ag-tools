@@ -329,11 +329,11 @@ pub fn transform_openai_request(
                     // [New] 递归清理参数中可能存在的非法校验字段
                     crate::proxy::common::json_schema::clean_json_schema(&mut func_call_part);
 
-                    // [修复] 为该消息内的所有工具调用注入 thoughtSignature (Session 级)
                     if let Some(ref sig) = thought_sig {
                         func_call_part["thoughtSignature"] = json!(sig);
-                    } else if is_thinking_model && !mapped_model.starts_with("projects/") {
+                    } else if is_thinking_model {
                         // [NEW] Handle missing signature for Gemini thinking models
+                        // [FIX #1650] Allow sentinel injection for Vertex AI (projects/...) as well
                         tracing::debug!("[OpenAI-Signature] Adding GEMINI_SKIP_SIGNATURE for tool_use: {}", tc.id);
                         func_call_part["thoughtSignature"] = json!("skip_thought_signature_validator");
                     }
@@ -702,6 +702,7 @@ fn enforce_uppercase_types(value: &mut Value) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::proxy::mappers::openai::models::*;
 
     #[test]
     #[test]
@@ -987,5 +988,74 @@ mod tests {
         // Max output tokens should be adjusted based on capped budget (24576 + 8192)
         let max_output = gen_config["maxOutputTokens"].as_i64().unwrap();
         assert_eq!(max_output, 32768);
+    }
+    #[test]
+    fn test_vertex_ai_sentinel_injection() {
+        // [FIX #1650] Verify sentinel signature injection for Vertex AI models
+        let req = OpenAIRequest {
+            model: "claude-3-7-sonnet-thinking".to_string(), // Triggers is_thinking_model
+            messages: vec![OpenAIMessage {
+                role: "assistant".to_string(),
+                content: None,
+                reasoning_content: Some("Thinking...".to_string()),
+                tool_calls: Some(vec![ToolCall {
+                    id: "call_123".to_string(),
+                    r#type: "function".to_string(),
+                    function: ToolFunction {
+                        name: "test_tool".to_string(),
+                        arguments: "{}".to_string(),
+                    },
+                }]),
+                tool_call_id: None,
+                name: None,
+            }],
+            stream: false,
+            n: None,
+            max_tokens: None,
+            temperature: None,
+            top_p: None,
+            stop: None,
+            response_format: None,
+            tools: Some(vec![json!({
+                "type": "function",
+                "function": {
+                    "name": "test_tool",
+                    "description": "Test tool",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            })]),
+            tool_choice: None,
+            parallel_tool_calls: None,
+            instructions: None,
+            input: None,
+            prompt: None,
+            size: None,
+            quality: None,
+            person_generation: None,
+            thinking: None,
+        };
+
+        // Simulate Vertex AI path
+        let mapped_model = "projects/my-project/locations/us-central1/publishers/google/models/gemini-2.0-flash-thinking-exp";
+        
+        let (result, _sid, _msg_count) = transform_openai_request(&req, "test-v", mapped_model);
+        
+        // Extract the tool call part from contents
+        let contents = result["request"]["contents"].as_array().unwrap();
+        // Identify the part with functionCall
+        let parts = contents[0]["parts"].as_array().unwrap();
+        let tool_part = parts.iter().find(|p| p.get("functionCall").is_some()).expect("Should find functionCall part");
+        
+        assert_eq!(tool_part["functionCall"]["name"], "test_tool");
+        
+        // Verify thoughtSignature is injected
+        assert_eq!(
+            tool_part["thoughtSignature"], 
+            "skip_thought_signature_validator",
+            "Vertex AI model must have sentinel signature injected"
+        );
     }
 }

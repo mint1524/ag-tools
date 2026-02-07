@@ -784,7 +784,9 @@ pub async fn toggle_proxy_status(
     }
 
     // 3. 保存到磁盘
-    std::fs::write(&account_path, serde_json::to_string_pretty(&account_json).unwrap())
+    let json_str = serde_json::to_string_pretty(&account_json)
+        .map_err(|e| format!("序列化账号数据失败: {}", e))?;
+    std::fs::write(&account_path, json_str)
         .map_err(|e| format!("写入账号文件失败: {}", e))?;
 
     modules::logger::log_info(&format!(
@@ -844,6 +846,11 @@ pub async fn update_account_label(
     account_id: String,
     label: String,
 ) -> Result<(), String> {
+    // 验证标签长度（按字符数计算，支持中文）
+    if label.chars().count() > 15 {
+        return Err("标签长度不能超过15个字符".to_string());
+    }
+
     modules::logger::log_info(&format!(
         "更新账号标签: {} -> {:?}",
         account_id,
@@ -872,7 +879,9 @@ pub async fn update_account_label(
     }
 
     // 3. 保存到磁盘
-    std::fs::write(&account_path, serde_json::to_string_pretty(&account_json).unwrap())
+    let json_str = serde_json::to_string_pretty(&account_json)
+        .map_err(|e| format!("序列化账号数据失败: {}", e))?;
+    std::fs::write(&account_path, json_str)
         .map_err(|e| format!("写入账号文件失败: {}", e))?;
 
     modules::logger::log_info(&format!(
