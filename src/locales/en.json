@@ -514,6 +514,13 @@
             "high_value_warning": "Current value exceeds 24576. Some models (Flash, -thinking) may not support this and requests may fail.",
             "tokens": "tokens"
         },
+        "global_system_prompt": {
+            "title": "Global System Prompt",
+            "description": "Set a global prompt that will be automatically injected into the systemInstruction of all API requests, placed after the Antigravity identity and before the client's prompts.",
+            "placeholder": "Enter global system prompt...\nExample: You are a senior full-stack developer proficient in React and Rust. Please respond in Chinese.",
+            "char_count": "{{count}} characters",
+            "long_prompt_warning": "The prompt is quite long (over 2000 characters) and may consume significant context window space, reducing available conversation length."
+        },
         "branding": {
             "title": "Antigravity Tools",
             "subtitle": "Professional Account Management"
