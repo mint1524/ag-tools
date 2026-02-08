@@ -123,6 +123,7 @@ pub fn check_cli_installed(app: &CliApp) -> (bool, Option<String>) {
         let mut common_paths = vec![
             home.join(".local/bin"),
             home.join(".npm-global/bin"),
+            home.join(".volta/bin"),
             home.join("bin"),
             PathBuf::from("/opt/homebrew/bin"),
             PathBuf::from("/usr/local/bin"),

@@ -196,6 +196,7 @@ fn resolve_opencode_path_unix() -> Option<PathBuf> {
     let user_bins = [
         home.join(".local").join("bin").join("opencode"),
         home.join(".npm-global").join("bin").join("opencode"),
+        home.join(".volta").join("bin").join("opencode"),
         home.join("bin").join("opencode"),
     ];
     
