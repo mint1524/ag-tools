@@ -116,6 +116,7 @@ jobs:
           body: "See the assets to download this version and install."
           draft: false
           prerelease: false
+          overwrite: true
           files: |
             src-tauri/target/**/release/bundle/dmg/*.dmg
             src-tauri/target/**/release/bundle/deb/*.deb
@@ -201,6 +202,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           body_path: release_notes.md
+          overwrite: true
           files: updater.json
           # 确保不覆盖已存在的其他 assets (softprops/action-gh-release 默认是追加)
 
