@@ -742,6 +742,9 @@ impl TokenManager {
             std::fs::write(account_path, serde_json::to_string_pretty(account_json).unwrap())
                 .map_err(|e| format!("写入文件失败: {}", e))?;
 
+            // [FIX] 触发 TokenManager 的账号重新加载信号，确保内存中的 protected_models 同步
+            crate::proxy::server::trigger_account_reload(account_id);
+
             return Ok(true);
         }
 
@@ -1410,7 +1413,9 @@ impl TokenManager {
 
                             // 重新尝试选择账号
                             let retry_token = tokens_snapshot.iter()
-                                .find(|t| !attempted.contains(&t.account_id) && !self.is_rate_limited_sync(&t.account_id, None));
+                                .find(|t| !attempted.contains(&t.account_id) 
+                                    && !self.is_rate_limited_sync(&t.account_id, Some(&normalized_target))
+                                    && !(quota_protection_enabled && t.protected_models.contains(&normalized_target)));
 
                             if let Some(t) = retry_token {
                                 tracing::info!(
@@ -1431,7 +1436,8 @@ impl TokenManager {
                                 // 再次尝试选择账号
                                 let final_token = tokens_snapshot
                                     .iter()
-                                    .find(|t| !attempted.contains(&t.account_id));
+                                    .find(|t| !attempted.contains(&t.account_id)
+                                        && !(quota_protection_enabled && t.protected_models.contains(&normalized_target)));
 
                                 if let Some(t) = final_token {
                                     tracing::info!(

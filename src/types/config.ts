@@ -197,4 +197,5 @@ export interface ProxyPoolConfig {
     health_check_interval: number;
     auto_failover: boolean;
     strategy: ProxySelectionStrategy;
+    account_bindings?: Record<string, string>;
 }

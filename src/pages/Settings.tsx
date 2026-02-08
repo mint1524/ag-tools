@@ -49,7 +49,8 @@ function Settings() {
                 proxies: [],
                 health_check_interval: 300,
                 auto_failover: true,
-                strategy: 'priority'
+                strategy: 'priority',
+                account_bindings: {}
             }
         },
         scheduled_warmup: {

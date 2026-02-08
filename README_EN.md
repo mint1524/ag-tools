@@ -270,6 +270,9 @@ print(response.choices[0].message.content)
         -   **[Core Fix] Full Protocol Support & Stability Enhancements**:
             -   **Unified Coverage**: Image Thinking controls are now synchronized across Gemini Native, OpenAI-Compatible, and Claude (Anthropic) protocols.
             -   **DevOps Cleanup**: Resolved global state race conditions in backend unit tests and updated GitHub Release CI configurations to support asset overwriting.
+        -   **[Core Fix] Persistent Bindings & Reliable Quota Protection (Issue #1700)**:
+            -   **Binding Persistence**: Fixed a regression where `account_bindings` were overwritten during settings save, ensuring persistent mappings across restarts.
+            -   **Protection Boost**: Enhanced model normalization to recognize physical API model names and perfected instant sync and scheduler filtering to prevent low-quota account leakage.
     *   **v4.1.9 (2026-02-08)**:
         -   **[Core Feature] Expand CLI Config Quick Sync Support (PR #1680, #1685)**:
             -   **Multi-Tool Integration**: Now supports syncing configurations to **Claude Code**, **Gemini CLI**, **Codex AI**, **OpenCode**, and **Droid**.
