@@ -651,10 +651,12 @@
             "upstream_proxy": {
                 "title": "Proxy Upstream Toàn cầu",
                 "desc": "Khi bật, tất cả request ra ngoài (API Proxy, Refresh Token, Check Hạn mức, Check Update) sẽ đi qua proxy này.",
+                "desc_short": "Proxy toàn cầu được sử dụng như một giải pháp dự phòng khi không tìm thấy tài khoản phù hợp trong nhóm proxy.",
                 "enable": "Bật Upstream Proxy",
                 "url": "URL Proxy",
                 "url_placeholder": "ví dụ: http://127.0.0.1:7890 hoặc socks5://127.0.0.1:7890",
                 "tip": "Hỗ trợ HTTP, HTTPS và SOCKS5.",
+                "socks5h_hint": "Để tránh bị chặn và duy trì việc phân giải DNS từ xa (Remote DNS), hãy thay đổi giao thức thành socks5h:// một cách thủ công.",
                 "validation_error": "URL proxy là bắt buộc khi bật upstream proxy",
                 "restart_hint": "Cài đặt proxy đã lưu. Khởi động lại ứng dụng để áp dụng thay đổi."
             },

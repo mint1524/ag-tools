@@ -644,12 +644,14 @@
             "enable_logging": "Aktifkan Pengelogan Permintaan",
             "enable_logging_hint": "Rekod sejarah untuk nyahpepijat (Kos prestasi kecil)",
             "upstream_proxy": {
-                "title": "Proksi Upstream Global (Proksi Global)",
+                "title": "Proksi Upstream Global (Global Proxy)",
                 "desc": "Apabila diaktifkan, semua permintaan luaran (Proksi API, Muat Semula Token, Semakan Kuota, Semakan Kemas Kini) akan dihalakan melalui proksi ini.",
+                "desc_short": "Proksi global yang digunakan sebagai penyelesaian sandaran apabila tiada akaun yang sesuai ditemui dalam pool proksi.",
                 "enable": "Aktifkan Proksi Upstream",
                 "url": "URL Proksi",
                 "url_placeholder": "cth. http://127.0.0.1:7890 atau socks5://127.0.0.1:7890",
                 "tip": "Menyokong HTTP, HTTPS dan SOCKS5.",
+                "socks5h_hint": "Untuk mengelakkan sekatan dan mengekalkan resolusi DNS jauh (Remote DNS), tukar protokol kepada socks5h:// secara manual.",
                 "validation_error": "URL Proksi diperlukan apabila proksi upstream diaktifkan",
                 "restart_hint": "Tetapan proksi disimpan. Mulakan semula aplikasi untuk menggunakan perubahan."
             },

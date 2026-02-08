@@ -94,9 +94,10 @@ impl UpstreamClient {
 
         if let Some(config) = proxy_config {
             if config.enabled && !config.url.is_empty() {
-                if let Ok(proxy) = reqwest::Proxy::all(&config.url) {
+                let url = crate::proxy::config::normalize_proxy_url(&config.url);
+                if let Ok(proxy) = reqwest::Proxy::all(&url) {
                     builder = builder.proxy(proxy);
-                    tracing::info!("UpstreamClient enabled proxy: {}", config.url);
+                    tracing::info!("UpstreamClient enabled proxy: {}", url);
                 }
             }
         }

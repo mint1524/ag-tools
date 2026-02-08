@@ -678,10 +678,12 @@
             "upstream_proxy": {
                 "title": "Global Upstream Proxy (Global Proxy)",
                 "desc": "When enabled, all external requests (API Proxy, Token Refresh, Quota Check, Update Check) will be routed through this proxy.",
+                "desc_short": "Fallback proxy used when no suitable proxy is found in the pool.",
                 "enable": "Enable Upstream Proxy",
                 "url": "Proxy URL",
                 "url_placeholder": "e.g. http://127.0.0.1:7890 or socks5://127.0.0.1:7890",
                 "tip": "Supports HTTP, HTTPS and SOCKS5.",
+                "socks5h_hint": "To bypass upstream risk control and use Remote DNS resolution, manually change the protocol to socks5h://",
                 "validation_error": "Proxy URL is required when upstream proxy is enabled",
                 "restart_hint": "Proxy settings saved. Restart the app to apply changes."
             },

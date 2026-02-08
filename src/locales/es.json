@@ -646,10 +646,12 @@
             "upstream_proxy": {
                 "title": "Proxy Upstream Global (Proxy Global)",
                 "desc": "Cuando está habilitado, todas las solicitudes externas (Proxy API, Actualización de Token, Verificación de Cuota, Verificación de Actualizaciones) se enrutarán a través de este proxy.",
+                "desc_short": "Proxy global utilizado como solución de respaldo cuando no se encuentran cuentas adecuadas en el grupo de proxies.",
                 "enable": "Habilitar Proxy Upstream",
                 "url": "URL del Proxy",
                 "url_placeholder": "ej. http://127.0.0.1:7890 o socks5://127.0.0.1:7890",
                 "tip": "Soporta HTTP, HTTPS y SOCKS5.",
+                "socks5h_hint": "Para evitar bloqueos y mantener la resolución DNS remota (Remote DNS), cambie manualmente el protocolo a socks5h://",
                 "validation_error": "Se requiere URL del Proxy cuando el proxy upstream está habilitado",
                 "restart_hint": "Configuración del proxy guardada. Reinicie la app para aplicar cambios."
             },

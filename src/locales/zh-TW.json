@@ -652,10 +652,12 @@
             "upstream_proxy": {
                 "title": "全域上游代理 (Global Proxy)",
                 "desc": "開啟後，應用內所有外部請求（API 反向代理、Token 重新整理、配額查詢、更新檢測）都將透過此代理。",
+                "desc_short": "用於無法匹配代理池帳號時的通用出口或降級方案。",
                 "enable": "啟用上游代理",
                 "url": "代理地址",
                 "url_placeholder": "例如: http://127.0.0.1:7890 或 socks5://127.0.0.1:7890",
                 "tip": "支援 HTTP、HTTPS 和 SOCKS5 協定。",
+                "socks5h_hint": "若需避開上游風控並保留原始功能變數名稱解析 (Remote DNS)，請手動將協定改為 socks5h://",
                 "validation_error": "啟用上游代理時必須填寫代理地址",
                 "restart_hint": "代理設定已儲存，重新啟動應用程式後生效"
             },

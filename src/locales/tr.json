@@ -618,12 +618,14 @@
             "enable_logging_hint": "Hata ayıklama için geçmişi kaydet (Küçük performans maliyeti)",
             "upstream_proxy": {
                 "title": "Global Upstream Proxy (Global Proxy)",
-                "desc": "Etkinleştirildiğinde, tüm harici istekler (API Proxy, Token Yenileme, Kota Kontrolü, Güncelleme Kontrolü) bu proxy üzerinden yönlendirilir.",
-                "enable": "Upstream Proxy'yi Etkinleştir",
+                "desc": "Etkinleştirildiğinde, tüm harici istekler (API Proxy, jeton yenileme, kota kontrolü, güncelleme kontrolü) bu proxy üzerinden yönlendirilecektir.",
+                "desc_short": "Proxy havuzunda uygun hesap bulunamadığında yedek çözüm olarak kullanılan genel proxy.",
+                "enable": "Üst düzey proxy'yi etkinleştir",
                 "url": "Proxy URL'si",
                 "url_placeholder": "örn. http://127.0.0.1:7890 veya socks5://127.0.0.1:7890",
-                "tip": "HTTP, HTTPS ve SOCKS5 destekler.",
-                "validation_error": "Upstream proxy etkinleştirildiğinde proxy URL'si zorunludur",
+                "tip": "HTTP, HTTPS ve SOCKS5 desteği.",
+                "socks5h_hint": "Engellemeleri önlemek ve uzaktan DNS çözümlemesini (Remote DNS) korumak için protokolü manuel olarak socks5h:// şeklinde değiştirin.",
+                "validation_error": "Üst düzey proxy etkinleştirildiğinde proxy URL'si gereklidir",
                 "restart_hint": "Proxy ayarları kaydedildi. Değişiklikleri uygulamak için uygulamayı yeniden başlatın."
             },
             "scheduling": {

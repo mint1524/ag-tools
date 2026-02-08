@@ -646,13 +646,15 @@
             "enable_logging": "Habilitar Registro de Solicitações",
             "enable_logging_hint": "Registrar histórico para depuração (Custo de desempenho menor)",
             "upstream_proxy": {
-                "title": "Proxy Upstream Global (Proxy Global)",
-                "desc": "Quando habilitado, todas as solicitações externas (Proxy da API, Atualização de Token, Verificação de Cota, Verificação de Atualização) serão roteadas através deste proxy.",
-                "enable": "Habilitar Proxy Upstream",
-                "url": "URL do Proxy",
+                "title": "Proxy de upstream global (Global Proxy)",
+                "desc": "Quando habilitado, todas as solicitações externas (API Proxy, atualização de token, verificação de cota, verificação de atualização) serão roteadas por meio desse proxy.",
+                "desc_short": "Proxy global usado como solução de fallback quando nenhuma conta adequada é encontrada no pool de proxies.",
+                "enable": "Habilitar proxy de upstream",
+                "url": "URL do proxy",
                 "url_placeholder": "ex: http://127.0.0.1:7890 ou socks5://127.0.0.1:7890",
                 "tip": "Suporta HTTP, HTTPS e SOCKS5.",
-                "validation_error": "URL do proxy é obrigatório quando o proxy upstream está habilitado",
+                "socks5h_hint": "Para evitar bloqueos e manter a resolução DNS remota (Remote DNS), altere manualmente o protocolo para socks5h://",
+                "validation_error": "A URL do proxy é necessária quando o proxy de upstream está habilitado",
                 "restart_hint": "Configurações de proxy salvas. Reinicie o aplicativo para aplicar as alterações."
             },
             "scheduling": {
