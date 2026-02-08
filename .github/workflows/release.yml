@@ -106,7 +106,7 @@ jobs:
 
       # 2. 直接上传安装包到 GitHub Release (避免 artifact 下载超时)
       - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -195,7 +195,7 @@ jobs:
           mv merged_updater.json updater.json
 
       - name: Upload merged updater.json
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
