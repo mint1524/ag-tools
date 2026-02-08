@@ -17,6 +17,7 @@ pub mod token_stats;
 pub mod cloudflared;
 pub mod integration;
 pub mod account_service;
+#[allow(dead_code)]
 pub mod http_api;
 pub mod cache;
 pub mod log_bridge;

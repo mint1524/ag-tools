@@ -227,6 +227,7 @@ async fn auth_middleware_internal(
 #[derive(Clone, Debug)]
 pub struct UserTokenIdentity {
     pub token_id: String,
+    #[allow(dead_code)] // 保留原始 token 便于审计/调试
     pub token: String,
     pub username: String,
 }

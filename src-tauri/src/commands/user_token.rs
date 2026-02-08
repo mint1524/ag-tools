@@ -1,4 +1,3 @@
-use tauri::State;
 use serde::{Deserialize, Serialize};
 use crate::modules::user_token_db::{self, UserToken, TokenIpBinding};
 

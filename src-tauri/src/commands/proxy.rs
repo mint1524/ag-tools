@@ -27,6 +27,7 @@ pub struct ProxyServiceState {
 
 pub struct AdminServerInstance {
     pub axum_server: crate::proxy::AxumServer,
+    #[allow(dead_code)] // 保留句柄以便未来支持显式停服/诊断
     pub server_handle: tokio::task::JoinHandle<()>,
 }
 
@@ -35,6 +36,7 @@ pub struct ProxyServiceInstance {
     pub config: ProxyConfig,
     pub token_manager: Arc<TokenManager>,
     pub axum_server: crate::proxy::AxumServer,
+    #[allow(dead_code)] // 保留句柄以便未来支持显式停服/诊断
     pub server_handle: tokio::task::JoinHandle<()>,
 }
 

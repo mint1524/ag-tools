@@ -678,6 +678,7 @@ impl TokenManager {
     /// # 参数
     /// * `account_path` - 账号 JSON 文件路径
     /// * `model_name` - 目标模型名称（已标准化）
+    #[allow(dead_code)] // 预留给精确配额读取逻辑
     fn get_model_quota_from_json(account_path: &PathBuf, model_name: &str) -> Option<i32> {
         let content = std::fs::read_to_string(account_path).ok()?;
         let account: serde_json::Value = serde_json::from_str(&content).ok()?;
@@ -1391,7 +1392,6 @@ impl TokenManager {
             let mut token = match target_token {
                 Some(t) => t,
                 None => {
-                    let mut wait_ms = 0;
                     // 乐观重置策略: 双层防护机制
                     // 计算最短等待时间
                     let min_wait = tokens_snapshot
@@ -1402,7 +1402,7 @@ impl TokenManager {
                     // Layer 1: 如果最短等待时间 <= 2秒,执行缓冲延迟
                     if let Some(wait_sec) = min_wait {
                         if wait_sec <= 2 {
-                            wait_ms = (wait_sec as f64 * 1000.0) as u64;
+                            let wait_ms = (wait_sec as f64 * 1000.0) as u64;
                             tracing::warn!(
                                 "All accounts rate-limited but shortest wait is {}s. Applying {}ms buffer for state sync...",
                                 wait_sec, wait_ms

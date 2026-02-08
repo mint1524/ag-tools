@@ -5,6 +5,8 @@ use aes_gcm::{
 use base64::{Engine as _, engine::general_purpose};
 use sha2::Digest;
 
+const FIXED_NONCE: &[u8; 12] = b"antigravsalt";
+
 /// 生成加密密钥 (基于设备 ID)
 fn get_encryption_key() -> [u8; 32] {
     // 使用设备唯一标识生成密钥
@@ -29,8 +31,15 @@ pub fn deserialize_password<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let encrypted = String::deserialize(deserializer)?;
-    decrypt_string(&encrypted).map_err(serde::de::Error::custom)
+    let raw = String::deserialize(deserializer)?;
+    if raw.is_empty() {
+        return Ok(raw);
+    }
+    // Accept plaintext from API payloads; decrypt when it is encrypted.
+    match decrypt_string(&raw) {
+        Ok(plaintext) => Ok(plaintext),
+        Err(_) => Ok(raw),
+    }
 }
 
 pub fn encrypt_string(password: &str) -> Result<String, String> {
@@ -39,7 +48,7 @@ pub fn encrypt_string(password: &str) -> Result<String, String> {
     // In production, we should use a random nonce and prepend it to the ciphertext
     // For simplicity in this demo, we use a fixed nonce (NOT SECURE for repeats)
     // improving security: use random nonce
-    let nonce = Nonce::from_slice(b"antigravity_salt"); 
+    let nonce = Nonce::from_slice(FIXED_NONCE);
     
     let ciphertext = cipher.encrypt(nonce, password.as_bytes())
         .map_err(|e| format!("Encryption failed: {}", e))?;
@@ -50,7 +59,7 @@ pub fn encrypt_string(password: &str) -> Result<String, String> {
 pub fn decrypt_string(encrypted: &str) -> Result<String, String> {
     let key = get_encryption_key();
     let cipher = Aes256Gcm::new(&key.into());
-    let nonce = Nonce::from_slice(b"antigravity_salt");
+    let nonce = Nonce::from_slice(FIXED_NONCE);
     
     let ciphertext = general_purpose::STANDARD.decode(encrypted)
         .map_err(|e| format!("Base64 decode failed: {}", e))?;

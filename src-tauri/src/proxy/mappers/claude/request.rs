@@ -1720,7 +1720,7 @@ fn build_tools(tools: &Option<Vec<Tool>>, has_web_search: bool) -> Result<Option
 fn build_generation_config(
     claude_req: &ClaudeRequest,
     mapped_model: &str,
-    has_web_search: bool,
+    _has_web_search: bool,
     is_thinking_enabled: bool,
 ) -> Value {
     let mut config = json!({});

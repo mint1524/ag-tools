@@ -21,6 +21,7 @@ pub fn strip_all_thinking_blocks(contents: Vec<Value>) -> Vec<Value> {
 
 /// 针对思维模型关闭工具循环
 /// 先剥离思考块，然后注入合成的 Model 确认和 User 继续指令
+#[allow(dead_code)]
 pub fn close_tool_loop_for_thinking(contents: Vec<Value>) -> Vec<Value> {
     let mut stripped = strip_all_thinking_blocks(contents);
     

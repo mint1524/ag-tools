@@ -1,6 +1,9 @@
 //! User Token Database Module
 //! UserToken 数据库操作模块
 
+#![allow(dead_code)]
+// 用户令牌存储，部分接口留作后续扩展
+
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;

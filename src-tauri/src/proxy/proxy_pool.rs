@@ -113,7 +113,6 @@ impl ProxyPoolManager {
                     }
                 } else {
                     tracing::info!("[Proxy] Route: {:?} -> Direct", account_id.unwrap_or("Generic"));
-                    builder = builder;
                 }
             }
         }

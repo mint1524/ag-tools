@@ -77,9 +77,6 @@ pub fn run() {
         let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
         rt.block_on(async {
             // Initialize states manually
-            let proxy_state = commands::proxy::ProxyServiceState::new();
-            let cf_state = Arc::new(commands::cloudflared::CloudflaredState::new());
-
             // [FIX] Initialize log bridge for headless mode
             // Pass a dummy app handle or None since we don't have a Tauri app handle in headless mode
             // Actually log_bridge relies on AppHandle to emit events.
