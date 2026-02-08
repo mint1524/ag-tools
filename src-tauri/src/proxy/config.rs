@@ -695,3 +695,25 @@ pub enum ProxySelectionStrategy {
     /// 加权轮询: 根据健康状态和优先级
     WeightedRoundRobin,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalize_proxy_url() {
+        // 测试已有协议
+        assert_eq!(normalize_proxy_url("http://127.0.0.1:7890"), "http://127.0.0.1:7890");
+        assert_eq!(normalize_proxy_url("https://proxy.com"), "https://proxy.com");
+        assert_eq!(normalize_proxy_url("socks5://127.0.0.1:1080"), "socks5://127.0.0.1:1080");
+        assert_eq!(normalize_proxy_url("socks5h://127.0.0.1:1080"), "socks5h://127.0.0.1:1080");
+
+        // 测试缺少协议（默认补全 http://）
+        assert_eq!(normalize_proxy_url("127.0.0.1:7890"), "http://127.0.0.1:7890");
+        assert_eq!(normalize_proxy_url("localhost:1082"), "http://localhost:1082");
+
+        // 测试边缘情况
+        assert_eq!(normalize_proxy_url(""), "");
+        assert_eq!(normalize_proxy_url("   "), "");
+    }
+}
