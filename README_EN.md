@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.1.8)
+> Professional AI Account Management & Protocol Proxy System (v4.1.9)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -9,7 +9,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.8-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.9-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -255,6 +255,29 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.1.9 (2026-02-08)**:
+        -   **[Core Feature] Expand CLI Config Quick Sync Support (PR #1680, #1685)**:
+            -   **Multi-Tool Integration**: Now supports syncing configurations to **Claude Code**, **Gemini CLI**, **Codex AI**, **OpenCode**, and **Droid**.
+            -   **Custom Model Selection**: Added model selection dropdowns for single-model CLIs (Claude, Codex, Gemini) and drag-and-drop management for multi-model CLIs (OpenCode, Droid).
+            -   **Logic Calibration**: Deeply adapted the preset logic for each CLI (e.g., root-level `model` field and mirror environment cleanup for Claude) to ensure post-sync compatibility.
+            -   **Interaction Optimization**: Synced panel now supports default collapse with smooth animations and improved UI feedback.
+            -   **Backup & Security**: Automatically generates `.antigravity.bak` backups before syncing, with one-click restore support.
+        -   **[Core Feature] Global System Prompt Support (PR #1669)**:
+            -   **Unified Instruction Injection**: Added a new configuration in System Settings to inject custom system instructions into all OpenAI, Claude, and Gemini protocol requests.
+            -   **Frontend UI**: Introduced the `GlobalSystemPrompt` component with one-click enable and multi-line content editing.
+        -   **[Core Fix] Resolve Floating-point Precision Loss (PR #1669)**:
+            -   **Precision Upgrade**: Upgraded `temperature` and `top_p` data types from `f32` to `f64` in the backend.
+            -   **Accuracy Calibration**: Completely eliminated minor deviations (e.g., `0.95` becoming `0.949999...`) during proxy serialization, improving upstream compatibility.
+        -   **[Core Refactoring] Implement App Name Internationalization (PR #1662)**:
+            -   **UI Upgrade**: Removed hardcoded "Antigravity Tools" from `NavLogo` and `Settings` pages, utilizing the `app_name` translation key for consistent UI language switching.
+        -   **[Core Fix] Correct Misidentification of gemini-3-pro-image as a Thinking Model (Issue #1675)**:
+            -   **Root Cause**: `gemini-3-pro-image` and its 4k/2k variants were incorrectly identified as "Thinking Models" because they contain the `gemini-3-pro` keyword.
+            -   **Conflict Resolved**: Fixed the conflict caused by the incorrect injection of `thinkingConfig` alongside `imageConfig`, which led to backend resolution downgrades (to 1k).
+            -   **Token Optimization**: Resolved the "Token limit exceeded (131072)" 400 errors triggered by placeholders or specific limits injected for thinking models.
+        -   **[i18n] Synchronize Japanese Translations to 100% (PR #1662)**:
+            -   **Translation Completion**: Synchronized all missing keys from `en.json`, covering new features like Cloudflared, Circuit Breaker, and OpenCode Sync.
+        -   **[Refactoring] Restructured UpstreamClient Response Logic**:
+            -   **Structured Results**: Introduced `UpstreamCallResult` to unify upstream request management and optimize streaming/non-streaming response paths.
     *   **v4.1.8 (2026-02-07)**:
         -   **[Core Feature] Integrated Claude Opus 4.6 Thinking Model Support (PR #1641)**:
             -   **Hybrid Architecture**: Implemented a "Static Config + Dynamic Fetch" dual-mode architecture. Model lists are dynamically fetched via Antigravity API, while advanced metadata like Thinking Mode is supplemented by the local registry, perfectly balancing flexibility and stability.

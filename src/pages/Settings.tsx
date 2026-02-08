@@ -10,6 +10,7 @@ import QuotaProtection from '../components/settings/QuotaProtection';
 import SmartWarmup from '../components/settings/SmartWarmup';
 import PinnedQuotaModels from '../components/settings/PinnedQuotaModels';
 import ThinkingBudget from '../components/settings/ThinkingBudget';
+import GlobalSystemPrompt from '../components/settings/GlobalSystemPrompt';
 import { useDebugConsole } from '../stores/useDebugConsole';
 
 import { useTranslation } from 'react-i18next';
@@ -1037,6 +1038,20 @@ function Settings() {
                                         })}
                                     />
                                 </div>
+
+                                {/* 全局系统提示词设置 */}
+                                <div className="border-t border-gray-200 dark:border-base-200 pt-4">
+                                    <GlobalSystemPrompt
+                                        config={formData.proxy?.global_system_prompt || { enabled: false, content: '' }}
+                                        onChange={(newConfig) => setFormData({
+                                            ...formData,
+                                            proxy: {
+                                                ...formData.proxy,
+                                                global_system_prompt: newConfig,
+                                            },
+                                        })}
+                                    />
+                                </div>
                             </div>
                         </>
                     )}
@@ -1143,9 +1158,9 @@ function Settings() {
                                     </div>
 
                                     <div>
-                                        <h3 className="text-3xl font-black text-gray-900 dark:text-base-content tracking-tight mb-2">Antigravity Tools</h3>
+                                        <h3 className="text-3xl font-black text-gray-900 dark:text-base-content tracking-tight mb-2">{t('common.app_name', 'Antigravity Tools')}</h3>
                                         <div className="flex items-center justify-center gap-2 text-sm">
-                                            v4.1.8
+                                            v4.1.9
                                             <span className="text-gray-400 dark:text-gray-600">•</span>
                                             <span className="text-gray-500 dark:text-gray-400">{t('settings.branding.subtitle')}</span>
                                         </div>
