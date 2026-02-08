@@ -135,11 +135,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 下载所有构建产物 (包括 updater 和各种安装包)
+      # 下载所有构建产物 (仅限 release 相关的 assets 和 updater)
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
           path: all-artifacts
+          pattern: "{release-assets-*,updater-json-*}"
+          merge-multiple: true
 
       - name: Extract Release Notes
         run: |
