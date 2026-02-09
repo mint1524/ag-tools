@@ -1002,34 +1002,37 @@ impl TokenManager {
             return Err("Token pool is empty".to_string());
         }
 
-        // ===== 【优化】Quota-First 排序: 保护低配额账号，均衡使用 =====
-        // 优先级: 目标模型配额 > 健康分 > 订阅等级 > 刷新时间
-        // -> 高配额账号优先被选中，避免 PRO/ULTRA 先用完丢失5小时刷新周期
-        // [FIX] 使用目标模型的 quota 而非 max(所有模型)
-        // [NEW] 高端模型 (Opus 4.6/4.5) 优先使用 Ultra 账号
-        const RESET_TIME_THRESHOLD_SECS: i64 = 600; // 10 分钟阈值，差异小于此值视为相同
+        // [NEW] 1. 动态能力过滤 (Capability Filter)
+        
+        // 定义常量
+        const RESET_TIME_THRESHOLD_SECS: i64 = 600; // 10 分钟阈值
 
-        // 需要 Ultra 账号才能访问的高端模型
-        const ULTRA_REQUIRED_MODELS: &[&str] = &[
-            "claude-opus-4-6",
-            "claude-opus-4-5",
-            "opus", // 通配匹配
-        ];
+        // 归一化目标模型名为标准 ID
+        let normalized_target = crate::proxy::common::model_mapping::normalize_to_standard_id(target_model)
+            .unwrap_or_else(|| target_model.to_string());
 
-        fn is_ultra_required_model(model: &str) -> bool {
-            let lower = model.to_lowercase();
-            ULTRA_REQUIRED_MODELS.iter().any(|m| lower.contains(m))
+        // 仅保留明确拥有该模型配额的账号
+        // 这一步确保了 "保证有模型才可以进入轮询"，特别是对 Opus 4.6 等高端模型
+        let candidate_count_before = tokens_snapshot.len();
+        
+        // 此处假设所有受支持的模型都会出现在 model_quotas 中
+        // 如果 API 返回的配额信息不完整，可能会导致误杀，但为了严格性，我们执行此过滤
+        tokens_snapshot.retain(|t| t.model_quotas.contains_key(&normalized_target));
+
+        if tokens_snapshot.is_empty() {
+            if candidate_count_before > 0 {
+                // 如果过滤前有账号，过滤后没了，说明所有账号都没有该模型的配额
+                tracing::warn!("No accounts have satisfied quota for model: {}", normalized_target);
+                return Err(format!("No accounts available with quota for model: {}", normalized_target));
+            }
+            return Err("Token pool is empty".to_string());
         }
 
-        let requires_ultra = is_ultra_required_model(target_model);
-
-        let normalized_target =
-            crate::proxy::common::model_mapping::normalize_to_standard_id(target_model)
-                .unwrap_or_else(|| target_model.to_string());
-
         tokens_snapshot.sort_by(|a, b| {
-            // Priority 0 (NEW): 高端模型时，订阅等级优先 (ULTRA > PRO > FREE)
-            // -> 确保 Opus 4.6/4.5 等高端模型优先使用 Ultra 账号
+            // Priority 0: 严格的订阅等级排序 (ULTRA > PRO > FREE)
+            // 用户要求：轮询应当遵循 Ultra -> Pro -> Free
+            // 既然已经过滤掉了不支持该模型的账号，剩下的都是支持的
+            // 此时我们优先使用高级订阅
             let tier_priority = |tier: &Option<String>| {
                 let t = tier.as_deref().unwrap_or("").to_lowercase();
                 if t.contains("ultra") { 0 }
@@ -1038,20 +1041,16 @@ impl TokenManager {
                 else { 3 }
             };
 
-            if requires_ultra {
-                let tier_cmp = tier_priority(&a.subscription_tier)
-                    .cmp(&tier_priority(&b.subscription_tier));
-                if tier_cmp != std::cmp::Ordering::Equal {
-                    return tier_cmp;
-                }
+            let tier_cmp = tier_priority(&a.subscription_tier)
+                .cmp(&tier_priority(&b.subscription_tier));
+            if tier_cmp != std::cmp::Ordering::Equal {
+                return tier_cmp;
             }
 
             // Priority 1: 目标模型的 quota (higher is better) -> 保护低配额账号
-            // [OPTIMIZATION] 使用内存缓存，不再读取磁盘 IO
-            let quota_a = a.model_quotas.get(&normalized_target).copied()
-                .unwrap_or(a.remaining_quota.unwrap_or(0));
-            let quota_b = b.model_quotas.get(&normalized_target).copied()
-                .unwrap_or(b.remaining_quota.unwrap_or(0));
+            // 经过过滤，key 肯定存在
+            let quota_a = a.model_quotas.get(&normalized_target).copied().unwrap_or(0);
+            let quota_b = b.model_quotas.get(&normalized_target).copied().unwrap_or(0);
 
             let quota_cmp = quota_b.cmp(&quota_a);
             if quota_cmp != std::cmp::Ordering::Equal {
@@ -1065,17 +1064,7 @@ impl TokenManager {
                 return health_cmp;
             }
 
-            // Priority 3: Subscription tier (ULTRA > PRO > FREE) -> 平局时高级账号优先
-            // (对于非高端模型，订阅等级在此作为次要优先级)
-            if !requires_ultra {
-                let tier_cmp = tier_priority(&a.subscription_tier)
-                    .cmp(&tier_priority(&b.subscription_tier));
-                if tier_cmp != std::cmp::Ordering::Equal {
-                    return tier_cmp;
-                }
-            }
-
-            // Priority 4: Reset time (earlier is better, but only if diff > 10 min)
+            // Priority 3: Reset time (earlier is better, but only if diff > 10 min)
             let reset_a = a.reset_time.unwrap_or(i64::MAX);
             let reset_b = b.reset_time.unwrap_or(i64::MAX);
             if (reset_a - reset_b).abs() >= RESET_TIME_THRESHOLD_SECS {

@@ -281,6 +281,10 @@ print(response.choices[0].message.content)
         -   **[Core Fix] Resolve Google Cloud Project 404 Error (Issue #1736)**:
             -   **Remove Invalid Mock Logic**: Completely removed the legacy logic for generating random Project IDs (e.g., `useful-flow-g3dts`), which are now rejected by the Google API with a 404 error.
             -   **Smart Fallback Strategy**: The system now safely falls back to a verified stable Project ID (`bamboo-precept-lgxtn`) when an account fails to retrieve a valid project ID automatically, ensuring service continuity and reliability.
+        -   **[Core Fix] Enhance Streaming Stability Under Unstable Network (Issue #1732)**:
+            -   **Mandatory Buffer Flush**: Resolved hangs and "Zero I/O" issues caused by missing trailing newlines in SSE streams due to network fragmentation.
+            -   **Timeout Resilience**: Extended streaming timeout to 60s to better handle high-latency network environments.
+            -   **Session ID Stability**: Optimized the session identifier algorithm to prevent ID drift and subsequent thinking model signature failures during reconnections.
     *   **v4.1.10 (2026-02-08)**:
         -   **[Core Feature] Expand CLI Detection Paths to Support Volta (PR #1695)**:
             -   **Path Enhancement**: Added automatic detection support for `.volta/bin` and its internal binaries in both `cli_sync` and `opencode_sync`, ensuring a "zero-config" experience for Volta users when syncing CLI configurations.

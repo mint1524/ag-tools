@@ -328,7 +328,7 @@
             "refresh_interval": "重新整理間隔（分鐘）",
             "auto_sync": "自動獲取當前帳號",
             "auto_sync_desc": "定期自動重新整理當前活動帳號的資訊",
-            "sync_interval": "同步間隔（秒）"
+            "sync_interval": "同步間隔（分鐘）"
         },
         "warmup": {
             "title": "智慧預熱",

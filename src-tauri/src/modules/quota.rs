@@ -205,7 +205,7 @@ pub async fn fetch_quota_with_cache(
                             .map(|f| (f * 100.0) as i32)
                             .unwrap_or(0);
                         
-                        let reset_time = quota_info.reset_time.unwrap_or_default();
+                        let reset_time = quota_info.reset_time.clone().unwrap_or_default();
                         
                         // Only keep models we care about
                         if name.contains("gemini") || name.contains("claude") {

@@ -48,9 +48,9 @@ pub fn create_claude_sse_stream(
         let mut buffer = BytesMut::new();
 
         loop {
-            // [NEW] 30秒心跳保活: 延长超时时间以兼容长延迟模型
+            // [NEW] 60秒心跳保活: 延长超时时间以增加网络抖动容错
             let next_chunk = tokio::time::timeout(
-                std::time::Duration::from_secs(30),
+                std::time::Duration::from_secs(60),
                 gemini_stream.next()
             ).await;
 
@@ -87,6 +87,23 @@ pub fn create_claude_sse_stream(
                     yield Ok(Bytes::from(": ping\n\n"));
                 }
             }
+        }
+        
+        // [FIX #1732] Mandatory Flush remaining buffer on stream termination
+        // Prevents hangs when the last SSE chunk doesn't end with a newline (network fragmentation)
+        if !buffer.is_empty() {
+             if let Ok(line_str) = std::str::from_utf8(&buffer) {
+                 let line = line_str.trim();
+                 if !line.is_empty() {
+                     tracing::debug!("[{}] SSE Termination: Flushing remaining {} bytes in buffer", trace_id, buffer.len());
+                     if let Some(sse_chunks) = process_sse_line(line, &mut state, &trace_id, &email) {
+                         for sse_chunk in sse_chunks {
+                             yield Ok(sse_chunk);
+                         }
+                     }
+                 }
+             }
+             buffer.clear();
         }
 
         // [FIX #859] Post-thinking interruption recovery
