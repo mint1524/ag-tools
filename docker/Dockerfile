@@ -63,6 +63,9 @@ WORKDIR /app
 # Copy only backend sources to keep frontend cache intact on backend-only changes
 COPY src-tauri ./src-tauri
 
+# [FIX] Copy locales for Rust compilation (needed by i18n.rs include_str!)
+COPY src/locales ./src/locales
+
 # Copy frontend dist from builder so Tauri can embed it
 COPY --from=frontend-builder /app/dist ./dist
 
