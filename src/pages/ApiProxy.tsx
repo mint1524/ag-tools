@@ -607,8 +607,9 @@ export default function ApiProxy() {
         // 构造新配置
         const newConfig = {
             ...appConfig.proxy,
-            // 策略：覆盖同名 key，保留其他自定义 key
-            custom_mapping: { ...appConfig.proxy.custom_mapping, ...selectedPresetData.mappings }
+            // 策略:覆盖同名 key,保留其他自定义 key
+            // [FIX #1738] Type assertion to ensure Record<string, string> compatibility
+            custom_mapping: { ...appConfig.proxy.custom_mapping, ...selectedPresetData.mappings } as Record<string, string>
         };
 
         // 备份旧配置用于回滚
