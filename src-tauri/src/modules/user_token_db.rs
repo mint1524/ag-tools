@@ -142,6 +142,14 @@ pub fn init_db() -> Result<(), String> {
     let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_token_usage_logs_token_id ON token_usage_logs(token_id)", []);
     let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_token_usage_logs_request_time ON token_usage_logs(request_time)", []);
 
+    // [FIX Issue #1719] 数据清洗：修复旧版本升级导致的 NULL 字段
+    // 这些字段在旧版本中可能不存在，ALTER TABLE 添加后默认为 NULL，导致反序列化失败
+    let _ = conn.execute("UPDATE user_tokens SET expires_type = 'never' WHERE expires_type IS NULL OR expires_type = ''", []);
+    let _ = conn.execute("UPDATE user_tokens SET max_ips = 0 WHERE max_ips IS NULL", []);
+    let _ = conn.execute("UPDATE user_tokens SET total_requests = 0 WHERE total_requests IS NULL", []);
+    let _ = conn.execute("UPDATE user_tokens SET total_tokens_used = 0 WHERE total_tokens_used IS NULL", []);
+    let _ = conn.execute("UPDATE user_tokens SET enabled = 1 WHERE enabled IS NULL", []);
+
     Ok(())
 }
 
@@ -225,17 +233,17 @@ pub fn list_tokens() -> Result<Vec<UserToken>, String> {
             token: row.get("token")?,
             username: row.get("username")?,
             description: row.get("description")?,
-            enabled: row.get("enabled")?,
-            expires_type: row.get("expires_type")?,
-            expires_at: row.get("expires_at")?,
-            max_ips: row.get("max_ips")?,
+            enabled: row.get("enabled").unwrap_or(true), // 防御性默认值
+            expires_type: row.get("expires_type").unwrap_or("never".to_string()), // 防御性默认值
+            expires_at: row.get("expires_at").unwrap_or(None),
+            max_ips: row.get("max_ips").unwrap_or(0),
             curfew_start: row.get("curfew_start").unwrap_or(None),
             curfew_end: row.get("curfew_end").unwrap_or(None),
             created_at: row.get("created_at")?,
             updated_at: row.get("updated_at")?,
-            last_used_at: row.get("last_used_at")?,
-            total_requests: row.get("total_requests")?,
-            total_tokens_used: row.get("total_tokens_used")?,
+            last_used_at: row.get("last_used_at").unwrap_or(None),
+            total_requests: row.get("total_requests").unwrap_or(0),
+            total_tokens_used: row.get("total_tokens_used").unwrap_or(0),
         })
     }).map_err(|e| format!("Failed to query tokens: {}", e))?;
 
@@ -585,7 +593,7 @@ mod tests {
         
         // Use a random username to avoid collisions in existing DB runs during dev
         let username = format!("TestUser_{}", Uuid::new_v4());
-        let token_res = create_token(username.clone(), "day".to_string(), Some("Test token".to_string()), 0, None, None);
+        let token_res = create_token(username.clone(), "day".to_string(), Some("Test token".to_string()), 0, None, None, None);
         assert!(token_res.is_ok());
 
         let token = token_res.unwrap();

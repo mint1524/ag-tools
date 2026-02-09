@@ -269,6 +269,15 @@ print(response.choices[0].message.content)
         -   **[Core Fix] Token Editing Sync & Parameter Encapsulation (PR #1720, #1722)**:
             -   **Data Sync**: Fixed an issue where some fields were not correctly reflected when editing tokens.
             -   **Refactoring**: Optimized the parameter structure for token creation and updates, improving code maintainability.
+        -   **[Core Fix] Fix Proxy Authentication Persistence Failure (Issue #1738)**:
+            -   **Magic Prefix Mechanism**: Introduced `ag_enc_` prefix to explicitly identify encrypted password fields.
+            -   **Double Encryption Prevention**: Thoroughly resolved the issue where the backend could not distinguish between "plaintext input" and "encrypted ciphertext," preventing double encryption during multiple saves or import/export operations.
+            -   **Compatibility**: Fully compatible with legacy configurations (no prefix), automatically migrating them to the new format upon the next save. Also enhanced the robustness of batch import functionality.
+        -   **[Core Fix] Resolve User Creation/Loading Failure (Issue #1719)**:
+            -   **Data Cleaning**: Implemented automatic data cleaning in database initialization to reset NULL values in legacy records to defaults, preventing list interface crashes.
+            -   **Robustness**: Enhanced backend data reading logic with defensive default values for critical fields.
+        -   **[Frontend Fix] Fix User Token Renewal Failure**:
+            -   **Parameter Correction**: Corrected the parameter naming convention (snake_case -> camelCase) in the renewal API call, resolving the "missing required key" error.
     *   **v4.1.10 (2026-02-08)**:
         -   **[Core Feature] Expand CLI Detection Paths to Support Volta (PR #1695)**:
             -   **Path Enhancement**: Added automatic detection support for `.volta/bin` and its internal binaries in both `cli_sync` and `opencode_sync`, ensuring a "zero-config" experience for Volta users when syncing CLI configurations.

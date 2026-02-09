@@ -184,7 +184,7 @@ const UserToken: React.FC = () => {
 
     const handleRenew = async (id: string, type: string) => {
         try {
-            await invoke('renew_user_token', { id, expires_type: type });
+            await invoke('renew_user_token', { id, expiresType: type });
             showToast(t('user_token.renew_success') || 'Renewed successfully', 'success');
             loadData();
         } catch (e) {
