@@ -89,12 +89,14 @@ const UserToken: React.FC = () => {
         setCreating(true);
         try {
             await invoke('create_user_token', {
-                username: newUsername,
-                expires_type: newExpiresType,
-                description: newDesc || undefined,
-                max_ips: newMaxIps,
-                curfew_start: newCurfewStart || undefined,
-                curfew_end: newCurfewEnd || undefined
+                request: {
+                    username: newUsername,
+                    expires_type: newExpiresType,
+                    description: newDesc || undefined,
+                    max_ips: newMaxIps,
+                    curfew_start: newCurfewStart || undefined,
+                    curfew_end: newCurfewEnd || undefined
+                }
             });
             showToast(t('common.create_success') || 'Created successfully', 'success');
             setShowCreateModal(false);
