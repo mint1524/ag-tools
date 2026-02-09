@@ -391,6 +391,9 @@ response = client.chat.completions.create(
             -   **鲁棒性增强**: 优化了后端数据读取逻辑，为关键字段增加了防御性默认值处理。
         -   **[前端修复] 修复用户 Token 续期功能失效**:
             -   **参数修正**: 修正了续期接口调用时的参数命名风格 (snake_case -> camelCase)，解决了 "missing required key" 报错。
+        -   **[核心修复] 彻底解决 Google Cloud 项目 404 错误 (Issue #1736)**:
+            -   **移除无效 Mock 逻辑**: 彻底删除了随机生成 Project ID 的失效逻辑（如 `useful-flow-g3dts`），此类 ID 目前会被 Google API 拦截并返回 404。
+            -   **智能兜底策略**: 现在当账号无法自动获取项目 ID 时，系统会安全回退到经验证长期有效的稳定 Project ID `bamboo-precept-lgxtn`，确保 API 请求的连续性与稳定性。
     *   **v4.1.10 (2026-02-08)**:
         -   **[核心功能] 扩展 CLI 探测路径以支持 Volta (PR #1695)**:
             -   **路径增强**：在 `cli_sync` 和 `opencode_sync` 中新增了对 `.volta/bin` 及其内部二进制文件的自动探测支持，确保 Volta 用户在同步 CLI 配置时能够获得“零配置”的顺滑体验。

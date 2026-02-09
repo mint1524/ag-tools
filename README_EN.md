@@ -278,6 +278,9 @@ print(response.choices[0].message.content)
             -   **Robustness**: Enhanced backend data reading logic with defensive default values for critical fields.
         -   **[Frontend Fix] Fix User Token Renewal Failure**:
             -   **Parameter Correction**: Corrected the parameter naming convention (snake_case -> camelCase) in the renewal API call, resolving the "missing required key" error.
+        -   **[Core Fix] Resolve Google Cloud Project 404 Error (Issue #1736)**:
+            -   **Remove Invalid Mock Logic**: Completely removed the legacy logic for generating random Project IDs (e.g., `useful-flow-g3dts`), which are now rejected by the Google API with a 404 error.
+            -   **Smart Fallback Strategy**: The system now safely falls back to a verified stable Project ID (`bamboo-precept-lgxtn`) when an account fails to retrieve a valid project ID automatically, ensuring service continuity and reliability.
     *   **v4.1.10 (2026-02-08)**:
         -   **[Core Feature] Expand CLI Detection Paths to Support Volta (PR #1695)**:
             -   **Path Enhancement**: Added automatic detection support for `.volta/bin` and its internal binaries in both `cli_sync` and `opencode_sync`, ensuring a "zero-config" experience for Volta users when syncing CLI configurations.
