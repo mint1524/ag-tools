@@ -9,6 +9,9 @@ import { isValid } from 'date-fns';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import { formatTimeRemaining } from '../../utils/format';
+import { enterMiniMode, exitMiniMode } from '../../utils/windowManager';
+
+import { getVersion } from '@tauri-apps/api/app';
 
 export default function MiniView() {
     const { setMiniView } = useViewStore();
@@ -16,24 +19,36 @@ export default function MiniView() {
     const { t } = useTranslation();
     const [isRefreshing, setIsRefreshing] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const [appVersion, setAppVersion] = useState('0.0.0');
+
+    // Get app version
+    useEffect(() => {
+        const fetchVersion = async () => {
+            if (isTauri()) {
+                try {
+                    const version = await getVersion();
+                    setAppVersion(version);
+                } catch (e) {
+                    console.error('Failed to get app version:', e);
+                }
+            } else {
+                // Fallback for web mode if needed, or import from package.json
+                setAppVersion('4.1.10');
+            }
+        };
+        fetchVersion();
+    }, []);
 
     // Enter mini mode & Auto-resize based on content
     useEffect(() => {
         const adjustSize = async () => {
             if (isTauri() && containerRef.current) {
-                const win = getCurrentWindow();
                 // Get the content height
-                const height = containerRef.current.scrollHeight; 
-                await win.setSize(new LogicalSize(300, height - 30));
-                await win.setAlwaysOnTop(true);
-                // Hide window decorations (title bar)
-                await win.setDecorations(false);
-                // Enable window shadow
-                await win.setShadow(true);
-                // Disable resizing in mini mode
-                await win.setResizable(false);
-                // Center window when entering mini mode
-                await win.center();
+                const height = containerRef.current.scrollHeight;
+                // Calculate content height for the utility (which adds 20px padding)
+                // We want final height to be approx (scroll height - header adjustment)
+                // Using height - 50 as a safe heuristic based on previous manual logic
+                await enterMiniMode(height - 50);
             }
         };
 
@@ -55,17 +70,7 @@ export default function MiniView() {
     };
 
     const handleMaximize = async () => {
-        if (isTauri()) {
-            const win = getCurrentWindow();
-            // Restore to a reasonable default size
-            await win.setSize(new LogicalSize(1200, 800));
-            await win.setAlwaysOnTop(false);
-            await win.center();
-            // Restore window decorations (title bar)
-            await win.setDecorations(true);
-            // Re-enable resizing
-            await win.setResizable(true);
-        }
+        await exitMiniMode();
         setMiniView(false);
     };
 
@@ -226,7 +231,7 @@ export default function MiniView() {
                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                         <span>Connected</span>
                     </div>
-                    <span className="font-mono opacity-50">v3.0.0</span>
+                    <span className="font-mono opacity-50">v{appVersion}</span>
                 </div>
             </motion.div>
         </div>
