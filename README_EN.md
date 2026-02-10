@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.1.12)
+> Professional AI Account Management & Protocol Proxy System (v4.1.13)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -9,7 +9,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.12-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.13-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -254,6 +254,14 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.1.13 (2026-02-10)**:
+        -   **[Core Feature] Homebrew Cask Installation Detection & Support (PR #1673)**:
+            -   **App Upgrade**: Added detection logic for Homebrew Cask installations. If the app was installed via Cask, users can now trigger the `brew upgrade --cask` flow directly within the app for a seamless upgrade experience.
+        -   **[Core Fix] Gemini Image Generation Quota Protection (PR #1764)**:
+            -   **Protection Active**: Fixed an issue where the quota protection mechanism failed to correctly intercept requests for the `gemini-3-pro-image` model. The system now correctly rejects requests and triggers rotation when the account's image quota is exhausted.
+        -   **[UI Optimization] Fix Navbar Boundaries & Display Issues (PR #1636)**:
+            -   **Boundary Fix**: Fixed issues where the right-side menu in the navigation bar could exceed boundaries or display incompletely at specific window widths.
+            -   **Compatibility**: This merge preserves new features like Mini View from the main branch, applying only necessary style corrections.
     *   **v4.1.12 (2026-02-10)**:
         -   **[Core Feature] OpenCode CLI Deep Integration (PR #1739)**:
             -   **Auto Detection**: Added automatic detection and configuration sync support for OpenCode CLI environment variables.
