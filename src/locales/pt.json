@@ -824,8 +824,8 @@
             "gemini3_option_flash": "gemini-3-flash (Rápido)",
             "groups": {
                 "claude_45": {
-                    "name": "Série Claude 4.5",
-                    "desc": "Opus 4.5, Sonnet 4.5"
+                    "name": "Série Claude 4.6 TK",
+                    "desc": "Opus 4.6 TK"
                 },
                 "claude_35": {
                     "name": "Série Claude 3.5",

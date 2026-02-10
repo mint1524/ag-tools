@@ -800,8 +800,8 @@
             "gemini3_option_flash": "gemini-3-flash (Hızlı)",
             "groups": {
                 "claude_45": {
-                    "name": "Claude 4.5 Serisi",
-                    "desc": "Opus 4.5, Sonnet 4.5"
+                    "name": "Claude 4.6 TK Serisi",
+                    "desc": "Opus 4.6 TK"
                 },
                 "claude_35": {
                     "name": "Claude 3.5 Serisi",

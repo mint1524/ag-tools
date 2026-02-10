@@ -1,10 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { Maximize2, RefreshCw,  Clock, ShieldAlert,   Tag,  Activity  } from 'lucide-react';
+import { Maximize2, RefreshCw, Clock, ShieldAlert, Tag, Activity } from 'lucide-react';
 import { useViewStore } from '../../stores/useViewStore';
 import { useAccountStore } from '../../stores/useAccountStore';
 import { isTauri } from '../../utils/env';
-import { getCurrentWindow  } from '@tauri-apps/api/window';
-import { motion, AnimatePresence } from 'framer-motion'; 
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import { formatTimeRemaining, formatCompactNumber } from '../../utils/format';
@@ -22,7 +22,7 @@ interface ProxyRequestLog {
     timestamp: number;
     status: number;
     duration: number;
-    mapped_model?:string
+    mapped_model?: string
 }
 
 export default function MiniView() {
@@ -188,7 +188,7 @@ export default function MiniView() {
 
     return (
         <div className="h-screen w-full flex items-center justify-center bg-transparent">
-             {/* Main Container - 300px fixed width */}
+            {/* Main Container - 300px fixed width */}
             <motion.div
                 ref={containerRef}
                 initial={{ opacity: 0, scale: 0.95 }}
@@ -264,7 +264,7 @@ export default function MiniView() {
                                 <div className="space-y-4 !mt-0">
                                     {renderModelRow(geminiProModel, 'Gemini 3 Pro', 'emerald')}
                                     {renderModelRow(geminiFlashModel, 'Gemini 3 Flash', 'emerald')}
-                                    {renderModelRow(claudeModel, 'Claude 4.5', 'cyan')}
+                                    {renderModelRow(claudeModel, 'Claude 4.6 TK', 'cyan')}
 
                                     {!geminiProModel && !geminiFlashModel && !claudeModel && (
                                         <div className="text-center py-4 text-xs text-gray-400">
@@ -306,7 +306,7 @@ export default function MiniView() {
 
                                 <div className="flex items-center gap-0.5" title="Duration">
                                     <Clock size={10} className="text-gray-400" />
-                                    <span className="font-mono">{(latestLog.duration/1000).toFixed(2)}s</span>
+                                    <span className="font-mono">{(latestLog.duration / 1000).toFixed(2)}s</span>
                                 </div>
                             </div>
                         </motion.div>

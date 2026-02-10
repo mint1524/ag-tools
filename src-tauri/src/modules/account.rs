@@ -1,8 +1,10 @@
 use serde::Serialize;
 use serde_json;
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use uuid::Uuid;
+use std::collections::HashSet;
 
 use crate::models::{
     Account, AccountIndex, AccountSummary, DeviceProfile, DeviceProfileVersion, QuotaData,
@@ -228,6 +230,7 @@ mod tests {
                     name: Some("User One".to_string()),
                     disabled: false,
                     proxy_disabled: false,
+                    protected_models: HashSet::new(),
                     created_at: now,
                     last_used: now,
                 },
@@ -237,6 +240,7 @@ mod tests {
                     name: None,
                     disabled: true,
                     proxy_disabled: true,
+                    protected_models: HashSet::new(),
                     created_at: now - 100,
                     last_used: now - 50,
                 },
@@ -460,15 +464,16 @@ fn rebuild_index_from_accounts_in_dir(data_dir: &PathBuf) -> Result<AccountIndex
                     if let Some(account_id) = path.file_stem().and_then(|s| s.to_str()) {
                         match load_account_at_path(&path) {
                             Ok(account) => {
-                                summaries.push(AccountSummary {
-                                    id: account.id,
-                                    email: account.email,
-                                    name: account.name,
-                                    disabled: account.disabled,
-                                    proxy_disabled: account.proxy_disabled,
-                                    created_at: account.created_at,
-                                    last_used: account.last_used,
-                                });
+                                    summaries.push(AccountSummary {
+                                        id: account.id,
+                                        email: account.email,
+                                        name: account.name,
+                                        disabled: account.disabled,
+                                        proxy_disabled: account.proxy_disabled,
+                                        protected_models: account.protected_models,
+                                        created_at: account.created_at,
+                                        last_used: account.last_used,
+                                    });
                             }
                             Err(e) => {
                                 crate::modules::logger::log_warn(&format!(
@@ -705,11 +710,12 @@ pub fn add_account(
 
     // Update index
     index.accounts.push(AccountSummary {
-        id: account_id.clone(),
-        email: email.clone(),
-        name: name.clone(),
-        disabled: false,
-        proxy_disabled: false,
+        id: account.id.clone(),
+        email: account.email.clone(),
+        name: account.name.clone(),
+        disabled: account.disabled,
+        proxy_disabled: account.proxy_disabled,
+        protected_models: account.protected_models.clone(),
         created_at: account.created_at,
         last_used: account.last_used,
     });
@@ -1189,42 +1195,37 @@ pub fn update_account_quota(account_id: &str, quota: QuotaData) -> Result<(), St
             if let Some(ref q) = account.quota {
                 let threshold = config.quota_protection.threshold_percentage as i32;
 
+                let mut group_min_percentage: HashMap<String, i32> = HashMap::new();
+
                 for model in &q.models {
-                    // Normalize model name to standard ID
-                    let standard_id =
-                        match crate::proxy::common::model_mapping::normalize_to_standard_id(
-                            &model.name,
-                        ) {
-                            Some(id) => id,
-                            None => continue, // Skip if not one of the 3 protected models
-                        };
-
-                    // Only monitor models selected by user
-                    if !config
-                        .quota_protection
-                        .monitored_models
-                        .contains(&standard_id)
+                    if let Some(std_id) =
+                        crate::proxy::common::model_mapping::normalize_to_standard_id(&model.name)
                     {
-                        continue;
+                        let entry = group_min_percentage.entry(std_id).or_insert(100);
+                        if model.percentage < *entry {
+                            *entry = model.percentage;
+                        }
                     }
+                }
 
-                    if model.percentage <= threshold {
-                        // Trigger model-level protection
-                        if !account.protected_models.contains(&standard_id) {
+                for std_id in &config.quota_protection.monitored_models {
+                    let min_pct = group_min_percentage.get(std_id).cloned().unwrap_or(100);
+
+                    if min_pct <= threshold {
+                        if !account.protected_models.contains(std_id) {
                             crate::modules::logger::log_info(&format!(
-                                "[Quota] Triggering model protection: {} ({} [{}] remaining {}% <= threshold {}%)",
-                                account.email, standard_id, model.name, model.percentage, threshold
+                                "[Quota] Triggering model protection: {} (Group: {} Min: {}% <= Thres: {}%)",
+                                account.email, std_id, min_pct, threshold
                             ));
-                            account.protected_models.insert(standard_id.clone());
+                            account.protected_models.insert(std_id.clone());
                         }
                     } else {
-                        // Auto-recover single model
-                        if account.protected_models.contains(&standard_id) {
+                        if account.protected_models.contains(std_id) {
                             crate::modules::logger::log_info(&format!(
-                                "[Quota] Model protection recovered: {} ({} [{}] quota restored to {}%)",
-                                account.email, standard_id, model.name, model.percentage
+                                "[Quota] Model protection recovered: {} (Group: {} Min: {}% > Thres: {}%)",
+                                account.email, std_id, min_pct, threshold
                             ));
-                            account.protected_models.remove(&standard_id);
+                            account.protected_models.remove(std_id);
                         }
                     }
                 }
@@ -1251,6 +1252,19 @@ pub fn update_account_quota(account_id: &str, quota: QuotaData) -> Result<(), St
 
     // Save account first
     save_account(&account)?;
+
+    // [FIX] 同时更新索引文件中的摘要信息，确保列表页图标即时刷新
+    {
+        let _lock = ACCOUNT_INDEX_LOCK
+            .lock()
+            .map_err(|e| format!("failed_to_acquire_lock: {}", e))?;
+        if let Ok(mut index) = load_account_index() {
+            if let Some(summary) = index.accounts.iter_mut().find(|a| a.id == account_id) {
+                summary.protected_models = account.protected_models.clone();
+                let _ = save_account_index(&index);
+            }
+        }
+    }
 
     // [FIX] Trigger TokenManager account reload signal
     // This ensures in-memory protected_models are updated
