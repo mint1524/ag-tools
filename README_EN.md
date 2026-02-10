@@ -256,7 +256,12 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.12 (2026-02-10)**:
-        -   **[Core Optimization] Claude Opus 4.6 Thinking Upgrade (Issue #1741, #1743)**:
+        -   **[Core Feature] OpenCode CLI Deep Integration (PR #1739)**:
+            -   **Auto Detection**: Added automatic detection and configuration sync support for OpenCode CLI environment variables.
+            -   **One-Click Sync**: Supports seamless injection of Antigravity configurations into the OpenCode CLI environment via the "External Providers" card.
+        -   **[Core Fix] Claude Opus Thinking Budget Injection (PR #1747)**:
+            -   **Budget Correction**: Fixed an issue where the default Thinking Budget was not correctly injected when Opus models automatically enabled thinking mode, preventing upstream errors due to missing budget.
+        -   **[Core Optimization] Claude Opus 4.6 Thinking Upgrade (Issue #1741, #1742, #1743)**:
             -   **Model Iteration**: Officially added support for `claude-opus-4-6-thinking` with enhanced reasoning capabilities.
             -   **Seamless Migration**: Implemented automatic redirection from `claude-opus-4.5` / `claude-opus-4` to `4.6`, allowing legacy configurations to use the new model without changes.
         -   **[Core Fix] Account Index Self-Healing Mechanism (PR #1755)**:

@@ -369,7 +369,12 @@ response = client.chat.completions.create(
 
 *   **版本演进 (Changelog)**:
     *   **v4.1.12 (2026-02-10)**:
-        -   **[核心优化] Claude Opus 4.6 Thinking 全面升级 (Issue #1741, #1743)**:
+        -   **[核心功能] OpenCode CLI 深度集成 (PR #1739)**:
+            -   **自动探测**: 新增了对 OpenCode CLI 的自动检测与环境变量配置同步支持。
+            -   **一键同步**: 支持通过“外部 Providers”卡片将 Antigravity 的配置无缝注入到 OpenCode CLI 环境，实现零配置接入。
+        -   **[核心修复] Claude Opus 思考预算自动注入 (PR #1747)**:
+            -   **预算修正**: 修复了 Opus 模型在自动启用思考模式时，未能正确注入默认思考预算 (Thinking Budget) 的问题，防止因预算缺失导致的上游错误。
+        -   **[核心优化] Claude Opus 4.6 Thinking 全面升级 (Issue #1741, #1742, #1743)**:
             -   **模型迭代**: 正式引入 `claude-opus-4-6-thinking` 支持，提供更强大的推理能力。
             -   **无感迁移**: 实现了从 `claude-opus-4.5` / `claude-opus-4` 到 `4.6` 的自动重定向，旧版配置无需修改即可直接享受新模型。
         -   **[核心修复] 账户索引自动修复机制 (PR #1755)**:
