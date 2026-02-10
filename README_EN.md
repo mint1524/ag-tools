@@ -277,6 +277,8 @@ print(response.choices[0].message.content)
             -   **Token Bumping**: Fixed the 400 error occurring when using thinking models (e.g., Claude Opus 4.6 Thinking) via the Gemini native protocol, where `maxOutputTokens` was less than `thinkingBudget`. The system now automatically adjusts and aligns token limits to ensure request compliance.
         -   **[Core Fix] Fix Claude CLI Path Detection for Bun on macOS (PR #1765)**:
             -   **Path Enhancement**: Added detection for `~/.bun/bin` and global install paths, resolving issues where Bun users could not automatically sync Claude CLI configurations.
+        -   **[Core Optimization] Optimize Logo Text Hiding & Showing (PR #1766)**:
+            -   **Display Optimization**: Leveraged Tailwind CSS container logic to control logo text visibility, preventing text wrapping in small containers.
     *   **v4.1.11 (2026-02-09)**:
         -   **[Core Optimization] Refactored Token Routing Logic (High-End Model Routing Optimization)**:
             -   **Strict Capability Filtering**: Implemented strict Capability Filtering for high-end models like `claude-opus-4-6`. The system now verifies the actual `model_quotas` held by the account. Only accounts that explicitly possess the quota for the target model can participate in the rotation, thoroughly resolving the "Soft Priority" issue where Pro/Free accounts were incorrectly selected.
