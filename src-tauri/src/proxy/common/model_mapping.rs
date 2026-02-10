@@ -284,9 +284,9 @@ pub fn normalize_to_standard_id(model_name: &str) -> Option<String> {
         "gemini-3-pro-high" | "gemini-3-pro-low" => Some("gemini-3-pro-high".to_string()),
 
         // 4. Claude 4.6 系列 (严格名单匹配)
-        "claude-opus-4-6-thinking" | 
-        "claude-opus-4-5-thinking" | 
-        "claude-sonnet-4-5-thinking" | 
+        "claude-opus-4-6-thinking" |
+        "claude-opus-4-5-thinking" |
+        "claude-sonnet-4-5-thinking" |
         "claude-sonnet-4-5" |
         "claude" => Some("claude".to_string()),
 
@@ -306,7 +306,7 @@ mod tests {
         );
         assert_eq!(
             map_claude_model_to_gemini("claude-opus-4"),
-            "claude-opus-4-5-thinking"
+            "claude-opus-4-6-thinking"
         );
         // Test gemini pass-through (should not be caught by "mini" rule)
         assert_eq!(
@@ -317,12 +317,22 @@ mod tests {
             map_claude_model_to_gemini("unknown-model"),
             "unknown-model"
         );
-        
-        // Test Normalization Exception (Opus 4.6 now merged)
+
+        // Test Normalization (Opus 4.6 now merged into "claude" group)
         assert_eq!(normalize_to_standard_id("claude-opus-4-6-thinking"), Some("claude".to_string()));
         assert_eq!(
-            normalize_to_standard_id("claude-sonnet-4-5"), 
+            normalize_to_standard_id("claude-sonnet-4-5"),
             Some("claude".to_string())
+        );
+
+        // [Regression] gemini-3-pro-image must NOT be grouped with gemini-3-pro-high
+        assert_eq!(
+            normalize_to_standard_id("gemini-3-pro-image"),
+            Some("gemini-3-pro-image".to_string())
+        );
+        assert_eq!(
+            normalize_to_standard_id("gemini-3-pro-high"),
+            Some("gemini-3-pro-high".to_string())
         );
     }
 
