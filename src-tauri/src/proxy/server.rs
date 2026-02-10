@@ -3145,6 +3145,7 @@ async fn admin_get_ip_blacklist() -> Result<impl IntoResponse, (StatusCode, Json
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct AddBlacklistRequest {
     ip_pattern: String,
     reason: Option<String>,
@@ -3165,6 +3166,7 @@ async fn admin_add_ip_to_blacklist(
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct RemoveIpRequest {
     ip_pattern: String,
 }
@@ -3216,6 +3218,7 @@ async fn admin_get_ip_whitelist() -> Result<impl IntoResponse, (StatusCode, Json
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct AddWhitelistRequest {
     ip_pattern: String,
     description: Option<String>,

@@ -274,6 +274,8 @@ print(response.choices[0].message.content)
         -   **[i18n] Enhanced Internationalization for Settings and ApiProxy (PR #1789)**:
             -   **Refactoring**: Replaced hardcoded Chinese strings in `Settings.tsx` and `ApiProxy.tsx` with `t()` internationalization calls.
             -   **Translation Expansion**: Synchronized localization entries for Korean, Myanmar, Portuguese, Russian, Turkish, Vietnamese, Traditional Chinese, and Simplified Chinese.
+        -   **[Core Fix] Resolve IP Whitelist Deletion Failure (Issue #1797)**:
+            -   **Parameter Normalization**: Fixed the issue where whitelisted IPs could not be deleted due to parameter naming convention mismatches (snake_case vs camelCase) between the frontend and backend. Also unified parameters for blacklist management and IP access logs to ensure system-wide consistency.
     *   **v4.1.12 (2026-02-10)**:
         -   **[Core Feature] OpenCode CLI Deep Integration (PR #1739)**:
             -   **Auto Detection**: Added automatic detection and configuration sync support for OpenCode CLI environment variables.
