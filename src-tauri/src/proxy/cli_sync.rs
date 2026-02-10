@@ -15,6 +15,7 @@ pub enum CliApp {
     Claude,
     Codex,
     Gemini,
+    OpenCode,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
@@ -29,6 +30,7 @@ impl CliApp {
             CliApp::Claude => "claude",
             CliApp::Codex => "codex",
             CliApp::Gemini => "gemini",
+            CliApp::OpenCode => "opencode",
         }
     }
 
@@ -72,6 +74,12 @@ impl CliApp {
                     path: home.join(".gemini").join("config.json"),
                 },
             ],
+            CliApp::OpenCode => vec![
+                CliConfigFile {
+                    name: "config.json".to_string(),
+                    path: home.join(".opencode").join("config.json"),
+                },
+            ],
         }
     }
 
@@ -80,6 +88,7 @@ impl CliApp {
             CliApp::Claude => "https://api.anthropic.com",
             CliApp::Codex => "https://api.openai.com/v1",
             CliApp::Gemini => "https://generativelanguage.googleapis.com",
+            CliApp::OpenCode => "https://api.openai.com/v1",
         }
     }
 }
@@ -272,6 +281,23 @@ pub fn get_sync_status(app: &CliApp, proxy_url: &str) -> (bool, bool, Option<Str
                     }
                 }
             }
+            CliApp::OpenCode => {
+                if file.name == "config.json" {
+                    let json: Value = serde_json::from_str(&content).unwrap_or_default();
+                    let url = json.get("providers")
+                        .and_then(|p| p.get("openai"))
+                        .and_then(|o| o.get("baseURL"))
+                        .and_then(|v| v.as_str());
+                    if let Some(u) = url {
+                        current_base_url = Some(u.to_string());
+                        if u.trim_end_matches('/') != proxy_url.trim_end_matches('/') {
+                            all_synced = false;
+                        }
+                    } else {
+                        all_synced = false;
+                    }
+                }
+            }
         }
     }
 
@@ -425,6 +451,21 @@ pub fn sync_config(app: &CliApp, proxy_url: &str, api_key: &str, model: Option<&
                     let auth = sec.as_object_mut().unwrap().entry("auth").or_insert(serde_json::json!({}));
                     if let Some(auth_obj) = auth.as_object_mut() {
                         auth_obj.insert("selectedType".to_string(), Value::String("gemini-api-key".to_string()));
+                    }
+                    content = serde_json::to_string_pretty(&json).unwrap();
+                }
+            }
+            CliApp::OpenCode => {
+                if file.name == "config.json" {
+                    let mut json: Value = serde_json::from_str(&content).unwrap_or_else(|_| serde_json::json!({}));
+                    if json.as_object().is_none() { json = serde_json::json!({}); }
+                    let providers = json.as_object_mut().unwrap().entry("providers").or_insert(serde_json::json!({}));
+                    let openai = providers.as_object_mut().unwrap().entry("openai").or_insert(serde_json::json!({}));
+                    if let Some(openai_obj) = openai.as_object_mut() {
+                        openai_obj.insert("baseURL".to_string(), Value::String(proxy_url.to_string()));
+                        if !api_key.is_empty() {
+                            openai_obj.insert("apiKey".to_string(), Value::String(api_key.to_string()));
+                        }
                     }
                     content = serde_json::to_string_pretty(&json).unwrap();
                 }
