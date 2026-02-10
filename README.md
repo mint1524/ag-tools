@@ -388,6 +388,8 @@ response = client.chat.completions.create(
             -   **便捷访问**: 新增迷你窗口模式，支持双向切换。该模式常驻桌面顶层，提供精简的快捷操作入口，方便用户即时查看状态与监控信息。
         -   **[核心修复] Gemini 协议 400 错误自愈 (PR #1756)**:
             -   **Token 补全**: 修复了在 Gemini 原生协议下调用持续思考模型（如 Claude Opus 4.6 Thinking）时，因 `maxOutputTokens` 小于 `thinkingBudget` 导致的 400 报错。现在系统会自动补全并对齐 Token 限制，确保请求合规。
+        -   **[核心修复] 修复 macOS 下 bun 全局安装的路径识别 (PR #1765)**:
+            -   **路径增强**: 新增对 `~/.bun/bin` 及全局安装路径的探测，解决了 bun 用户无法自动同步 Claude CLI 配置的问题。
     *   **v4.1.11 (2026-02-09)**:
         -   **[核心优化] 重构 Token 轮询逻辑 (High-End Model Routing Optimization)**:
             -   **能力硬门槛**: 针对 `claude-opus-4-6` 等高端模型实施了严格的 Capability Filtering。系统现在会检查账号实际持有的 `model_quotas`，只有明确拥有目标模型配额的账号才能参与轮询，彻底解决了 Pro/Free 账号因 "Soft Priority" 而被错误选中的问题。
