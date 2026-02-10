@@ -258,7 +258,7 @@ print(response.choices[0].message.content)
         -   **[Core Feature] Homebrew Cask Installation Detection & Support (PR #1673)**:
             -   **App Upgrade**: Added detection logic for Homebrew Cask installations. If the app was installed via Cask, users can now trigger the `brew upgrade --cask` flow directly within the app for a seamless upgrade experience.
         -   **[Core Fix] Gemini Image Generation Quota Protection (PR #1764)**:
-            -   **Protection Active**: Fixed an issue where the quota protection mechanism failed to correctly intercept requests for the `gemini-3-pro-image` model. The system now correctly rejects requests and triggers rotation when the account's image quota is exhausted.
+            -   **Protection Active**: Fixed an issue where text requests could wrongly consume image quota, and ensured correct interception for `gemini-3-pro-image` when the image quota is exhausted.
         -   **[UI Optimization] Fix Navbar Boundaries & Display Issues (PR #1636)**:
             -   **Boundary Fix**: Fixed issues where the right-side menu in the navigation bar could exceed boundaries or display incompletely at specific window widths.
             -   **Compatibility**: This merge preserves new features like Mini View from the main branch, applying only necessary style corrections.
