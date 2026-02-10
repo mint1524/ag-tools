@@ -6,6 +6,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 pub struct AntigravityVersion {
     pub short_version: String,
+    #[allow(dead_code)] // 预留给构建/诊断输出
     pub bundle_version: String,
 }
 

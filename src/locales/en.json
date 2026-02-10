@@ -335,7 +335,7 @@
             "refresh_interval": "Refresh Interval (minutes)",
             "auto_sync": "Auto Sync Current Account",
             "auto_sync_desc": "Automatically sync current active account information periodically",
-            "sync_interval": "Sync Interval (seconds)"
+            "sync_interval": "Sync Interval (minutes)"
         },
         "warmup": {
             "title": "Smart Warmup",

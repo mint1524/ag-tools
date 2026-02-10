@@ -23,7 +23,7 @@ pub trait ToolAdapter: Send + Sync {
     /// 
     /// # Returns
     /// 成功返回 Ok(()), 失败返回错误信息
-    fn pre_process(&self, schema: &mut Value) -> Result<(), String> {
+    fn pre_process(&self, _schema: &mut Value) -> Result<(), String> {
         Ok(())
     }
     
@@ -36,7 +36,7 @@ pub trait ToolAdapter: Send + Sync {
     /// 
     /// # Returns
     /// 成功返回 Ok(()), 失败返回错误信息
-    fn post_process(&self, schema: &mut Value) -> Result<(), String> {
+    fn post_process(&self, _schema: &mut Value) -> Result<(), String> {
         Ok(())
     }
 }

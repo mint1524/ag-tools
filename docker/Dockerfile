@@ -12,8 +12,12 @@ RUN if [ "$USE_MIRROR" = "true" ] || ( [ "$USE_MIRROR" = "auto" ] && ! timeout 3
     fi
 
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
-COPY . .
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --legacy-peer-deps --prefer-offline --no-audit --no-fund
+COPY tsconfig.json tsconfig.node.json vite.config.ts tailwind.config.js postcss.config.cjs index.html ./
+COPY public ./public
+COPY src ./src
+COPY src-tauri/icons ./src-tauri/icons
 RUN npm run build
 
 # --- Backend Build Stage ---
@@ -56,8 +60,11 @@ RUN if [ "$USE_MIRROR" = "true" ] || ( [ "$USE_MIRROR" = "auto" ] && ! timeout 3
     fi
 
 WORKDIR /app
-# Copy the whole project to build the Rust workspace
-COPY . .
+# Copy only backend sources to keep frontend cache intact on backend-only changes
+COPY src-tauri ./src-tauri
+
+# [FIX] Copy locales for Rust compilation (needed by i18n.rs include_str!)
+COPY src/locales ./src/locales
 
 # Copy frontend dist from builder so Tauri can embed it
 COPY --from=frontend-builder /app/dist ./dist

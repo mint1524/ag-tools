@@ -90,7 +90,7 @@ dependencies = [
 
 [[package]]
 name = "antigravity_tools"
-version = "4.1.10"
+version = "4.1.11"
 dependencies = [
  "aes-gcm",
  "anyhow",

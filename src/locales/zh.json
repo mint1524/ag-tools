@@ -332,7 +332,7 @@
             "refresh_interval": "刷新间隔（分钟）",
             "auto_sync": "自动获取当前账号",
             "auto_sync_desc": "定期自动刷新当前活动账号的信息",
-            "sync_interval": "同步间隔（秒）"
+            "sync_interval": "同步间隔（分钟）"
         },
         "warmup": {
             "title": "智能预热",

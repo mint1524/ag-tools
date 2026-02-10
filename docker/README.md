@@ -2,6 +2,37 @@
 
 本目錄包含 Antigravity Manager 的原生 Headless Docker 部署方案。該方案支持完整的 Web 管理界面、API 反代以及數據持久化，無需複雜的 VNC 或桌面環境。
 
+## 🆕 本版本部署方案（本地前端構建復用）
+適用於「前端近期不改、後端經常調整」的場景。思路是先在本地生成 `dist/`，Docker 只編譯後端並直接拷貝 `dist/`，大幅縮短構建時間並降低前端構建風險。
+
+**步驟**
+1. 本地生成前端靜態資源：
+```bash
+npm ci --legacy-peer-deps
+npm run build
+```
+2. 使用本方案構建與啟動（後端-only + 復用 `dist/`）：
+```bash
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.localdist.yml build
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.localdist.yml up -d
+```
+或合併為單條命令：
+```bash
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.localdist.yml up -d --build
+```
+
+啟動後動態查看日誌：
+```bash
+docker compose -f docker/docker-compose.yml -f docker/docker-compose.localdist.yml logs -f --tail=200
+```
+
+**更新方式**
+- 後端有改動：重跑上面的 `build` + `up -d`
+- 前端有改動：先在本地重新 `npm run build`，再重跑 `build` + `up -d`
+
+**Git 部署提醒**
+- 若服務器不在本地構建前端，請確保 `dist/` 已提交到倉庫（本版本已從 `.gitignore` 移除）。
+
 ## 🚀 快速開始
 
 ### 1. 直接拉取鏡像 (推薦)
@@ -95,7 +126,7 @@ docker build --build-arg USE_MIRROR=true -t antigravity-manager:latest -f docker
 ```bash
 # 打上版本標籤並推送
 docker tag antigravity-manager:latest lbjlaq/antigravity-manager:latest
-docker tag antigravity-manager:latest lbjlaq/antigravity-manager:4.1.5
+docker tag antigravity-manager:latest lbjlaq/antigravity-manager:4.1.11
 docker push lbjlaq/antigravity-manager:latest
-docker push lbjlaq/antigravity-manager:4.1.5
+docker push lbjlaq/antigravity-manager:4.1.11
 ```

@@ -62,6 +62,7 @@ async fn create_client(account_id: Option<&str>) -> reqwest::Client {
 }
 
 /// Get shared HTTP Client (60s timeout)
+#[allow(dead_code)] // 预留给预热/后台任务调用
 async fn create_warmup_client(account_id: Option<&str>) -> reqwest::Client {
     if let Some(pool) = crate::proxy::proxy_pool::get_global_proxy_pool() {
         pool.get_effective_client(account_id, 60).await
@@ -204,7 +205,7 @@ pub async fn fetch_quota_with_cache(
                             .map(|f| (f * 100.0) as i32)
                             .unwrap_or(0);
                         
-                        let reset_time = quota_info.reset_time.unwrap_or_default();
+                        let reset_time = quota_info.reset_time.clone().unwrap_or_default();
                         
                         // Only keep models we care about
                         if name.contains("gemini") || name.contains("claude") {
@@ -279,7 +280,7 @@ pub async fn warmup_model_directly(
     project_id: &str,
     email: &str,
     percentage: i32,
-    account_id: Option<&str>,
+    _account_id: Option<&str>,
 ) -> bool {
     // Get currently configured proxy port
     let port = config::load_app_config()

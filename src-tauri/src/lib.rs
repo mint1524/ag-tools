@@ -77,9 +77,6 @@ pub fn run() {
         let rt = tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime");
         rt.block_on(async {
             // Initialize states manually
-            let proxy_state = commands::proxy::ProxyServiceState::new();
-            let cf_state = Arc::new(commands::cloudflared::CloudflaredState::new());
-
             // [FIX] Initialize log bridge for headless mode
             // Pass a dummy app handle or None since we don't have a Tauri app handle in headless mode
             // Actually log_bridge relies on AppHandle to emit events.
@@ -101,8 +98,17 @@ pub fn run() {
             match modules::config::load_app_config() {
                 Ok(mut config) => {
                     let mut modified = false;
-                    // Force LAN access in headless/docker mode so it binds to 0.0.0.0
-                    config.proxy.allow_lan_access = true;
+                    // Headless/docker 默认允许 LAN 访问（绑定 0.0.0.0）
+                    // 若设置 ABV_BIND_LOCAL_ONLY，则仅绑定 127.0.0.1
+                    let bind_local_only = std::env::var("ABV_BIND_LOCAL_ONLY")
+                        .map(|v| matches!(v.to_lowercase().as_str(), "1" | "true" | "yes" | "on"))
+                        .unwrap_or(false);
+                    if bind_local_only {
+                        config.proxy.allow_lan_access = false;
+                        modified = true;
+                    } else {
+                        config.proxy.allow_lan_access = true;
+                    }
 
                     // [FIX] Force auth mode to AllExceptHealth in headless mode if it's Off or Auto
                     // This ensures Web UI login validation works properly

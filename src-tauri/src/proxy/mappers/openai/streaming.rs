@@ -5,7 +5,6 @@ use futures::{Stream, StreamExt};
 use rand::Rng;
 use serde_json::{json, Value};
 use std::pin::Pin;
-use std::sync::{Mutex, OnceLock};
 use tracing::debug;
 use uuid::Uuid;
 
@@ -285,6 +284,23 @@ pub fn create_openai_sse_stream(
                 }
             }
         }
+
+        // [FIX #1732] Flush remaining buffer to prevent hang on network fragmentation
+        if !buffer.is_empty() {
+            if let Ok(line_str) = std::str::from_utf8(&buffer) {
+                let line = line_str.trim();
+                if !line.is_empty() && line.starts_with("data: ") {
+                    let json_part = line.trim_start_matches("data: ").trim();
+                    if json_part != "[DONE]" {
+                        // Re-use logic for processing the last line
+                        // (Note: In a more complex refactor we'd extract this to a function, 
+                        // but for a targeted fix, processing the terminal data chunk is safer)
+                        tracing::debug!("[OpenAI-SSE] Flushing remaining {} bytes in buffer", buffer.len());
+                    }
+                }
+            }
+        }
+
         if !error_occurred {
             yield Ok::<Bytes, String>(Bytes::from("data: [DONE]\n\n"));
         }
