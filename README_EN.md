@@ -273,6 +273,8 @@ print(response.choices[0].message.content)
             -   **Rejection Alignment**: Optimized token rejection response to return 403 status code with JSON error details, aligning with the unified error response standard.
         -   **[Core Feature] Added Mini View Mode (PR #1750)**:
             -   **Quick Access**: Introduced a mini window mode with bidirectional toggling. This mode stays on top of the desktop, providing streamlined shortcuts for instant status checking and monitoring.
+        -   **[Core Fix] Gemini Protocol 400 Error Self-Healing (PR #1756)**:
+            -   **Token Bumping**: Fixed the 400 error occurring when using thinking models (e.g., Claude Opus 4.6 Thinking) via the Gemini native protocol, where `maxOutputTokens` was less than `thinkingBudget`. The system now automatically adjusts and aligns token limits to ensure request compliance.
     *   **v4.1.11 (2026-02-09)**:
         -   **[Core Optimization] Refactored Token Routing Logic (High-End Model Routing Optimization)**:
             -   **Strict Capability Filtering**: Implemented strict Capability Filtering for high-end models like `claude-opus-4-6`. The system now verifies the actual `model_quotas` held by the account. Only accounts that explicitly possess the quota for the target model can participate in the rotation, thoroughly resolving the "Soft Priority" issue where Pro/Free accounts were incorrectly selected.
