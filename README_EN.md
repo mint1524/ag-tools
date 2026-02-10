@@ -256,6 +256,9 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.12 (2026-02-10)**:
+        -   **[Core Optimization] Claude Opus 4.6 Thinking Upgrade (Issue #1741, #1743)**:
+            -   **Model Iteration**: Officially added support for `claude-opus-4-6-thinking` with enhanced reasoning capabilities.
+            -   **Seamless Migration**: Implemented automatic redirection from `claude-opus-4.5` / `claude-opus-4` to `4.6`, allowing legacy configurations to use the new model without changes.
         -   **[Core Fix] Account Index Self-Healing Mechanism (PR #1755)**:
             -   **Fault Tolerance**: Fixed an issue where the account index could not be automatically rebuilt in some extreme cases (e.g., file corruption). The system now automatically triggers a self-healing process upon detecting index anomalies, ensuring account data availability.
         -   **[Core Fix] Fix IP Blacklist Deletion & Timezone Issues (PR #1748)**:
