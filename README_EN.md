@@ -258,6 +258,11 @@ print(response.choices[0].message.content)
     *   **v4.1.12 (2026-02-10)**:
         -   **[Core Fix] Account Index Self-Healing Mechanism (PR #1755)**:
             -   **Fault Tolerance**: Fixed an issue where the account index could not be automatically rebuilt in some extreme cases (e.g., file corruption). The system now automatically triggers a self-healing process upon detecting index anomalies, ensuring account data availability.
+        -   **[Core Fix] Fix IP Blacklist Deletion & Timezone Issues (PR #1748)**:
+            -   **Parameter Correction**: Fixed IP blacklist deletion failure caused by parameter naming convention mismatch (snake_case vs camelCase).
+            -   **Logic Fix**: Corrected the issue where the wrong parameter (ip_pattern instead of id) was passed when clearing the blacklist.
+            -   **Timezone Calibration**: Fixed Curfew logic to enforce Beijing Time (UTC+8), resolving discrepancies when server local time is not UTC+8.
+            -   **Rejection Alignment**: Optimized token rejection response to return 403 status code with JSON error details, aligning with the unified error response standard.
     *   **v4.1.11 (2026-02-09)**:
         -   **[Core Optimization] Refactored Token Routing Logic (High-End Model Routing Optimization)**:
             -   **Strict Capability Filtering**: Implemented strict Capability Filtering for high-end models like `claude-opus-4-6`. The system now verifies the actual `model_quotas` held by the account. Only accounts that explicitly possess the quota for the target model can participate in the rotation, thoroughly resolving the "Soft Priority" issue where Pro/Free accounts were incorrectly selected.
