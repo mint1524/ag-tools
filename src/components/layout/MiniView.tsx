@@ -1,11 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { Maximize2, RefreshCw, Zap, Clock, ShieldAlert, Diamond, Gem, Circle, Tag, Mail, Activity, ArrowUp, ArrowDown } from 'lucide-react';
+import { Maximize2, RefreshCw,  Clock, ShieldAlert,   Tag,  Activity  } from 'lucide-react';
 import { useViewStore } from '../../stores/useViewStore';
 import { useAccountStore } from '../../stores/useAccountStore';
 import { isTauri } from '../../utils/env';
-import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
-import { motion, AnimatePresence } from 'framer-motion';
-import { isValid } from 'date-fns';
+import { getCurrentWindow  } from '@tauri-apps/api/window';
+import { motion, AnimatePresence } from 'framer-motion'; 
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import { formatTimeRemaining, formatCompactNumber } from '../../utils/format';
