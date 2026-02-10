@@ -131,6 +131,8 @@ pub fn check_cli_installed(app: &CliApp) -> (bool, Option<String>) {
         let home = dirs::home_dir().unwrap_or_default();
         let mut common_paths = vec![
             home.join(".local/bin"),
+            home.join(".bun/bin"),
+            home.join(".bun/install/global/node_modules/.bin"),
             home.join(".npm-global/bin"),
             home.join(".volta/bin"),
             home.join("bin"),
