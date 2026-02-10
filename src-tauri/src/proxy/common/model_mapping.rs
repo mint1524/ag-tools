@@ -10,18 +10,17 @@ static CLAUDE_TO_GEMINI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|
     m.insert("claude-sonnet-4-5", "claude-sonnet-4-5");
     m.insert("claude-sonnet-4-5-thinking", "claude-sonnet-4-5-thinking");
 
-    // 别名映射
-    m.insert("claude-sonnet-4-5-20250929", "claude-sonnet-4-5-thinking");
-    m.insert("claude-3-5-sonnet-20241022", "claude-sonnet-4-5");
-    m.insert("claude-3-5-sonnet-20240620", "claude-sonnet-4-5");
-    m.insert("claude-opus-4", "claude-opus-4-5-thinking");
-    m.insert("claude-opus-4-5-20251101", "claude-opus-4-5-thinking");
-
-    // Claude Opus 4.6 (nuevo modelo thinking)
+    // Claude Opus 4.6
     m.insert("claude-opus-4-6-thinking", "claude-opus-4-6-thinking");
     m.insert("claude-opus-4-6", "claude-opus-4-6-thinking");
     m.insert("claude-opus-4-6-20260201", "claude-opus-4-6-thinking");
 
+    // 别名映射
+    m.insert("claude-sonnet-4-5-20250929", "claude-sonnet-4-5-thinking");
+    m.insert("claude-3-5-sonnet-20241022", "claude-sonnet-4-5");
+    m.insert("claude-3-5-sonnet-20240620", "claude-sonnet-4-5");
+    m.insert("claude-opus-4", "claude-opus-4-6-thinking");
+    m.insert("claude-opus-4-5-20251101", "claude-opus-4-5-thinking");
     m.insert("claude-haiku-4", "claude-sonnet-4-5");
     m.insert("claude-3-haiku-20240307", "claude-sonnet-4-5");
     m.insert("claude-haiku-4-5-20251001", "claude-sonnet-4-5");
@@ -303,7 +302,8 @@ pub fn normalize_to_standard_id(model_name: &str) -> Option<String> {
         "gemini-3-pro-image" => Some("gemini-3-pro-image".to_string()),
 
         // Claude Sonnet/Opus Group
-        "claude-sonnet-4-5" | "claude-sonnet-4-5-thinking" | "claude-opus-4-5-thinking" => Some("claude-sonnet-4-5".to_string()),
+        "claude-sonnet-4-5" | "claude-sonnet-4-5-thinking" | "claude-opus-4-5-thinking" | "claude-opus-4-6-thinking" => Some("claude-sonnet-4-5".to_string()),
+
         _ => None
     }
 }
