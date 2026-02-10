@@ -8,7 +8,6 @@ use axum::{
     routing::{any, delete, get, post},
     Router,
 };
-use futures::TryFutureExt;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::atomic::AtomicUsize;
@@ -173,7 +172,6 @@ struct AccountListResponse {
     current_account_id: Option<String>,
 }
 
-use crate::models::{AccountExportItem, AccountExportResponse};
 fn to_account_response(
     account: &crate::models::account::Account,
     current_id: &Option<String>,
@@ -223,6 +221,7 @@ pub struct AxumServer {
     zai_state: Arc<RwLock<crate::proxy::ZaiConfig>>,
     experimental: Arc<RwLock<crate::proxy::config::ExperimentalConfig>>,
     debug_logging: Arc<RwLock<crate::proxy::config::DebugLoggingConfig>>,
+    #[allow(dead_code)] // 预留给 cloudflared 运行状态查询与后续控制
     pub cloudflared_state: Arc<crate::commands::cloudflared::CloudflaredState>,
     pub is_running: Arc<RwLock<bool>>,
     pub token_manager: Arc<TokenManager>, // [NEW] 暴露出 TokenManager 供反代服务复用
@@ -1197,6 +1196,7 @@ async fn admin_bind_device(
 
 #[derive(Deserialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)] // 预留日志接口结构体
 struct LogsRequest {
     #[serde(default)]
     limit: usize,
@@ -1208,6 +1208,7 @@ struct LogsRequest {
     errors_only: bool,
 }
 
+#[allow(dead_code)] // 预留日志接口
 async fn admin_get_logs(
     Query(params): Query<LogsRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
@@ -1299,6 +1300,12 @@ async fn admin_save_config(
     {
         let mut exp = state.experimental.write().await;
         *exp = new_config.clone().proxy.experimental;
+    }
+
+    // 更新代理池配置（Web/Docker 保存配置时热更新）
+    {
+        let mut pool = state.proxy_pool_state.write().await;
+        *pool = new_config.clone().proxy.proxy_pool;
     }
 
     Ok(StatusCode::OK)
@@ -1522,7 +1529,7 @@ async fn admin_set_preferred_account(
 }
 
 async fn admin_fetch_zai_models(
-    Path(id): Path<String>,
+    Path(_id): Path<String>,
     Json(payload): Json<serde_json::Value>, // 复用前端传来的参数
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     // 这里简单实现，如果需要更复杂的抓取逻辑，可以调用 zai 模块
@@ -2819,6 +2826,7 @@ async fn admin_get_cli_config_content(
 #[derive(Deserialize)]
 struct OAuthParams {
     code: String,
+    #[allow(dead_code)]
     state: Option<String>,
     #[allow(dead_code)]
     scope: Option<String>,
@@ -3258,7 +3266,7 @@ async fn admin_check_ip_in_whitelist(
 }
 
 async fn admin_get_security_config(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
     let app_config = crate::modules::config::load_app_config()
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(ErrorResponse { error: e.to_string() })))?;

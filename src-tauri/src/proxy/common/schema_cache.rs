@@ -1,3 +1,6 @@
+#![allow(dead_code)]
+// 预留缓存实现，当前未在生产路径启用
+
 use once_cell::sync::Lazy;
 use serde_json::Value;
 use std::collections::HashMap;

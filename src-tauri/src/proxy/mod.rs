@@ -28,19 +28,14 @@ pub mod upstream; // 上游客户端
 pub mod zai_vision_mcp; // Built-in Vision MCP server state
 pub mod zai_vision_tools; // Built-in Vision MCP tools (z.ai vision API) // 调试日志
 
-pub use config::get_global_system_prompt;
-pub use config::get_thinking_budget_config;
 pub use config::update_global_system_prompt_config;
 pub use config::update_thinking_budget_config;
-pub use config::{get_image_thinking_mode, update_image_thinking_mode};
+pub use config::update_image_thinking_mode;
 pub use config::ProxyAuthMode;
 pub use config::ProxyConfig;
 pub use config::ProxyPoolConfig;
-pub use config::ThinkingBudgetConfig;
-pub use config::ThinkingBudgetMode;
 pub use config::ZaiConfig;
 pub use config::ZaiDispatchMode;
-pub use proxy_pool::{get_global_proxy_pool, init_global_proxy_pool, ProxyPoolManager};
 pub use security::ProxySecurityConfig;
 pub use server::AxumServer;
 pub use signature_cache::SignatureCache;

@@ -1,5 +1,4 @@
 use crate::utils::protobuf;
-use base64::{engine::general_purpose, Engine as _};
 use rusqlite::Connection;
 use std::path::PathBuf;
 

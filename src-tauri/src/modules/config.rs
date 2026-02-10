@@ -3,6 +3,7 @@ use serde_json;
 
 use crate::models::AppConfig;
 use super::account::get_data_dir;
+use tracing::warn;
 
 const CONFIG_FILE: &str = "gui_config.json";
 
@@ -28,10 +29,17 @@ pub fn load_app_config() -> Result<AppConfig, String> {
 
     // Migration logic
     if let Some(proxy) = v.get_mut("proxy") {
-        let mut custom_mapping = proxy.get("custom_mapping")
-            .and_then(|m| m.as_object())
-            .map(|m| m.clone())
-            .unwrap_or_default();
+        // [FIX #1738] Enhanced type checking for custom_mapping
+        // Ensures the field is always parsed as an object, preventing type mismatch errors
+        let mut custom_mapping = match proxy.get("custom_mapping") {
+            Some(m) if m.is_object() => m.as_object().unwrap().clone(),
+            Some(m) => {
+                // If custom_mapping is not an object type (e.g., string), log warning and reset to empty
+                tracing::warn!("Invalid custom_mapping type (expected object, got {:?}), resetting to empty", m);
+                serde_json::Map::new()
+            }
+            None => serde_json::Map::new(),
+        };
 
         // Migrate Anthropic mapping
         if let Some(anthropic) = proxy.get_mut("anthropic_mapping").and_then(|m| m.as_object_mut()) {

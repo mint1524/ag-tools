@@ -476,7 +476,8 @@ export default function ApiProxy() {
                 "o3-*": "gemini-3-pro-high",
                 "claude-3-5-sonnet-*": "claude-sonnet-4-5",
                 "claude-3-opus-*": "claude-opus-4-5-thinking",
-                "claude-opus-4-*": "claude-opus-4-5-thinking",
+                "claude-opus-4-5*": "claude-opus-4-5-thinking",
+                "claude-opus-4-6*": "claude-opus-4-6-thinking",
                 "claude-haiku-*": "gemini-2.5-flash",
                 "claude-3-haiku-*": "gemini-2.5-flash",
             }
@@ -493,7 +494,8 @@ export default function ApiProxy() {
                 "o3-*": "claude-opus-4-5-thinking",
                 "claude-3-5-sonnet-*": "claude-sonnet-4-5",
                 "claude-3-opus-*": "claude-opus-4-5-thinking",
-                "claude-opus-4-*": "claude-opus-4-5-thinking",
+                "claude-opus-4-5*": "claude-opus-4-5-thinking",
+                "claude-opus-4-6*": "claude-opus-4-6-thinking",
                 "claude-haiku-*": "claude-sonnet-4-5",
                 "claude-3-haiku-*": "claude-sonnet-4-5",
             }
@@ -510,7 +512,7 @@ export default function ApiProxy() {
                 "o3-*": "gemini-3-flash",
                 "claude-3-5-sonnet-*": "gemini-3-flash",
                 "claude-3-opus-*": "gemini-3-flash",
-                "claude-opus-4-*": "gemini-3-flash",
+                "claude-opus-4-*": "gemini-3-flash", // Cost-effective: map all opus 4 to flash
                 "claude-haiku-*": "gemini-2.5-flash",
                 "claude-3-haiku-*": "gemini-2.5-flash",
             }
@@ -527,7 +529,8 @@ export default function ApiProxy() {
                 "o3-*": "claude-sonnet-4-5",
                 "claude-3-5-sonnet-*": "claude-sonnet-4-5",
                 "claude-3-opus-*": "gemini-3-pro-high",
-                "claude-opus-4-*": "gemini-3-pro-high",
+                "claude-opus-4-5*": "gemini-3-pro-high",
+                "claude-opus-4-6*": "claude-opus-4-6-thinking", // Balanced: Keep 4.6 as itself (or map to high?) Let's map to itself for now to utilize header
                 "claude-haiku-*": "gemini-2.5-flash",
                 "claude-3-haiku-*": "gemini-2.5-flash",
             }
@@ -604,8 +607,9 @@ export default function ApiProxy() {
         // 构造新配置
         const newConfig = {
             ...appConfig.proxy,
-            // 策略：覆盖同名 key，保留其他自定义 key
-            custom_mapping: { ...appConfig.proxy.custom_mapping, ...selectedPresetData.mappings }
+            // 策略:覆盖同名 key,保留其他自定义 key
+            // [FIX #1738] Type assertion to ensure Record<string, string> compatibility
+            custom_mapping: { ...appConfig.proxy.custom_mapping, ...selectedPresetData.mappings } as Record<string, string>
         };
 
         // 备份旧配置用于回滚

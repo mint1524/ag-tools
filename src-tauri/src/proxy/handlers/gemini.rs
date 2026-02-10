@@ -11,14 +11,13 @@ use tracing::{debug, error, info};
 use crate::proxy::common::client_adapter::CLIENT_ADAPTERS;
 use crate::proxy::debug_logger;
 use crate::proxy::handlers::common::{
-    apply_retry_strategy, determine_retry_strategy, should_rotate_account, RetryStrategy,
+    apply_retry_strategy, determine_retry_strategy, should_rotate_account,
 };
 use crate::proxy::mappers::gemini::{unwrap_response, wrap_request};
 use crate::proxy::server::AppState;
 use crate::proxy::session_manager::SessionManager;
 use crate::proxy::upstream::client::mask_email;
 use axum::http::HeaderMap;
-use tokio::time::Duration; // [NEW] Adapter Registry
 
 const MAX_RETRY_ATTEMPTS: usize = 3;
 
@@ -513,11 +512,6 @@ pub async fn handle_generate(
 
         // 处理错误并重试
         let status_code = status.as_u16();
-        let retry_after = response
-            .headers()
-            .get("Retry-After")
-            .and_then(|h| h.to_str().ok())
-            .map(|s| s.to_string());
         let error_text = response
             .text()
             .await

@@ -25,6 +25,7 @@ pub trait ClientAdapter: Send + Sync {
     /// 是否绕过签名校验
     /// 
     /// 某些客户端可能不需要严格的 thinking 签名匹配
+    #[allow(dead_code)]
     fn bypass_signature_matching(&self) -> bool {
         false
     }
@@ -53,6 +54,7 @@ pub trait ClientAdapter: Send + Sync {
     /// 声明支持的协议
     /// 
     /// 用于多协议客户端（如 opencode）
+    #[allow(dead_code)]
     fn supported_protocols(&self) -> Vec<Protocol> {
         vec![Protocol::Anthropic] // 默认只支持 Anthropic
     }
@@ -72,6 +74,7 @@ pub enum SignatureBufferStrategy {
 
 /// 支持的协议类型
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(dead_code)]
 pub enum Protocol {
     Anthropic,
     OpenAI,

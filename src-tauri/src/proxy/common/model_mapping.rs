@@ -283,6 +283,12 @@ pub fn normalize_to_standard_id(model_name: &str) -> Option<String> {
         return Some("gemini-3-pro-high".to_string());
     }
 
+    // [High-End Isolation] Opus 4.6 should NOT be normalized to Sonnet 4.5
+    // This allows specific capability check for "claude-opus-4-6-thinking"
+    if lower.contains("claude-opus-4-6") {
+        return None;
+    }
+
     // Group 3: Claude 4.5 Sonnet (includes Opus etc. assigned to this bucket)
     if lower.contains("claude") || lower.contains("sonnet") || lower.contains("opus") {
         return Some("claude-sonnet-4-5".to_string());
@@ -292,7 +298,7 @@ pub fn normalize_to_standard_id(model_name: &str) -> Option<String> {
     match lower.as_str() {
         "gemini-3-flash" => Some("gemini-3-flash".to_string()),
         "gemini-3-pro-high" | "gemini-3-pro-low" | "gemini-3-pro-preview" | "gemini-3-pro-image" => Some("gemini-3-pro-high".to_string()),
-        "claude-sonnet-4-5" | "claude-sonnet-4-5-thinking" | "claude-opus-4-5-thinking" | "claude-opus-4-6-thinking" => Some("claude-sonnet-4-5".to_string()),
+        "claude-sonnet-4-5" | "claude-sonnet-4-5-thinking" | "claude-opus-4-5-thinking" => Some("claude-sonnet-4-5".to_string()),
         _ => None
     }
 }
@@ -319,6 +325,13 @@ mod tests {
         assert_eq!(
             map_claude_model_to_gemini("unknown-model"),
             "unknown-model"
+        );
+        
+        // Test Normalization Exception
+        assert_eq!(normalize_to_standard_id("claude-opus-4-6-thinking"), None);
+        assert_eq!(
+            normalize_to_standard_id("claude-sonnet-4-5"), 
+            Some("claude-sonnet-4-5".to_string())
         );
     }
 
