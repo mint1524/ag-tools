@@ -326,7 +326,6 @@ mod tests {
         );
 
         // [Regression] gemini-3-pro-image must NOT be grouped with gemini-3-pro-high
-        // This caused image requests to consume text quota instead of image quota
         assert_eq!(
             normalize_to_standard_id("gemini-3-pro-image"),
             Some("gemini-3-pro-image".to_string())
