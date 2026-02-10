@@ -65,8 +65,7 @@ export default function MiniView() {
                 const height = containerRef.current.scrollHeight;
                 // Calculate content height for the utility (which adds 20px padding)
                 // We want final height to be approx (scroll height - header adjustment)
-                // Using height - 50 as a safe heuristic based on previous manual logic
-                await enterMiniMode(height - 50);
+                await enterMiniMode(height);
             }
         };
 

@@ -4,23 +4,30 @@ import { isTauri } from './env';
 /**
  * Enter mini view mode
  * @param contentHeight The height of the content to fit
+ * @param shouldCenter Whether to center the window (default: false)
  */
-export const enterMiniMode = async (contentHeight: number) => {
+export const enterMiniMode = async (contentHeight: number, shouldCenter: boolean = false) => {
     if (!isTauri()) return;
     try {
         const win = getCurrentWindow();
-        // Set window size: width 300, height = content height + minimal padding
-        // Add small buffer for safety/shadows
-        await win.setSize(new LogicalSize(300, contentHeight + 20));
-        await win.setAlwaysOnTop(true);
-        // Hide window decorations (title bar)
+
+        // Hide window decorations (title bar) first to ensure accurate sizing
         await win.setDecorations(false);
+
+        // Set window size: width 300, height = content height
+        console.log(contentHeight)
+        await win.setSize(new LogicalSize(300, contentHeight+2));
+
+        await win.setAlwaysOnTop(true);
         // Enable window shadow
         await win.setShadow(true);
         // Disable resizing in mini mode
         await win.setResizable(false);
-        // Center window
-        await win.center();
+
+        // Center window only if requested (usually on first load)
+        if (shouldCenter) {
+            await win.center();
+        }
     } catch (error) {
         console.error('Failed to enter mini mode:', error);
     }
