@@ -297,7 +297,12 @@ pub fn normalize_to_standard_id(model_name: &str) -> Option<String> {
     // [Fallback] Explicit matching (Backward Compatibility)
     match lower.as_str() {
         "gemini-3-flash" => Some("gemini-3-flash".to_string()),
-        "gemini-3-pro-high" | "gemini-3-pro-low" | "gemini-3-pro-preview" | "gemini-3-pro-image" => Some("gemini-3-pro-high".to_string()),
+        "gemini-3-pro-high" | "gemini-3-pro-low" | "gemini-3-pro-preview" => Some("gemini-3-pro-high".to_string()),
+
+        // Gemini 3 Pro Image Group
+        "gemini-3-pro-image" => Some("gemini-3-pro-image".to_string()),
+
+        // Claude Sonnet/Opus Group
         "claude-sonnet-4-5" | "claude-sonnet-4-5-thinking" | "claude-opus-4-5-thinking" => Some("claude-sonnet-4-5".to_string()),
         _ => None
     }
