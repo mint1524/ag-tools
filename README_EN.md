@@ -138,7 +138,7 @@ curl -sSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/depl
 
 **Option 2: via Homebrew** (If you have [Linuxbrew](https://sh.brew.sh/) installed)
 ```bash
-brew tap lbjlaq/antigravity-manager https://github.com/lbjlaq/Antigravity-Manager/releases/download/v4.1.12/Antigravity_Tools_4.1.12_x64.dmg
+brew tap lbjlaq/antigravity-manager https://github.com/lbjlaq/Antigravity-Manager/releases/download/v4.1.13/Antigravity_Tools_4.1.13_x64.dmg
 ```
 
 #### Other Linux Distributions
