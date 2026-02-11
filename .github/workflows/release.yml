@@ -157,19 +157,70 @@ jobs:
             echo "See the assets to download this version and install." > release_notes.md
           fi
 
-      - name: Merge updater JSONs
+      - name: Build updater.json from signatures
+        env:
+          VERSION: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
         run: |
-          echo "Merging updater.json files..."
-          echo "{}" > merged_updater.json
-          find all-artifacts -name "*.json" -type f | while read json_file; do
-            if jq -e . "$json_file" >/dev/null 2>&1; then
-              echo "Merging valid JSON: $json_file..."
-              jq -s '.[0] * .[1]' merged_updater.json "$json_file" > temp.json && mv temp.json merged_updater.json
+          DOWNLOAD_BASE="https://github.com/${REPO}/releases/download/${VERSION}"
+          VER="${VERSION#v}"
+
+          # Helper: read signature content from .sig file in artifacts
+          read_sig() {
+            local pattern="$1"
+            local sig_file
+            sig_file=$(find all-artifacts -name "$pattern" -type f 2>/dev/null | head -1)
+            if [ -n "$sig_file" ] && [ -f "$sig_file" ]; then
+              cat "$sig_file"
             else
-              echo "Skipping invalid JSON: $json_file"
+              echo ""
             fi
-          done
-          mv merged_updater.json updater.json
+          }
+
+          # Read signatures for each platform
+          MACOS_AARCH64_SIG=$(read_sig "*_aarch64.app.tar.gz.sig")
+          MACOS_X64_SIG=$(read_sig "*_x64.app.tar.gz.sig")
+          WINDOWS_NSIS_SIG=$(read_sig "*_x64-setup.exe.sig")
+
+          echo "Signatures found:"
+          [ -n "$MACOS_AARCH64_SIG" ] && echo "  macOS aarch64: YES" || echo "  macOS aarch64: NO"
+          [ -n "$MACOS_X64_SIG" ] && echo "  macOS x64: YES" || echo "  macOS x64: NO"
+          [ -n "$WINDOWS_NSIS_SIG" ] && echo "  Windows x64: YES" || echo "  Windows x64: NO"
+
+          # Build updater.json with platform-specific download URLs and signatures
+          # macOS: arch-suffixed filenames (no version in name)
+          # Windows: version included in filename
+          jq -n \
+            --arg version "$VER" \
+            --arg notes "See release page for details" \
+            --arg pub_date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg dl "$DOWNLOAD_BASE" \
+            --arg mac_a64_sig "$MACOS_AARCH64_SIG" \
+            --arg mac_x64_sig "$MACOS_X64_SIG" \
+            --arg win_nsis_sig "$WINDOWS_NSIS_SIG" \
+            --arg ver "$VER" \
+            '{
+              version: $version,
+              notes: $notes,
+              pub_date: $pub_date,
+              platforms: {
+                "darwin-aarch64": {
+                  url: "\($dl)/Antigravity.Tools_aarch64.app.tar.gz",
+                  signature: $mac_a64_sig
+                },
+                "darwin-x86_64": {
+                  url: "\($dl)/Antigravity.Tools_x64.app.tar.gz",
+                  signature: $mac_x64_sig
+                },
+                "windows-x86_64": {
+                  url: "\($dl)/Antigravity.Tools_\($ver)_x64-setup.exe",
+                  signature: $win_nsis_sig
+                }
+              }
+            }' > updater.json
+
+          echo "Generated updater.json:"
+          cat updater.json
 
       # 使用 ncipollo/release-action 进行统一发布，支持稳健覆盖
       - name: Create or Update GitHub Release
