@@ -344,7 +344,42 @@ curl -X POST http://127.0.0.1:8045/v1/messages \
   }'
 ```
 
-**参数优先级**: 请求体参数 > 模型后缀
+```
+
+**参数优先级**: `imageSize` 参数 > `quality` 参数 > 模型后缀
+
+**✨ 新增 `imageSize` 参数支持**:
+
+除了 `quality` 参数外,现在还支持直接使用 Gemini 原生的 `imageSize` 参数:
+
+```python
+# 使用 imageSize 参数(最高优先级)
+response = client.chat.completions.create(
+    model="gemini-3-pro-image",
+    size="16:9",           # 宽高比
+    imageSize="4K",        # ✨ 直接指定分辨率: "1K" | "2K" | "4K"
+    messages=[{"role": "user", "content": "一座未来主义风格的城市"}]
+)
+```
+
+```bash
+# Claude Messages API 也支持 imageSize
+curl -X POST http://127.0.0.1:8045/v1/messages \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: sk-antigravity" \
+  -d '{
+    "model": "gemini-3-pro-image",
+    "size": "1280x720",
+    "imageSize": "4K",
+    "messages": [{"role": "user", "content": "一只可爱的猫咪"}]
+  }'
+```
+
+**参数说明**:
+- **`imageSize`**: 直接指定分辨率 (`"1K"` / `"2K"` / `"4K"`)
+- **`quality`**: 通过质量等级推断分辨率 (`"standard"` → 1K, `"medium"` → 2K, `"hd"` → 4K)
+- **优先级**: 如果同时指定 `imageSize` 和 `quality`,系统会优先使用 `imageSize`
+
 
 #### 方式三：Chat 接口 + 模型后缀
 ```python
@@ -394,9 +429,14 @@ response = client.chat.completions.create(
             -   **Token 限制自适应**: 修复了 Adaptive 模式下 `maxOutputTokens` 未能正确感知 Budget 导致被截断的问题，确保长思维链不被腰斩。
         -   **[文档更新] 新增 Adaptive 模式测试用例**:
             -   提供了 `docs/adaptive_mode_test_examples.md`，涵盖多轮对话、复杂任务场景及 Budget 模式切换的完整验证指南。
+        -   **[核心功能] 图片生成 imageSize 参数支持**:
+            -   **直接参数支持**: 新增对 Gemini 原生 `imageSize` 参数的直接支持,可在所有协议(OpenAI/Claude/Gemini)中使用。
+            -   **参数优先级**: 实现了清晰的参数优先级逻辑:`imageSize` 参数 > `quality` 参数推断 > 模型后缀推断。
+            -   **全协议兼容**: OpenAI Chat API、Claude Messages API 和 Gemini 原生协议均支持通过 `imageSize` 字段直接指定分辨率("1K"/"2K"/"4K")。
+            -   **向后兼容**: 完全兼容现有的 `quality` 参数和模型后缀方式,不影响现有代码。
         -   **[核心功能] Opencode 提供商隔离与清理工作流 (PR #1820)**:
-            -   **隔离同步逻辑**: 实现 Opencode 提供商的独立同步机制，防止状态污染，确保数据纯净。
-            -   **清理工作流**: 新增资源清理工作流，优化资源管理，提升系统运行效率。
+            -   **隔离同步逻辑**: 实现 Opencode 提供商的独立同步机制,防止状态污染,确保数据纯净。
+            -   **清理工作流**: 新增资源清理工作流,优化资源管理,提升系统运行效率。
             -   **稳定性增强**: 增强了同步过程的稳定性和可靠性。
     *   **v4.1.13 (2026-02-10)**:
         -   **[核心功能] Homebrew Cask 安装检测与支持 (PR #1673)**:
