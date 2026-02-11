@@ -134,10 +134,20 @@ export default function MiniView() {
     };
 
 
-    // Extract specific models to match CurrentAccount.tsx
-    const geminiProModel = currentAccount?.quota?.models.find(m => m.name === 'gemini-3-pro-high');
-    const geminiFlashModel = currentAccount?.quota?.models.find(m => m.name === 'gemini-3-flash');
-    const claudeModel = currentAccount?.quota?.models.find(m => m.name === 'claude-sonnet-4-5-thinking');
+    // Extract specific models to match AccountRow.tsx
+    const geminiProModel = currentAccount?.quota?.models
+        .filter(m => m.name.toLowerCase() === 'gemini-3-pro-high' || m.name.toLowerCase() === 'gemini-3-pro-low')
+        .sort((a, b) => (a.percentage || 0) - (b.percentage || 0))[0];
+
+    const geminiFlashModel = currentAccount?.quota?.models.find(m => m.name.toLowerCase() === 'gemini-3-flash');
+
+    const claudeGroupNames = [
+        'claude-opus-4-6-thinking',
+        'claude'
+    ];
+    const claudeModel = currentAccount?.quota?.models
+        .filter(m => claudeGroupNames.includes(m.name.toLowerCase()))
+        .sort((a, b) => (a.percentage || 0) - (b.percentage || 0))[0];
 
     // Helper to render a model row
     const renderModelRow = (model: any, displayName: string, colorClass: string) => {
@@ -216,12 +226,11 @@ export default function MiniView() {
                         <button
                             onClick={handleRefresh}
                             className={clsx(
-                                "p-2 rounded-lg hover:bg-gray-200/50 dark:hover:bg-white/10 transition-colors",
-                                isRefreshing && "animate-spin text-blue-500"
+                                "p-2 rounded-lg hover:bg-gray-200/50 dark:hover:bg-white/10 transition-colors"
                             )}
                             title={t('common.refresh', 'Refresh')}
                         >
-                            <RefreshCw size={14} />
+                            <RefreshCw size={14} className={clsx(isRefreshing && "animate-spin text-blue-500")} />
                         </button>
                         <div className="w-px h-3 bg-gray-300 dark:bg-white/20 mx-1" />
                         <button
@@ -264,7 +273,7 @@ export default function MiniView() {
                                 <div className="space-y-4 !mt-0">
                                     {renderModelRow(geminiProModel, 'Gemini 3 Pro', 'emerald')}
                                     {renderModelRow(geminiFlashModel, 'Gemini 3 Flash', 'emerald')}
-                                    {renderModelRow(claudeModel, 'Claude 4.6 TK', 'cyan')}
+                                    {renderModelRow(claudeModel, t('common.claude_series', 'Claude 系列'), 'cyan')}
 
                                     {!geminiProModel && !geminiFlashModel && !claudeModel && (
                                         <div className="text-center py-4 text-xs text-gray-400">
@@ -286,8 +295,9 @@ export default function MiniView() {
                             animate={{ opacity: 1, y: 0 }}
                             className="flex items-center w-full gap-2"
                         >
+                            <span title={latestLog.status.toString()} className={`w-1.5 h-1.5 rounded-full ${latestLog.status >= 200 && latestLog.status < 400 ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
                             <span className="font-bold truncate max-w-[100px]" title={latestLog.model}>
-                                {latestLog.mapped_model || 'Unknown'}
+                                {latestLog.mapped_model || latestLog.model}
                             </span>
 
                             <div className="flex-1 flex items-center justify-end gap-2">
