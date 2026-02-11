@@ -108,6 +108,7 @@ pub fn create_openai_sse_stream(
                                                     let mut thought_out = String::new();
 
                                                     if let Some(parts_list) = parts {
+                                                        let mut tool_call_index = 0;
                                                         for part in parts_list {
                                                             let is_thought_part = part.get("thought").and_then(|v| v.as_bool()).unwrap_or(false);
                                                             if let Some(text) = part.get("text").and_then(|t| t.as_str()) {
@@ -152,7 +153,7 @@ pub fn create_openai_sse_stream(
                                                                     use std::hash::{Hash, Hasher};
                                                                     serde_json::to_string(func_call).unwrap_or_default().hash(&mut hasher);
                                                                     let call_id = format!("call_{:x}", hasher.finish());
-
+ 
                                                                     let tool_call_chunk = json!({
                                                                         "id": &stream_id,
                                                                         "object": "chat.completion.chunk",
@@ -163,7 +164,7 @@ pub fn create_openai_sse_stream(
                                                                             "delta": {
                                                                                 "role": "assistant",
                                                                                 "tool_calls": [{
-                                                                                    "index": 0,
+                                                                                    "index": tool_call_index,
                                                                                     "id": call_id,
                                                                                     "type": "function",
                                                                                     "function": { "name": name, "arguments": args_str }
@@ -172,6 +173,7 @@ pub fn create_openai_sse_stream(
                                                                             "finish_reason": serde_json::Value::Null
                                                                         }]
                                                                     });
+                                                                    tool_call_index += 1;
                                                                     let sse_out = format!("data: {}\n\n", serde_json::to_string(&tool_call_chunk).unwrap_or_default());
                                                                     yield Ok::<Bytes, String>(Bytes::from(sse_out));
                                                                 }

@@ -25,7 +25,7 @@ pub fn wrap_request(
     let mut inner_request = body.clone();
 
     // 深度清理 [undefined] 字符串 (Cherry Studio 等客户端常见注入)
-    crate::proxy::mappers::common_utils::deep_clean_undefined(&mut inner_request);
+    crate::proxy::mappers::common_utils::deep_clean_undefined(&mut inner_request, 0);
 
     // [FIX #1522] Inject dummy IDs for Claude models in Gemini protocol
     // Google v1internal requires 'id' for tool calls when the model is Claude,
@@ -129,49 +129,66 @@ pub fn wrap_request(
                     final_model_name
                 );
 
-                gen_config.insert(
-                    "thinkingConfig".to_string(),
-                    json!({
-                        "includeThoughts": true,
-                        "thinkingBudget": 24576
-                    }),
-                );
+                // [NEW] 针对 Pro/Thinking 模型，如果未指定则默认注入 adaptive (如果支持) 或 24k 预算
+                let is_claude = lower_model.contains("claude");
+                if is_claude {
+                    gen_config.insert(
+                        "thinkingConfig".to_string(),
+                        json!({
+                            "includeThoughts": true,
+                            "thinkingBudget": -1
+                        }),
+                    );
+                } else {
+                    gen_config.insert(
+                        "thinkingConfig".to_string(),
+                        json!({
+                            "includeThoughts": true,
+                            "thinkingBudget": 24576
+                        }),
+                    );
+                }
             }
         }
 
         if let Some(thinking_config) = gen_config.get_mut("thinkingConfig") {
             if let Some(budget_val) = thinking_config.get("thinkingBudget") {
-                if let Some(budget) = budget_val.as_u64() {
-                    let tb_config = crate::proxy::config::get_thinking_budget_config();
-                    let final_budget = match tb_config.mode {
-                        crate::proxy::config::ThinkingBudgetMode::Passthrough => budget,
-                        crate::proxy::config::ThinkingBudgetMode::Custom => {
-                            let val = tb_config.custom_value as u64;
-                            let is_limited = (final_model_name.contains("gemini")
-                                || final_model_name.contains("thinking"))
-                                && !final_model_name.contains("-image");
+                if let Some(budget_i64) = budget_val.as_i64() {
+                    // [NEW] -1 indicates native dynamic mode, skip capping
+                    if budget_i64 != -1 {
+                        let budget = budget_i64 as u64;
+                        let tb_config = crate::proxy::config::get_thinking_budget_config();
+                        let final_budget = match tb_config.mode {
+                            crate::proxy::config::ThinkingBudgetMode::Passthrough => budget,
+                            crate::proxy::config::ThinkingBudgetMode::Custom => {
+                                let val = tb_config.custom_value as u64;
+                                let is_limited = (final_model_name.contains("gemini")
+                                    || final_model_name.contains("thinking"))
+                                    && !final_model_name.contains("-image");
 
-                            if is_limited && val > 24576 {
-                                24576
-                            } else {
-                                val
+                                if is_limited && val > 24576 {
+                                    24576
+                                } else {
+                                    val
+                                }
                             }
-                        }
-                        crate::proxy::config::ThinkingBudgetMode::Auto => {
-                            let is_limited = (final_model_name.contains("gemini")
-                                || final_model_name.contains("thinking"))
-                                && !final_model_name.contains("-image");
+                            crate::proxy::config::ThinkingBudgetMode::Auto => {
+                                let is_limited = (final_model_name.contains("gemini")
+                                    || final_model_name.contains("thinking"))
+                                    && !final_model_name.contains("-image");
 
-                            if is_limited && budget > 24576 {
-                                24576
-                            } else {
-                                budget
+                                if is_limited && budget > 24576 {
+                                    24576
+                                } else {
+                                    budget
+                                }
                             }
-                        }
-                    };
+                            crate::proxy::config::ThinkingBudgetMode::Adaptive => budget,
+                        };
 
-                    if final_budget != budget {
-                        thinking_config["thinkingBudget"] = json!(final_budget);
+                        if final_budget != budget {
+                            thinking_config["thinkingBudget"] = json!(final_budget);
+                        }
                     }
                 }
             }
@@ -179,27 +196,37 @@ pub fn wrap_request(
 
         // [FIX #1747] Ensure max_tokens (maxOutputTokens) is greater than thinking_budget
         // Google v1internal requires maxOutputTokens > thinkingBudget.
+        // [FIX #1825] Handle adaptive fallback (incl. -1 and thinkingLevel)
+        let thinking_config_opt = gen_config.get("thinkingConfig");
+        let is_adaptive = thinking_config_opt.map_or(false, |t| {
+            t.get("thinkingLevel").is_some() || t.get("thinkingBudget").and_then(|v| v.as_i64()) == Some(-1)
+        }) || (thinking_config_opt.and_then(|t| t.get("thinkingBudget").and_then(|v| v.as_u64())) == Some(32768) && is_target_claude);
+
         if let Some(thinking_config) = gen_config.get("thinkingConfig") {
-            if let Some(budget) = thinking_config.get("thinkingBudget").and_then(|v| v.as_u64()) {
-                let current_max = gen_config
-                    .get("maxOutputTokens")
-                    .and_then(|v| v.as_u64())
-                    .or(req_max_tokens);
+            let budget_opt = thinking_config.get("thinkingBudget").and_then(|v| v.as_i64());
+            
+            // For adaptive or dynamic mode, we only need to ensure max tokens is large.
+            // For fixed budget, we must satisfy maxOutputTokens > thinkingBudget.
+            let current_max = gen_config
+                .get("maxOutputTokens")
+                .and_then(|v| v.as_u64())
+                .or(req_max_tokens);
 
-                let min_required_max = budget + 8192;
-
-                match current_max {
-                    Some(m) if m <= budget => {
+            if is_adaptive {
+                if current_max.map_or(true, |m| m < 131072) {
+                     gen_config.insert("maxOutputTokens".to_string(), json!(131072));
+                }
+            } else if let Some(budget_i64) = budget_opt {
+                if budget_i64 > 0 {
+                    let budget = budget_i64 as u64;
+                    let min_required_max = budget + 8192;
+                    if current_max.map_or(true, |m| m <= budget) {
                         tracing::info!(
-                            "[Gemini-Wrap] Bumping maxOutputTokens from {} to {} to satisfy thinkingBudget ({})",
-                            m, min_required_max, budget
+                            "[Gemini-Wrap] Bumping maxOutputTokens from {:?} to {} to satisfy thinkingBudget ({})",
+                            current_max, min_required_max, budget
                         );
                         gen_config.insert("maxOutputTokens".to_string(), json!(min_required_max));
                     }
-                    None => {
-                        gen_config.insert("maxOutputTokens".to_string(), json!(min_required_max));
-                    }
-                    _ => {}
                 }
             }
         }
@@ -218,6 +245,7 @@ pub fn wrap_request(
     // [FIX] Extract OpenAI-compatible image parameters from root (for gemini-3-pro-image)
     let size = body.get("size").and_then(|v| v.as_str());
     let quality = body.get("quality").and_then(|v| v.as_str());
+    let image_size = body.get("imageSize").and_then(|v| v.as_str()); // [NEW] Direct imageSize support
 
     // Use shared grounding/config logic
     let config = crate::proxy::mappers::common_utils::resolve_request_config(
@@ -226,6 +254,7 @@ pub fn wrap_request(
         &tools_val,
         size,       // [FIX] Pass size parameter
         quality,    // [FIX] Pass quality parameter
+        image_size, // [NEW] Pass direct imageSize parameter
         Some(body), // [NEW] Pass request body for imageConfig parsing
     );
 
@@ -694,6 +723,7 @@ mod tests {
         update_thinking_budget_config(ThinkingBudgetConfig {
             mode: ThinkingBudgetMode::Custom,
             custom_value: 1024, // Distinct value
+            effort: None,
         });
 
         let body = json!({
@@ -733,6 +763,7 @@ mod tests {
             crate::proxy::config::ThinkingBudgetConfig {
                 mode: crate::proxy::config::ThinkingBudgetMode::Auto,
                 custom_value: 24576,
+                effort: None,
             },
         );
 

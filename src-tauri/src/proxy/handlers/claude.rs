@@ -113,6 +113,7 @@ fn apply_thinking_hints(
         request.thinking = Some(crate::proxy::mappers::claude::models::ThinkingConfig {
             type_: "enabled".to_string(),
             budget_tokens: Some(budget),
+            effort: None,
         });
         tracing::debug!(
             "[{}] Applied thinking hint: budget_tokens={}",
@@ -138,6 +139,7 @@ fn apply_thinking_hints(
             request.thinking = Some(crate::proxy::mappers::claude::models::ThinkingConfig {
                 type_: "enabled".to_string(),
                 budget_tokens: Some(budget),
+                effort: None,
             });
             tracing::debug!(
                 "[{}] Applied thinking hint: level={} -> budget_tokens={}",
@@ -541,7 +543,8 @@ pub async fn handle_messages(
             &tools_val,
             request.size.as_deref(),      // [NEW] Pass size parameter
             request.quality.as_deref(),   // [NEW] Pass quality parameter
-            None,  // Claude handler uses transform_claude_request_in for image gen
+            None,  // image_size
+            None,  // body
         );
 
         // 0. 尝试提取 session_id 用于粘性调度 (Phase 2/3)

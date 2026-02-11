@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::proxy::ProxyConfig;
+use crate::modules::cloudflared::CloudflaredConfig;
 
 /// Application configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -27,6 +28,8 @@ pub struct AppConfig {
     pub circuit_breaker: CircuitBreakerConfig, // [NEW] Circuit breaker configuration
     #[serde(default)]
     pub hidden_menu_items: Vec<String>, // Hidden menu item path list
+    #[serde(default)]
+    pub cloudflared: CloudflaredConfig, // [NEW] Cloudflared configuration
 }
 
 /// Scheduled warmup configuration
@@ -184,6 +187,7 @@ impl AppConfig {
             pinned_quota_models: PinnedQuotaModelsConfig::default(),
             circuit_breaker: CircuitBreakerConfig::default(),
             hidden_menu_items: Vec::new(),
+            cloudflared: CloudflaredConfig::default(),
         }
     }
 }

@@ -40,16 +40,22 @@ pub struct OpenAIRequest {
     // [NEW] Thinking/Extended Thinking 支持 (兼容 Anthropic/Claude 协议)
     #[serde(default)]
     pub thinking: Option<ThinkingConfig>,
+    // [NEW] Direct imageSize support (for Gemini native parameter)
+    #[serde(default, rename = "imageSize")]
+    pub image_size: Option<String>,
 }
 
 /// Thinking 配置 (兼容 Anthropic 和 OpenAI 扩展协议)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThinkingConfig {
     #[serde(rename = "type")]
-    pub thinking_type: Option<String>, // "enabled" or "disabled"
+    pub thinking_type: Option<String>, // "enabled", "disabled", or "adaptive"
     #[serde(rename = "budget_tokens")]
     pub budget_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>, // "low", "high", or "max"
 }
+
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResponseFormat {

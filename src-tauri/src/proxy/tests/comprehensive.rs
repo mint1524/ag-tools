@@ -33,6 +33,7 @@ mod tests {
             thinking: Some(ThinkingConfig {
                 type_: "enabled".to_string(),
                 budget_tokens: Some(1024),
+                effort: None,
             }),
             metadata: None,
             output_config: None,

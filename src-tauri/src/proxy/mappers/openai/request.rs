@@ -23,9 +23,10 @@ pub fn transform_openai_request(
         &request.model,
         &mapped_model_lower,
         &tools_val,
-        request.size.as_deref(),    // [NEW] Pass size parameter
-        request.quality.as_deref(), // [NEW] Pass quality parameter
-        None,  // OpenAI uses size/quality params, not body.imageConfig
+        request.size.as_deref(),       // [NEW] Pass size parameter
+        request.quality.as_deref(),    // [NEW] Pass quality parameter
+        request.image_size.as_deref(), // [FIX] Pass imageSize parameter
+        None,  // body
     );
 
     // [FIX] 仅当模型名称显式包含 "-thinking" 时才视为 Gemini 思维模型
@@ -198,7 +199,7 @@ pub fn transform_openai_request(
                     parts.push(thought_part);
                 }
             } else if actual_include_thinking && role == "model" {
-                // [FIX] 解决 Claude 3.7 Thinking 模型的强制性校验:
+                // [FIX] 解决 Claude 4.6 Thinking 模型的强制性校验:
                 // "Expected thinking... but found tool_use/text"
                 // 如果是思维模型且缺失 reasoning_content, 则注入占位符
                 tracing::debug!("[OpenAI-Thinking] Injecting placeholder thinking block for assistant message");
@@ -478,6 +479,10 @@ pub fn transform_openai_request(
                         user_budget
                     }
                 }
+                crate::proxy::config::ThinkingBudgetMode::Adaptive => {
+                    // Adaptive 模式暂时使用默认值,实际的 adaptive 逻辑在后续处理
+                    user_budget
+                }
             };
 
             gen_config["thinkingConfig"] = json!({
@@ -539,7 +544,7 @@ pub fn transform_openai_request(
     });
 
     // 深度清理 [undefined] 字符串 (Cherry Studio 等客户端常见注入)
-    crate::proxy::mappers::common_utils::deep_clean_undefined(&mut inner_request);
+    crate::proxy::mappers::common_utils::deep_clean_undefined(&mut inner_request, 0);
 
     // 4. Handle Tools (Merged Cleaning)
     if let Some(tools) = &request.tools {

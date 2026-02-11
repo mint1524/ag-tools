@@ -35,9 +35,6 @@ function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSw
 
     const claudeGroupNames = [
         'claude-opus-4-6-thinking',
-        'claude-opus-4-5-thinking',
-        'claude-sonnet-4-5-thinking',
-        'claude-sonnet-4-5',
         'claude'
     ];
     const claudeModel = account.quota?.models
@@ -270,9 +267,9 @@ function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSw
                                 />
                             )}
                             <div className="relative z-10 w-full flex items-center text-[10px] font-mono leading-none">
-                                <span className="w-[64px] text-gray-500 dark:text-gray-400 font-bold pr-1 flex items-center gap-1" title="Claude 4.6 TK">
+                                <span className="w-[64px] text-gray-500 dark:text-gray-400 font-bold pr-1 flex items-center gap-1" title="Claude Series">
                                     {account.protected_models?.includes('claude') && <Lock className="w-2.5 h-2.5 text-rose-500 shrink-0 z-10" />}
-                                    <span className="truncate">Claude 4.6</span>
+                                    <span className="truncate">Claude</span>
                                 </span>
                                 <div className="flex-1 flex justify-center">
                                     {claudeModel?.reset_time ? (

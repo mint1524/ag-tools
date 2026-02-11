@@ -64,30 +64,24 @@ export const MODEL_CONFIG: Record<string, ModelConfig> = {
         protectedKey: 'gemini-flash',
         Icon: Gemini.Color,
     },
-    'gemini-2.5-pro': {
-        label: 'Gemini 2.5 Pro',
-        shortLabel: 'G2.5 Pro',
-        protectedKey: 'gemini-pro',
-        Icon: Gemini.Color,
-    },
 
     // Claude 系列
     'claude-sonnet-4-5': {
-        label: 'Claude 4.6 TK',
-        shortLabel: 'Claude 4.6',
+        label: 'Claude 4.5',
+        shortLabel: 'Claude 4.5',
         protectedKey: 'claude',
         Icon: Claude.Color,
     },
     'claude-sonnet-4-5-thinking': {
-        label: 'Claude 4.6 TK Thinking',
-        shortLabel: 'Claude 4.6 TK',
+        label: 'Claude 4.5 TK',
+        shortLabel: 'Claude 4.5 TK',
         protectedKey: 'claude',
         Icon: Claude.Color,
     },
     'claude-opus-4-6-thinking': {
-        label: 'Claude 4.6 Opus Think',
-        shortLabel: 'Claude 4.6 Op',
-        protectedKey: 'claude-opus',
+        label: 'Claude 4.6 TK',
+        shortLabel: 'Claude 4.6 TK',
+        protectedKey: 'claude',
         Icon: Claude.Color,
     },
 };

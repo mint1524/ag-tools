@@ -313,10 +313,38 @@ export default function ApiProxy() {
                 const status = await invoke<typeof cfStatus>('cloudflared_start', { config });
                 setCfStatus(status);
                 showToast(t('proxy.cloudflared.started', { defaultValue: 'Tunnel started' }), 'success');
+
+                // 持久化“启用”状态
+                if (appConfig) {
+                    const newConfig = {
+                        ...appConfig,
+                        cloudflared: {
+                            ...appConfig.cloudflared,
+                            enabled: true,
+                            mode: cfMode,
+                            token: cfToken,
+                            use_http2: cfUseHttp2,
+                            port: appConfig.proxy.port || 8045
+                        }
+                    };
+                    saveConfig(newConfig);
+                }
             } else {
                 const status = await invoke<typeof cfStatus>('cloudflared_stop');
                 setCfStatus(status);
                 showToast(t('proxy.cloudflared.stopped', { defaultValue: 'Tunnel stopped' }), 'success');
+
+                // 持久化“禁用”状态
+                if (appConfig) {
+                    const newConfig = {
+                        ...appConfig,
+                        cloudflared: {
+                            ...appConfig.cloudflared,
+                            enabled: false
+                        }
+                    };
+                    saveConfig(newConfig);
+                }
             }
         } catch (error) {
             showToast(String(error), 'error');
@@ -381,6 +409,20 @@ export default function ApiProxy() {
         try {
             const config = await invoke<AppConfig>('load_config');
             setAppConfig(config);
+
+            // 恢复 Cloudflared 持久化状态
+            if (config.cloudflared) {
+                setCfMode(config.cloudflared.mode || 'quick');
+                setCfToken(config.cloudflared.token || '');
+                setCfUseHttp2(config.cloudflared.use_http2 !== false); // 默认开启 HTTP/2
+            }
+
+            // 恢复 Cloudflared 状态并实现持久化同步
+            if (config.cloudflared) {
+                setCfMode(config.cloudflared.mode || 'quick');
+                setCfToken(config.cloudflared.token || '');
+                setCfUseHttp2(config.cloudflared.use_http2 !== false); // 默认 true
+            }
         } catch (error) {
             console.error('加载配置失败:', error);
             setConfigError(String(error));
@@ -476,7 +518,6 @@ export default function ApiProxy() {
                 "o3-*": "gemini-3-pro-high",
                 "claude-3-5-sonnet-*": "claude-sonnet-4-5",
                 "claude-3-opus-*": "claude-opus-4-6-thinking",
-                "claude-opus-4-5*": "claude-opus-4-5-thinking",
                 "claude-opus-4-6*": "claude-opus-4-6-thinking",
                 "claude-haiku-*": "gemini-2.5-flash",
                 "claude-3-haiku-*": "gemini-2.5-flash",
@@ -494,7 +535,6 @@ export default function ApiProxy() {
                 "o3-*": "claude-opus-4-6-thinking",
                 "claude-3-5-sonnet-*": "claude-sonnet-4-5",
                 "claude-3-opus-*": "claude-opus-4-6-thinking",
-                "claude-opus-4-5*": "claude-opus-4-5-thinking",
                 "claude-opus-4-6*": "claude-opus-4-6-thinking",
                 "claude-haiku-*": "claude-sonnet-4-5",
                 "claude-3-haiku-*": "claude-sonnet-4-5",
@@ -2034,7 +2074,15 @@ print(response.text)`;
                                                 {/* 隧道模式选择 */}
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <button
-                                                        onClick={() => setCfMode('quick')}
+                                                        onClick={() => {
+                                                            setCfMode('quick');
+                                                            if (appConfig) {
+                                                                saveConfig({
+                                                                    ...appConfig,
+                                                                    cloudflared: { ...appConfig.cloudflared, mode: 'quick' }
+                                                                });
+                                                            }
+                                                        }}
                                                         disabled={cfStatus.running}
                                                         className={cn(
                                                             "p-3 rounded-lg border-2 text-left transition-all",
@@ -2052,7 +2100,15 @@ print(response.text)`;
                                                         </p>
                                                     </button>
                                                     <button
-                                                        onClick={() => setCfMode('auth')}
+                                                        onClick={() => {
+                                                            setCfMode('auth');
+                                                            if (appConfig) {
+                                                                saveConfig({
+                                                                    ...appConfig,
+                                                                    cloudflared: { ...appConfig.cloudflared, mode: 'auth' }
+                                                                });
+                                                            }
+                                                        }}
                                                         disabled={cfStatus.running}
                                                         className={cn(
                                                             "p-3 rounded-lg border-2 text-left transition-all",
@@ -2081,6 +2137,14 @@ print(response.text)`;
                                                             type="password"
                                                             value={cfToken}
                                                             onChange={(e) => setCfToken(e.target.value)}
+                                                            onBlur={() => {
+                                                                if (appConfig) {
+                                                                    saveConfig({
+                                                                        ...appConfig,
+                                                                        cloudflared: { ...appConfig.cloudflared, token: cfToken }
+                                                                    });
+                                                                }
+                                                            }}
                                                             disabled={cfStatus.running}
                                                             placeholder="eyJhIjoiNj..."
                                                             className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-base-200 text-sm font-mono disabled:opacity-60"
@@ -2102,7 +2166,20 @@ print(response.text)`;
                                                         type="checkbox"
                                                         className="toggle toggle-sm"
                                                         checked={cfUseHttp2}
-                                                        onChange={(e) => setCfUseHttp2(e.target.checked)}
+                                                        onChange={(e) => {
+                                                            const val = e.target.checked;
+                                                            setCfUseHttp2(val);
+                                                            if (appConfig) {
+                                                                const newConfig = {
+                                                                    ...appConfig,
+                                                                    cloudflared: {
+                                                                        ...appConfig.cloudflared,
+                                                                        use_http2: val
+                                                                    }
+                                                                };
+                                                                saveConfig(newConfig);
+                                                            }
+                                                        }}
                                                         disabled={cfStatus.running}
                                                     />
                                                 </div>

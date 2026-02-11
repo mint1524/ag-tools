@@ -40,10 +40,13 @@ pub struct ClaudeRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThinkingConfig {
     #[serde(rename = "type")]
-    pub type_: String, // "enabled"
+    pub type_: String, // "enabled" or "adaptive"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub budget_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>, // "low", "high", or "max"
 }
+
 
 /// System Prompt
 #[derive(Debug, Clone, Serialize, Deserialize)]

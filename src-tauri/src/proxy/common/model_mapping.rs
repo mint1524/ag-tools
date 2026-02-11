@@ -273,25 +273,27 @@ pub fn resolve_model_route(
 pub fn normalize_to_standard_id(model_name: &str) -> Option<String> {
     let lower = model_name.to_lowercase();
     
-    match lower.as_str() {
-        // 1. gemini-3-pro-image (严格匹配)
-        "gemini-3-pro-image" => Some("gemini-3-pro-image".to_string()),
-
-        // 2. gemini-3-flash (严格匹配)
-        "gemini-3-flash" => Some("gemini-3-flash".to_string()),
-
-        // 3. gemini-3-pro-high (含 Pro High 和 Pro Low)
-        "gemini-3-pro-high" | "gemini-3-pro-low" => Some("gemini-3-pro-high".to_string()),
-
-        // 4. Claude 4.6 系列 (严格名单匹配)
-        "claude-opus-4-6-thinking" |
-        "claude-opus-4-5-thinking" |
-        "claude-sonnet-4-5-thinking" |
-        "claude-sonnet-4-5" |
-        "claude" => Some("claude".to_string()),
-
-        _ => None
+    // 1. gemini-3-pro-image (优先匹配)
+    if lower == "gemini-3-pro-image" {
+        return Some("gemini-3-pro-image".to_string());
     }
+
+    // 2. gemini-3-flash (包含所有 flash 变体)
+    if lower.contains("flash") {
+        return Some("gemini-3-flash".to_string());
+    }
+
+    // 3. gemini-3-pro-high (包含 pro 变体)
+    if lower.contains("pro") && !lower.contains("image") {
+        return Some("gemini-3-pro-high".to_string());
+    }
+
+    // 4. Claude 系列 (合并 Opus, Sonnet, Haiku 为统一保护组 'claude')
+    if lower.contains("claude") || lower.contains("opus") || lower.contains("sonnet") || lower.contains("haiku") {
+        return Some("claude".to_string());
+    }
+
+    None
 }
 
 #[cfg(test)]

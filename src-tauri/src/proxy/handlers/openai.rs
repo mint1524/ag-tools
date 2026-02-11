@@ -166,7 +166,8 @@ pub async fn handle_chat_completions(
             &tools_val,
             None, // size (not used in handler, transform_openai_request handles it)
             None, // quality
-            None, // OpenAI handler uses transform_openai_request for image gen
+            None, // image_size
+            None, // body
         );
 
         // 3. 提取 SessionId (粘性指纹)
@@ -1144,7 +1145,8 @@ pub async fn handle_completions(
             &tools_val,
             None, // size
             None, // quality
-            None, // OpenAI handler uses transform_openai_request for image gen
+            None, // image_size
+            None, // body
         );
 
         // 3. 提取 SessionId (复用)
@@ -1615,6 +1617,12 @@ pub async fn handle_images_generations(
         .get("quality")
         .and_then(|v| v.as_str())
         .unwrap_or("standard");
+
+    let image_size = body
+        .get("image_size")
+        .or(body.get("imageSize"))
+        .and_then(|v| v.as_str());
+
     let style = body
         .get("style")
         .and_then(|v| v.as_str())
@@ -1635,6 +1643,7 @@ pub async fn handle_images_generations(
         model,
         Some(size),
         Some(quality),
+        image_size,
     );
 
     // 3. Prompt Enhancement（保留原有逻辑）
@@ -2003,6 +2012,7 @@ pub async fn handle_images_edits(
         &model,
         size_input,
         quality_input,
+        image_size_param.as_deref(), // [NEW] Pass direct image_size param
     );
 
     // 3. Construct Contents

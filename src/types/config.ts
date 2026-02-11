@@ -32,7 +32,10 @@ export interface ProxyConfig {
 // ============================================================================
 
 /** Thinking Budget 处理模式 */
-export type ThinkingBudgetMode = 'auto' | 'passthrough' | 'custom';
+export type ThinkingBudgetMode = 'auto' | 'passthrough' | 'custom' | 'adaptive'; // [NEW] 支持自适应模式
+
+/** Thinking Effort 等级 (仅 adaptive 模式) */
+export type ThinkingEffort = 'low' | 'medium' | 'high';
 
 /** Thinking Budget 配置 */
 export interface ThinkingBudgetConfig {
@@ -40,6 +43,8 @@ export interface ThinkingBudgetConfig {
     mode: ThinkingBudgetMode;
     /** 自定义固定值（仅在 mode=custom 时生效），范围 1024-65536 */
     custom_value: number;
+    /** 思考强度 (仅在 mode=adaptive 时生效) */
+    effort?: ThinkingEffort;
 }
 
 // ============================================================================
@@ -138,6 +143,7 @@ export interface AppConfig {
     pinned_quota_models: PinnedQuotaModelsConfig; // [NEW] 配额关注列表
     circuit_breaker: CircuitBreakerConfig; // [NEW] 熔断器配置
     proxy: ProxyConfig;
+    cloudflared: CloudflaredConfig; // [NEW] Cloudflared 配置
 }
 
 // ============================================================================

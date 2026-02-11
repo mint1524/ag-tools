@@ -122,9 +122,8 @@ interface AccountRowContentProps {
 
 const MODEL_GROUPS = {
     CLAUDE: [
-        'claude-sonnet-4-5',
-        'claude-sonnet-4-5-thinking',
-        'claude-opus-4-5-thinking'
+        'claude-opus-4-6-thinking',
+        'claude'
     ],
     GEMINI_PRO: [
         'gemini-3-pro-high',
@@ -316,7 +315,7 @@ function AccountRowContent({
 
     // 根据 show_all 状态决定显示哪些模型
     const displayModels = sortModels(
-        showAllQuotas
+        (showAllQuotas
             ? (account.quota?.models || []).map(m => {
                 const config = MODEL_CONFIG[m.name.toLowerCase()];
                 return {
@@ -335,6 +334,7 @@ function AccountRowContent({
                     data: account.quota?.models.find(m => m.name.toLowerCase() === modelId)
                 };
             })
+        ).filter(m => m.id !== 'claude-sonnet-4-5-thinking' && m.id !== 'claude-opus-4-5-thinking')
     );
 
     const isDisabled = Boolean(account.disabled);

@@ -26,8 +26,8 @@ export function NavMenu({ navItems }: NavMenuProps) {
 
     return (
         <>
-            {/* 文字胶囊 (≥ 960px) */}
-            <nav className="max-[959px]:hidden flex items-center gap-1 bg-gray-100 dark:bg-base-200 rounded-full p-1">
+            {/* 文字胶囊 (≥ 1120px) */}
+            <nav className="max-[1119px]:hidden flex items-center gap-1 bg-gray-100 dark:bg-base-200 rounded-full p-1">
                 {visibleNavItems.map((item) => (
                     <Link
                         key={item.path}
@@ -52,8 +52,8 @@ export function NavMenu({ navItems }: NavMenuProps) {
                 ))}
             </nav>
 
-            {/* 图标胶囊 (880px - 960px) - Logo 显示文字 */}
-            <nav className="max-[879px]:hidden min-[960px]:hidden flex items-center gap-1 bg-gray-100 dark:bg-base-200 rounded-full p-1">
+            {/* 图标胶囊 (880px - 1120px) - Logo 显示文字 */}
+            <nav className="max-[879px]:hidden min-[1120px]:hidden flex items-center gap-1 bg-gray-100 dark:bg-base-200 rounded-full p-1">
                 {visibleNavItems.map((item) => (
                     <Link
                         key={item.path}

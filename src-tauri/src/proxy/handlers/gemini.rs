@@ -123,6 +123,7 @@ pub async fn handle_generate(
             &tools_val,
             None,        // size (not applicable for Gemini native protocol)
             None,        // quality
+            None,        // [NEW] image_size
             Some(&body), // [NEW] Pass request body for imageConfig parsing
         );
 

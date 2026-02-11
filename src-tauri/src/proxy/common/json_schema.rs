@@ -31,6 +31,8 @@ static TOOL_ADAPTERS: Lazy<Vec<Box<dyn ToolAdapter>>> = Lazy::new(|| {
     ]
 });
 
+const MAX_RECURSION_DEPTH: usize = 10;
+
 /// 递归清理 JSON Schema 以符合 Gemini 接口要求
 ///
 /// 1. [New] 展开 $ref 和 $defs: 将引用替换为实际定义，解决 Gemini 不支持 $ref 的问题
@@ -54,11 +56,11 @@ pub fn clean_json_schema(value: &mut Value) {
     // [FIX #952] 始终运行 flatten_refs，即使 defs 为空
     // 这样可以捕获并处理无法解析的 $ref (降级为 string 类型)
     if let Value::Object(map) = value {
-        flatten_refs(map, &all_defs);
+        flatten_refs(map, &all_defs, 0);
     }
 
     // 递归清理
-    clean_json_schema_recursive(value, true);
+    clean_json_schema_recursive(value, true, 0);
 }
 
 /// 带工具适配器支持的 Schema 清洗
@@ -127,7 +129,16 @@ fn collect_all_defs(value: &Value, defs: &mut serde_json::Map<String, Value>) {
 }
 
 /// 递归展开 $ref
-fn flatten_refs(map: &mut serde_json::Map<String, Value>, defs: &serde_json::Map<String, Value>) {
+fn flatten_refs(
+    map: &mut serde_json::Map<String, Value>,
+    defs: &serde_json::Map<String, Value>,
+    depth: usize,
+) {
+    if depth > MAX_RECURSION_DEPTH {
+        tracing::warn!("[Schema-Flatten] Max recursion depth reached, stopping ref expansion.");
+        return;
+    }
+
     // 检查并替换 $ref
     if let Some(Value::String(ref_path)) = map.remove("$ref") {
         // 解析引用名 (例如 #/$defs/MyType -> MyType)
@@ -143,8 +154,8 @@ fn flatten_refs(map: &mut serde_json::Map<String, Value>, defs: &serde_json::Map
                 }
 
                 // 递归处理刚刚合并进来的内容中可能包含的 $ref
-                // 注意：这里可能会无限递归如果存在循环引用，但工具定义通常是 DAG
-                flatten_refs(map, defs);
+                // 注意：由于引入了 depth 限制，循环引用不再会导致栈溢出
+                flatten_refs(map, defs, depth + 1);
             }
         } else {
             // [FIX #952] 无法解析的 $ref: 转换为宽松的 string 类型，避免 API 400 错误
@@ -168,18 +179,22 @@ fn flatten_refs(map: &mut serde_json::Map<String, Value>, defs: &serde_json::Map
     // 遍历子节点
     for (_, v) in map.iter_mut() {
         if let Value::Object(child_map) = v {
-            flatten_refs(child_map, defs);
+            flatten_refs(child_map, defs, depth + 1);
         } else if let Value::Array(arr) = v {
             for item in arr {
                 if let Value::Object(item_map) = item {
-                    flatten_refs(item_map, defs);
+                    flatten_refs(item_map, defs, depth + 1);
                 }
             }
         }
     }
 }
 
-fn clean_json_schema_recursive(value: &mut Value, is_schema_node: bool) -> bool {
+fn clean_json_schema_recursive(value: &mut Value, is_schema_node: bool, depth: usize) -> bool {
+    if depth > MAX_RECURSION_DEPTH {
+        debug_assert!(false, "Max recursion depth reached in clean_json_schema_recursive");
+        return false;
+    }
     let mut is_effectively_nullable = false;
 
     match value {
@@ -211,7 +226,7 @@ fn clean_json_schema_recursive(value: &mut Value, is_schema_node: bool) -> bool 
                 let mut nullable_keys = std::collections::HashSet::new();
                 for (k, v) in props {
                     // properties 的每一个值都必须是一个独立的 Schema 节点
-                    if clean_json_schema_recursive(v, true) {
+                    if clean_json_schema_recursive(v, true, depth + 1) {
                         nullable_keys.insert(k.clone());
                     }
                 }
@@ -238,7 +253,7 @@ fn clean_json_schema_recursive(value: &mut Value, is_schema_node: bool) -> bool 
             // 处理 items (数组)
             if let Some(items) = map.get_mut("items") {
                 // items 的内容必须是一个独立的 Schema 节点
-                clean_json_schema_recursive(items, true);
+                clean_json_schema_recursive(items, true, depth + 1);
 
                 // [NEW] 隐式类型注入：如果有 items 但没 type，补全为 array
                 if !map.contains_key("type") {
@@ -251,7 +266,7 @@ fn clean_json_schema_recursive(value: &mut Value, is_schema_node: bool) -> bool 
                 for (k, v) in map.iter_mut() {
                     // 排除掉关键字
                     if k != "anyOf" && k != "oneOf" && k != "allOf" && k != "enum" && k != "type" {
-                        clean_json_schema_recursive(v, false);
+                        clean_json_schema_recursive(v, false, depth + 1);
                     }
                 }
             }
@@ -260,12 +275,12 @@ fn clean_json_schema_recursive(value: &mut Value, is_schema_node: bool) -> bool 
             // 必须在合并逻辑之前执行，确保合并的分支已经被清洗
             if let Some(Value::Array(any_of)) = map.get_mut("anyOf") {
                 for branch in any_of.iter_mut() {
-                    clean_json_schema_recursive(branch, true);
+                    clean_json_schema_recursive(branch, true, depth + 1);
                 }
             }
             if let Some(Value::Array(one_of)) = map.get_mut("oneOf") {
                 for branch in one_of.iter_mut() {
-                    clean_json_schema_recursive(branch, true);
+                    clean_json_schema_recursive(branch, true, depth + 1);
                 }
             }
 
@@ -360,7 +375,7 @@ fn clean_json_schema_recursive(value: &mut Value, is_schema_node: bool) -> bool 
                 // 递归清理刚刚移动进去的属性
                 if let Some(Value::Object(props_map)) = map.get_mut("properties") {
                     for v in props_map.values_mut() {
-                        clean_json_schema_recursive(v, true); 
+                        clean_json_schema_recursive(v, true, depth + 1); 
                     }
                 }
             }
@@ -492,7 +507,7 @@ fn clean_json_schema_recursive(value: &mut Value, is_schema_node: bool) -> bool 
             // [FIX] 递归清理数组中的每个元素
             // 这确保了所有数组类型的值（包括但不限于 anyOf、oneOf、items、enum 等）都会被递归处理
             for item in arr.iter_mut() {
-                clean_json_schema_recursive(item, is_schema_node);
+                clean_json_schema_recursive(item, is_schema_node, depth + 1);
             }
         }
         _ => {}
@@ -1505,5 +1520,37 @@ mod tests {
         assert_eq!(config["properties"]["color"]["type"], "string");
         assert_eq!(config["properties"]["size"]["type"], "number");
         assert_eq!(config["type"], "object");
+    }
+
+    #[test]
+    fn test_circular_ref_flattening() {
+        // 模拟循环引用：A -> B, B -> A
+        let mut schema = json!({
+            "$defs": {
+                "A": {
+                    "type": "object",
+                    "properties": {
+                        "toB": { "$ref": "#/$defs/B" }
+                    }
+                },
+                "B": {
+                    "type": "object",
+                    "properties": {
+                        "toA": { "$ref": "#/$defs/A" }
+                    }
+                }
+            },
+            "properties": {
+                "start": { "$ref": "#/$defs/A" }
+            }
+        });
+
+        // 如果没有深度限制，这里会发生栈溢出
+        // 有了深度限制，它应该能正常返回（尽管展开是不完整的）
+        clean_json_schema(&mut schema);
+
+        // 验证基本结构保留，没有崩溃
+        assert_eq!(schema["properties"]["start"]["type"], "object");
+        assert!(schema["properties"]["start"]["properties"].get("toB").is_some());
     }
 }

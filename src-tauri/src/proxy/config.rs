@@ -325,6 +325,8 @@ pub enum ThinkingBudgetMode {
     Passthrough,
     /// 自定义：使用用户设定的固定值覆盖所有请求
     Custom,
+    /// 自适应：使用 effort 参数控制思考强度 (Claude 4.6+)
+    Adaptive,
 }
 
 impl Default for ThinkingBudgetMode {
@@ -342,6 +344,9 @@ pub struct ThinkingBudgetConfig {
     /// 自定义固定值（仅在 mode=Custom 时生效）
     #[serde(default = "default_thinking_budget_custom_value")]
     pub custom_value: u32,
+    /// 思考强度 (仅在 mode=Adaptive 时生效) : low, medium, high
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
 }
 
 impl Default for ThinkingBudgetConfig {
@@ -349,6 +354,7 @@ impl Default for ThinkingBudgetConfig {
         Self {
             mode: ThinkingBudgetMode::Auto,
             custom_value: default_thinking_budget_custom_value(),
+            effort: None,
         }
     }
 }

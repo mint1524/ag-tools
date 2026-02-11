@@ -170,6 +170,7 @@ pub async fn handle_detect_model(
         &None, // We don't check tools for static capability detection
         None,  // size
         None,  // quality
+        None,  // image_size
         None,  // body (not needed for static detection)
     );
 

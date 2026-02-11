@@ -22,6 +22,7 @@ pub fn resolve_request_config(
     tools: &Option<Vec<Value>>,
     size: Option<&str>,    // [NEW] Image size parameter
     quality: Option<&str>, // [NEW] Image quality parameter
+    image_size: Option<&str>, // [NEW] Direct imageSize parameter (e.g. "4K")
     body: Option<&Value>,  // [NEW] Request body for Gemini native imageConfig
 ) -> RequestConfig {
     // 1. Image Generation Check (Priority)
@@ -29,7 +30,7 @@ pub fn resolve_request_config(
         // [RESOLVE #1694] Improved priority logic:
         // 1. First parse inferred config from model suffix and OpenAI parameters
         let (mut inferred_config, parsed_base_model) =
-            parse_image_config_with_params(original_model, size, quality);
+            parse_image_config_with_params(original_model, size, quality, image_size);
 
         // 2. Then merge with imageConfig from Gemini request body (if exists)
         if let Some(body_val) = body {
@@ -140,19 +141,21 @@ pub fn resolve_request_config(
 /// Legacy wrapper for backward compatibility and simple usage
 #[allow(dead_code)]
 pub fn parse_image_config(model_name: &str) -> (Value, String) {
-    parse_image_config_with_params(model_name, None, None)
+    parse_image_config_with_params(model_name, None, None, None)
 }
 
 /// Extended version that accepts OpenAI size and quality parameters
 ///
 /// This function supports parsing image configuration from:
-/// 1. OpenAI API parameters (size, quality) - takes priority
-/// 2. Model name suffixes (e.g., -16x9, -4k) - fallback for backward compatibility
+/// 1. Direct imageSize parameter - takes highest priority
+/// 2. OpenAI API parameters (size, quality) - medium priority
+/// 3. Model name suffixes (e.g., -16x9, -4k) - fallback
 ///
 /// # Arguments
 /// * `model_name` - The model name (may contain suffixes like -16x9-4k)
 /// * `size` - Optional OpenAI size parameter (e.g., "1280x720", "1792x1024")
 /// * `quality` - Optional OpenAI quality parameter ("standard", "hd", "medium")
+/// * `image_size` - Optional direct Gemini imageSize parameter ("2K", "4K")
 ///
 /// # Returns
 /// (image_config, clean_model_name) where image_config contains aspectRatio and optionally imageSize
@@ -160,6 +163,7 @@ pub fn parse_image_config_with_params(
     model_name: &str,
     size: Option<&str>,
     quality: Option<&str>,
+    image_size: Option<&str>,
 ) -> (Value, String) {
     let mut aspect_ratio = "1:1";
 
@@ -194,29 +198,34 @@ pub fn parse_image_config_with_params(
     let mut config = serde_json::Map::new();
     config.insert("aspectRatio".to_string(), json!(aspect_ratio));
 
-    // 3. 优先从 quality 参数解析分辨率
-    if let Some(q) = quality {
-        match q.to_lowercase().as_str() {
-            "hd" | "4k" => {
-                config.insert("imageSize".to_string(), json!("4K"));
+    // [NEW] 0. 最高优先级：直接使用 image_size 参数
+    if let Some(is) = image_size {
+        config.insert("imageSize".to_string(), json!(is.to_uppercase()));
+    } else {
+        // 3. 优先从 quality 参数解析分辨率
+        if let Some(q) = quality {
+            match q.to_lowercase().as_str() {
+                "hd" | "4k" => {
+                    config.insert("imageSize".to_string(), json!("4K"));
+                }
+                "medium" | "2k" => {
+                    config.insert("imageSize".to_string(), json!("2K"));
+                }
+                "standard" | "1k" => {
+                    config.insert("imageSize".to_string(), json!("1K"));
+                }
+                _ => {} // 其他值不设置，使用默认
             }
-            "medium" | "2k" => {
+        } else {
+            // 4. 回退到模型后缀解析（保持向后兼容）
+            let is_hd = model_name.contains("-4k") || model_name.contains("-hd");
+            let is_2k = model_name.contains("-2k");
+
+            if is_hd {
+                config.insert("imageSize".to_string(), json!("4K"));
+            } else if is_2k {
                 config.insert("imageSize".to_string(), json!("2K"));
             }
-            "standard" | "1k" => {
-                config.insert("imageSize".to_string(), json!("1K"));
-            }
-            _ => {} // 其他值不设置，使用默认
-        }
-    } else {
-        // 4. 回退到模型后缀解析（保持向后兼容）
-        let is_hd = model_name.contains("-4k") || model_name.contains("-hd");
-        let is_2k = model_name.contains("-2k");
-
-        if is_hd {
-            config.insert("imageSize".to_string(), json!("4K"));
-        } else if is_2k {
-            config.insert("imageSize".to_string(), json!("2K"));
         }
     }
 
@@ -333,7 +342,10 @@ pub fn inject_google_search_tool(body: &mut Value) {
 }
 
 /// 深度迭代清理客户端发送的 [undefined] 脏字符串，防止 Gemini 接口校验失败
-pub fn deep_clean_undefined(value: &mut Value) {
+pub fn deep_clean_undefined(value: &mut Value, depth: usize) {
+    if depth > 10 {
+        return;
+    }
     match value {
         Value::Object(map) => {
             // 移除值为 "[undefined]" 的键
@@ -346,12 +358,12 @@ pub fn deep_clean_undefined(value: &mut Value) {
             });
             // 递归处理嵌套
             for v in map.values_mut() {
-                deep_clean_undefined(v);
+                deep_clean_undefined(v, depth + 1);
             }
         }
         Value::Array(arr) => {
             for v in arr.iter_mut() {
-                deep_clean_undefined(v);
+                deep_clean_undefined(v, depth + 1);
             }
         }
         _ => {}
@@ -486,7 +498,7 @@ mod tests {
     #[test]
     fn test_high_quality_model_auto_grounding() {
         // Auto-grounding is currently disabled by default due to conflict with image gen
-        let config = resolve_request_config("gpt-4o", "gemini-2.5-flash", &None, None, None, None);
+        let config = resolve_request_config("gpt-4o", "gemini-2.5-flash", &None, None, None, None, None);
         assert_eq!(config.request_type, "agent");
         assert!(!config.inject_google_search);
     }
@@ -504,7 +516,7 @@ mod tests {
     #[test]
     fn test_online_suffix_force_grounding() {
         let config =
-            resolve_request_config("gemini-3-flash-online", "gemini-3-flash", &None, None, None, None);
+            resolve_request_config("gemini-3-flash-online", "gemini-3-flash", &None, None, None, None, None);
         assert_eq!(config.request_type, "web_search");
         assert!(config.inject_google_search);
         assert_eq!(config.final_model, "gemini-2.5-flash");
@@ -512,7 +524,7 @@ mod tests {
 
     #[test]
     fn test_default_no_grounding() {
-        let config = resolve_request_config("claude-sonnet", "gemini-3-flash", &None, None, None, None);
+        let config = resolve_request_config("claude-sonnet", "gemini-3-flash", &None, None, None, None, None);
         assert_eq!(config.request_type, "agent");
         assert!(!config.inject_google_search);
     }
@@ -523,6 +535,7 @@ mod tests {
             "gemini-3-pro-image",
             "gemini-3-pro-image",
             &None,
+            None,
             None,
             None,
             None,
@@ -555,40 +568,40 @@ mod tests {
     #[test]
     fn test_parse_image_config_with_openai_params() {
         // Test quality parameter mapping
-        let (config_hd, _) = parse_image_config_with_params("gemini-3-pro-image", None, Some("hd"));
+        let (config_hd, _) = parse_image_config_with_params("gemini-3-pro-image", None, Some("hd"), None);
         assert_eq!(config_hd["imageSize"], "4K");
         assert_eq!(config_hd["aspectRatio"], "1:1");
 
         let (config_medium, _) =
-            parse_image_config_with_params("gemini-3-pro-image", None, Some("medium"));
+            parse_image_config_with_params("gemini-3-pro-image", None, Some("medium"), None);
         assert_eq!(config_medium["imageSize"], "2K");
 
         let (config_standard, _) =
-            parse_image_config_with_params("gemini-3-pro-image", None, Some("standard"));
+            parse_image_config_with_params("gemini-3-pro-image", None, Some("standard"), None);
         assert_eq!(config_standard["imageSize"], "1K");
 
         // Test size parameter mapping with dynamic calculation
         let (config_16_9, _) =
-            parse_image_config_with_params("gemini-3-pro-image", Some("1280x720"), None);
+            parse_image_config_with_params("gemini-3-pro-image", Some("1280x720"), None, None);
         assert_eq!(config_16_9["aspectRatio"], "16:9");
 
         let (config_9_16, _) =
-            parse_image_config_with_params("gemini-3-pro-image", Some("720x1280"), None);
+            parse_image_config_with_params("gemini-3-pro-image", Some("720x1280"), None, None);
         assert_eq!(config_9_16["aspectRatio"], "9:16");
 
         let (config_4_3, _) =
-            parse_image_config_with_params("gemini-3-pro-image", Some("800x600"), None);
+            parse_image_config_with_params("gemini-3-pro-image", Some("800x600"), None, None);
         assert_eq!(config_4_3["aspectRatio"], "4:3");
 
         // Test combined size + quality
         let (config_combined, _) =
-            parse_image_config_with_params("gemini-3-pro-image", Some("1920x1080"), Some("hd"));
+            parse_image_config_with_params("gemini-3-pro-image", Some("1920x1080"), Some("hd"), None);
         assert_eq!(config_combined["aspectRatio"], "16:9");
         assert_eq!(config_combined["imageSize"], "4K");
 
         // Test backward compatibility: model suffix takes precedence when no params
         let (config_compat, _) =
-            parse_image_config_with_params("gemini-3-pro-image-16x9-4k", None, None);
+            parse_image_config_with_params("gemini-3-pro-image-16x9-4k", None, None, None);
         assert_eq!(config_compat["aspectRatio"], "16:9");
         assert_eq!(config_compat["imageSize"], "4K");
 
@@ -597,6 +610,7 @@ mod tests {
             "gemini-3-pro-image-1x1-2k",
             Some("1280x720"),
             Some("hd"),
+            None,
         );
         assert_eq!(config_override["aspectRatio"], "16:9"); // from size param, not model suffix
         assert_eq!(config_override["imageSize"], "4K"); // from quality param, not model suffix
@@ -650,6 +664,7 @@ mod tests {
             &None,
             None,
             None,
+            None,
             Some(&body),
         );
         let image_config = config.image_config.unwrap();
@@ -671,9 +686,44 @@ mod tests {
             &None,
             None,
             None,
+            None,
             Some(&body_2),
         );
         let image_config_2 = config_2.image_config.unwrap();
         assert_eq!(image_config_2["aspectRatio"], "1:1", "Body should be allowed to override aspectRatio");
+    }
+
+    #[test]
+    fn test_image_size_priority() {
+        // Case 1: imageSize param overrides quality
+        // Expected: "4K" from imageSize param
+        let (config_1, _) = parse_image_config_with_params(
+            "gemini-3-pro-image",
+            None,
+            Some("standard"), // would be 1K
+            Some("4K"),       // should override
+        );
+        assert_eq!(config_1["imageSize"], "4K");
+
+        // Case 2: imageSize param overrides suffix
+        // Expected: "2K" from imageSize param
+        let (config_2, _) = parse_image_config_with_params(
+            "gemini-3-pro-image-4k", // would be 4K
+            None,
+            None,
+            Some("2K"), // should override
+        );
+        assert_eq!(config_2["imageSize"], "2K");
+
+        // Case 3: imageSize param + size param + quality param
+        // Expected: "4K" from imageSize, "16:9" from size
+        let (config_3, _) = parse_image_config_with_params(
+            "gemini-3-pro-image",
+            Some("1920x1080"), // 16:9
+            Some("standard"),  // 1K (ignored)
+            Some("4K"),        // 4K (priority)
+        );
+        assert_eq!(config_3["imageSize"], "4K");
+        assert_eq!(config_3["aspectRatio"], "16:9");
     }
 }

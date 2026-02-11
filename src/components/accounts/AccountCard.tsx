@@ -99,8 +99,8 @@ function AccountCard({ account, selected, onSelect, isCurrent: propIsCurrent, is
             }
         }
 
-        // 应用排序
-        return sortModels(models);
+        // 应用排序并过滤过期模型
+        return sortModels(models).filter(m => m.id !== 'claude-sonnet-4-5-thinking' && m.id !== 'claude-opus-4-5-thinking');
     }, [config, account, showAllQuotas]);
 
     const isModelProtected = (key?: string) => {

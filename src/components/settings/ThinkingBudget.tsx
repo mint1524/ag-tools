@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { ThinkingBudgetConfig, ThinkingBudgetMode } from "../../types/config";
+import { ThinkingBudgetConfig, ThinkingBudgetMode, ThinkingEffort } from "../../types/config";
 
 interface ThinkingBudgetProps {
     config: ThinkingBudgetConfig;
@@ -27,7 +27,16 @@ export default function ThinkingBudget({
     }, [config.custom_value]);
 
     const handleModeChange = (mode: ThinkingBudgetMode) => {
-        onChange({ ...config, mode });
+        // 切换到 adaptive 模式时，如果未设置 effort，默认设置为 high
+        if (mode === 'adaptive' && !config.effort) {
+            onChange({ ...config, mode, effort: 'high' });
+        } else {
+            onChange({ ...config, mode });
+        }
+    };
+
+    const handleEffortChange = (effort: ThinkingEffort) => {
+        onChange({ ...config, effort });
     };
 
     // 输入时只更新本地 state
@@ -44,7 +53,8 @@ export default function ThinkingBudget({
         onChange({ ...config, custom_value: num });
     };
 
-    const modes: ThinkingBudgetMode[] = ['auto', 'passthrough', 'custom'];
+    const modes: ThinkingBudgetMode[] = ['auto', 'adaptive', 'passthrough', 'custom']; // Ensure adaptive is included
+    const efforts: ThinkingEffort[] = ['low', 'medium', 'high'];
 
     return (
         <div className="space-y-3">
@@ -91,6 +101,36 @@ export default function ThinkingBudget({
                         })}
                     </p>
                 )}
+
+                {config.mode === 'adaptive' && (
+                    <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-3">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                                {t("settings.thinking_budget.effort_label", { defaultValue: "思考强度" })}:
+                            </span>
+                            <div className="flex bg-gray-100 dark:bg-gray-800 p-0.5 rounded-lg">
+                                {efforts.map((effort) => (
+                                    <button
+                                        key={effort}
+                                        onClick={() => handleEffortChange(effort)}
+                                        className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${config.effort === effort
+                                            ? 'bg-white dark:bg-gray-700 text-purple-600 dark:text-purple-400 shadow-sm'
+                                            : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                                            }`}
+                                    >
+                                        {t(`settings.thinking_budget.effort.${effort}`)}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <p className="text-[10px] text-purple-600 dark:text-purple-400/80">
+                            {t("settings.thinking_budget.adaptive_hint", {
+                                defaultValue: "自适应模式：由模型根据任务复杂度自动调整思考量。Claude 4.6+ 推荐使用此模式。",
+                            })}
+                        </p>
+                    </div>
+                )}
+
 
                 {config.mode === 'custom' && (
                     <div className="flex items-center gap-4">

@@ -822,7 +822,7 @@
         },
         "router": {
             "title": "Enrutador de Modelos",
-            "subtitle": "Enrute modelos por serie o agregue mapeos exactos personalizados.\nNota: Los modelos nativos de paso Claude (ej. claude-opus-4-5-thinking) omiten los grupos de series por defecto. Use \"Enrutamiento Personalizado Experto\" para sobreescribir.",
+            "subtitle": "Enrute modelos por serie o agregue mapeos exactos personalizados.\nNota: Los modelos nativos de paso Claude (ej. claude-opus-4-6-thinking) omiten los grupos de series por defecto. Use \"Enrutamiento Personalizado Experto\" para sobreescribir.",
             "subtitle_simple": "Personalice el enrutamiento de modelos con comodines o mapeos exactos",
             "background_task_title": "Modelo de Tarea en Segundo Plano",
             "background_task_desc": "Modelo usado para tareas en segundo plano de Claude CLI como generación de título, resumen, etc. (Predeterminado: gemini-2.5-flash)",
@@ -839,7 +839,7 @@
             "groups": {
                 "claude_45": {
                     "name": "Serie Claude 4.6 TK",
-                    "desc": "Opus 4.6 TK"
+                    "desc": "Opus 4.5 TK"
                 },
                 "claude_35": {
                     "name": "Serie Claude 3.5",

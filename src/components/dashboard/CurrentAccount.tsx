@@ -35,9 +35,6 @@ function CurrentAccount({ account, onSwitch }: CurrentAccountProps) {
 
     const claudeGroupNames = [
         'claude-opus-4-6-thinking',
-        'claude-opus-4-5-thinking',
-        'claude-sonnet-4-5-thinking',
-        'claude-sonnet-4-5',
         'claude'
     ];
     const claudeModel = account.quota?.models
@@ -190,7 +187,7 @@ function CurrentAccount({ account, onSwitch }: CurrentAccountProps) {
                         <div className="flex justify-between items-baseline">
                             <span className="text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1">
                                 {account.protected_models?.includes('claude') && <Lock className="w-2.5 h-2.5 text-rose-500" />}
-                                Claude 4.6 TK
+                                Claude 系列
                             </span>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-gray-400 dark:text-gray-500" title={`${t('accounts.reset_time')}: ${new Date(claudeModel.reset_time).toLocaleString()}`}>

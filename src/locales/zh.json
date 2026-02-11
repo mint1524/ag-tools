@@ -535,11 +535,19 @@
             "mode": {
                 "auto": "自动限制",
                 "passthrough": "透传",
-                "custom": "自定义"
+                "custom": "自定义",
+                "adaptive": "自适应"
+            },
+            "effort_label": "思考强度",
+            "effort": {
+                "low": "低 (Low)",
+                "medium": "中 (Medium)",
+                "high": "高 (High)"
             },
             "auto_hint": "自动模式：对 Flash 模型、-thinking 后缀模型、以及启用 Web Search 的请求自动限制在 24576 以避免 API 错误。",
             "passthrough_warning": "透传：直接使用调用方原始值，不支持高值可能导致失败。",
             "custom_value_hint": "推荐：24576 (Flash) 或 51200 (扩展)",
+            "adaptive_hint": "自适应模式：由模型根据任务复杂度自动调整思考量。Claude 4.6+ 推荐使用此模式。",
             "tokens": "tokens"
         },
         "image_thinking_mode": {
@@ -884,7 +892,10 @@
             "pro_image_1_1": "图片生成 (1:1)",
             "claude_sonnet": "代码推理",
             "claude_sonnet_thinking": "思维链",
-            "claude_opus_thinking": "最强思维"
+            "claude_opus_thinking": "最强思维",
+            "gemini_2_5_flash": "极速模型 (2.5)",
+            "gemini_2_5_pro": "高性能推理 (2.5)",
+            "claude_4_5": "最新版推理"
         },
         "mapping": {
             "title": "Claude Code 模型映射",
@@ -909,7 +920,7 @@
         },
         "router": {
             "title": "模型路由中心 (Model Router)",
-            "subtitle": "按“规格家族”统一路由 OpenAI/Claude 模型，或添加最高优先级的“精确映射”。\n注意：Claude 原生直通模型（claude-opus-4-5-thinking 等 3 个）默认透传，需在“专家精确映射”中添加规则才能修改。",
+            "subtitle": "按“规格家族”统一路由 OpenAI/Claude 模型，或添加最高优先级的“精确映射”。\n注意：Claude 原生直通模型（claude-opus-4-6-thinking 等 3 个）默认透传，需在“专家精确映射”中添加规则才能修改。",
             "subtitle_simple": "通过通配符或精确映射自定义模型路由规则",
             "background_task_title": "后台任务模型",
             "background_task_desc": "用于 Claude CLI 的标题生成、摘要提取等后台自动化任务 (默认: gemini-2.5-flash)",
@@ -953,7 +964,7 @@
             "groups": {
                 "claude_45": {
                     "name": "Claude 4.6 TK 系列",
-                    "desc": "Opus 4.6 TK (推理)"
+                    "desc": "Opus 4.5 TK (推理)"
                 },
                 "claude_35": {
                     "name": "Claude 3.5 系列",
