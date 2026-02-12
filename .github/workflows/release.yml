@@ -181,15 +181,19 @@ jobs:
           MACOS_AARCH64_SIG=$(read_sig "*_aarch64.app.tar.gz.sig")
           MACOS_X64_SIG=$(read_sig "*_x64.app.tar.gz.sig")
           WINDOWS_NSIS_SIG=$(read_sig "*_x64-setup.exe.sig")
+          LINUX_AMD64_SIG=$(read_sig "*_amd64.AppImage.sig")
+          LINUX_AARCH64_SIG=$(read_sig "*_aarch64.AppImage.sig")
 
           echo "Signatures found:"
           [ -n "$MACOS_AARCH64_SIG" ] && echo "  macOS aarch64: YES" || echo "  macOS aarch64: NO"
           [ -n "$MACOS_X64_SIG" ] && echo "  macOS x64: YES" || echo "  macOS x64: NO"
           [ -n "$WINDOWS_NSIS_SIG" ] && echo "  Windows x64: YES" || echo "  Windows x64: NO"
+          [ -n "$LINUX_AMD64_SIG" ] && echo "  Linux amd64: YES" || echo "  Linux amd64: NO"
+          [ -n "$LINUX_AARCH64_SIG" ] && echo "  Linux aarch64: YES" || echo "  Linux aarch64: NO"
 
           # Build updater.json with platform-specific download URLs and signatures
           # macOS: arch-suffixed filenames (no version in name)
-          # Windows: version included in filename
+          # Windows/Linux: version included in filename
           jq -n \
             --arg version "$VER" \
             --arg notes "See release page for details" \
@@ -198,6 +202,8 @@ jobs:
             --arg mac_a64_sig "$MACOS_AARCH64_SIG" \
             --arg mac_x64_sig "$MACOS_X64_SIG" \
             --arg win_nsis_sig "$WINDOWS_NSIS_SIG" \
+            --arg linux_amd64_sig "$LINUX_AMD64_SIG" \
+            --arg linux_a64_sig "$LINUX_AARCH64_SIG" \
             --arg ver "$VER" \
             '{
               version: $version,
@@ -215,6 +221,14 @@ jobs:
                 "windows-x86_64": {
                   url: "\($dl)/Antigravity.Tools_\($ver)_x64-setup.exe",
                   signature: $win_nsis_sig
+                },
+                "linux-x86_64": {
+                  url: "\($dl)/Antigravity.Tools_\($ver)_amd64.AppImage",
+                  signature: $linux_amd64_sig
+                },
+                "linux-aarch64": {
+                  url: "\($dl)/Antigravity.Tools_\($ver)_aarch64.AppImage",
+                  signature: $linux_a64_sig
                 }
               }
             }' > updater.json
