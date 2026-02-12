@@ -264,6 +264,10 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.1.16 (2026-02-12)**:
+        -   **[Core Fix] Resolve effortLevel conflict in Gemini Image Generation caused by keyword matching (PR #1873)**:
+            -   **Logic Conflict Fix**: Completely fixed the HTTP 400 error where `gemini-3-pro-image` and its 4k/2k variants were incorrectly identified as supporting Adaptive Thinking due to the `gemini-3-pro` keyword, leading to the erroneous injection of `effortLevel`.
+            -   **Parameter Scrubbing**: Added specific filtering for image generation models at the proxy layer to ensure incompatible generation parameters are no longer injected into non-thinking models.
     *   **v4.1.15 (2026-02-11)**:
         -   **[Core Feature] Enable Native Auto-Update for macOS and Windows (PR #1850)**:
             -   **End-to-End Auto-Update**: Enabled the native Tauri updater plugin, supporting in-app update checks, downloads, and installations.
