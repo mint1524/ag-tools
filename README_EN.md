@@ -269,6 +269,8 @@ print(response.choices[0].message.content)
             -   **Protocol Alignment**: Completely fixed the `400 Invalid Argument` error caused by parameter structure mismatch when calling models like Claude 3.7/4.5 Thinking via proxy.
             -   **Unified Injection**: Deprecated the conflicting root-level `thinking` field injection. Now uniformly uses the `generationConfig.thinkingConfig` nested structure recommended by Google's native protocol.
             -   **Budget Adaptation**: Adapted a default 16k Thinking Budget for Claude models and resolved compilation/runtime exceptions caused by Rust borrow checker conflicts.
+        -   **[Bug Fix] Resolve OpenAI Streaming Usage Duplication (Issue #1915)**:
+            -   **Token Explosion Fix**: Fixed an issue in `stream=true` mode where the `usage` field was incorrectly appended to every data chunk, causing clients (like Cline/Roo Code) to report exponentially inflated token usage.
         -   **[Core Feature] Enable Native Auto-Update for Linux Platform (PR #1891)**:
             -   **Full Platform Coverage**: Added support for `linux-x86_64` and `linux-aarch64` platforms in `updater.json`, enabling Linux AppImage users to receive auto-update notifications.
             -   **Workflow Optimization**: Automatically detects and reads `.AppImage.sig` signature files for Linux builds, completing the auto-update loop for macOS, Windows, and Linux.

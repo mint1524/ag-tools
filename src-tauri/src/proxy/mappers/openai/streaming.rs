@@ -251,8 +251,10 @@ pub fn create_openai_sse_stream(
                                                                 "finish_reason": finish_reason
                                                             }]
                                                         });
-                                                        if let Some(ref usage) = final_usage {
-                                                            openai_chunk["usage"] = serde_json::to_value(usage).unwrap();
+                                                        if finish_reason.is_some() {
+                                                            if let Some(ref usage) = final_usage {
+                                                                openai_chunk["usage"] = serde_json::to_value(usage).unwrap();
+                                                            }
                                                         }
                                                         if finish_reason.is_some() { final_usage = None; }
                                                         let sse_out = format!("data: {}\n\n", serde_json::to_string(&openai_chunk).unwrap_or_default());
