@@ -30,6 +30,7 @@ export function OpenCodeSyncModal({ proxyUrl, apiKey, onClose, onSyncDone }: Ope
     const [syncing, setSyncing] = useState(false);
     const [configLoaded, setConfigLoaded] = useState(false);
     const [hasAuthPlugin, setHasAuthPlugin] = useState(false);
+    const [customBaseUrl, setCustomBaseUrl] = useState(proxyUrl);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 3 } }),
@@ -81,6 +82,11 @@ export function OpenCodeSyncModal({ proxyUrl, apiKey, onClose, onSyncDone }: Ope
                 const hasAuth = plugins.some((p: string) => p.includes('opencode-antigravity-auth'));
                 setHasAuthPlugin(hasAuth);
 
+                // Try to extract existing baseURL from antigravity-manager provider
+                if (parsed.provider?.['antigravity-manager']?.options?.baseURL) {
+                    setCustomBaseUrl(parsed.provider['antigravity-manager'].options.baseURL);
+                }
+
                 setSelectedModels(existingModelIds);
                 rebuildPreview(existingModelIds);
             })
@@ -124,7 +130,7 @@ export function OpenCodeSyncModal({ proxyUrl, apiKey, onClose, onSyncDone }: Ope
         try {
             const models = previewModels.map(m => m.model);
             await invoke('execute_opencode_sync', {
-                proxyUrl,
+                proxyUrl: customBaseUrl || proxyUrl,
                 apiKey,
                 syncAccounts: true,
                 models
@@ -153,7 +159,7 @@ export function OpenCodeSyncModal({ proxyUrl, apiKey, onClose, onSyncDone }: Ope
                             </div>
                             <div>
                                 <h3 className="text-sm font-bold text-gray-900 dark:text-base-content">
-                                    {t('proxy.opencode_sync.modal_title', { defaultValue: '选择 OpenCode 模型' })}
+                                    {t('proxy.config.opencode_sync.modal_title', { defaultValue: '选择 OpenCode 模型' })}
                                 </h3>
                                 <p className="text-[10px] text-gray-400 mt-0.5">~/.config/opencode/opencode.json</p>
                             </div>
@@ -164,11 +170,42 @@ export function OpenCodeSyncModal({ proxyUrl, apiKey, onClose, onSyncDone }: Ope
                     </div>
                 </div>
 
+                {/* Custom BaseURL Input */}
+                <div className="px-5 py-2 shrink-0 border-b border-gray-100 dark:border-base-200 bg-gray-50/50 dark:bg-base-200/30">
+                    <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                                {t('proxy.config.opencode_sync.custom_base_url_label', { defaultValue: 'Custom Manager BaseURL' })}
+                            </label>
+                            <span className="text-[9px] text-gray-400 italic font-medium">
+                                {t('proxy.config.opencode_sync.custom_base_url_desc', { defaultValue: 'For Docker Compose networking' })}
+                            </span>
+                        </div>
+                        <div className="relative group">
+                            <input
+                                type="text"
+                                value={customBaseUrl}
+                                onChange={(e) => setCustomBaseUrl(e.target.value)}
+                                placeholder="e.g. http://antigravity-manager:8045/v1"
+                                className="w-full px-3 py-1.5 text-xs bg-white dark:bg-base-100 border border-gray-200 dark:border-base-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            />
+                            {customBaseUrl !== proxyUrl && (
+                                <button
+                                    onClick={() => setCustomBaseUrl(proxyUrl)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] text-blue-500 hover:text-blue-600 font-medium"
+                                >
+                                    {t('proxy.config.opencode_sync.custom_base_url_reset', { defaultValue: 'Reset' })}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
                 {/* 模型选择区 */}
                 <div className="px-5 pb-3 shrink-0 border-b border-gray-100 dark:border-base-200">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                            {t('proxy.opencode_sync.select_models', { defaultValue: '选择要同步的模型' })}
+                            {t('proxy.config.opencode_sync.select_models', { defaultValue: '选择要同步的模型' })}
                             <span className="ml-2 text-gray-300">{selectedModels.size}/{antigravityModels.length}</span>
                         </span>
                         <button onClick={toggleAll} className="text-[10px] text-blue-500 hover:text-blue-600 font-medium transition-colors">
@@ -210,7 +247,7 @@ export function OpenCodeSyncModal({ proxyUrl, apiKey, onClose, onSyncDone }: Ope
                 {hasAuthPlugin && (
                     <div className="px-5 py-2 shrink-0 bg-amber-50 dark:bg-amber-900/20 border-y border-amber-100 dark:border-amber-900/30">
                         <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                            {t('proxy.opencode_sync.auth_plugin_warning', {
+                            {t('proxy.config.opencode_sync.auth_plugin_warning', {
                                 defaultValue: 'Sync chỉ tạo provider antigravity-manager và không ghi đè google provider/plugin.'
                             })}
                         </p>
@@ -260,7 +297,7 @@ export function OpenCodeSyncModal({ proxyUrl, apiKey, onClose, onSyncDone }: Ope
                         onClick={executeOpenCodeSync}
                     >
                         <RefreshCw size={12} className={syncing ? 'animate-spin' : ''} />
-                        {t('proxy.opencode_sync.btn_confirm_sync', { defaultValue: '确认同步' })}
+                        {t('proxy.config.opencode_sync.btn_confirm_sync', { defaultValue: '确认同步' })}
                     </button>
                 </div>
             </div>

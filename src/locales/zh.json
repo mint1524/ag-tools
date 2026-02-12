@@ -797,7 +797,10 @@
                 "modal_title": "选择 OpenCode 模型",
                 "select_models": "选择要同步的模型",
                 "auth_plugin_warning": "检测到 opencode-antigravity-auth 插件。同步仅会创建 antigravity-manager provider，不会覆盖 google provider/plugin。",
-                "btn_confirm_sync": "确认同步"
+                "btn_confirm_sync": "确认同步",
+                "custom_base_url_label": "自定义 Manager BaseURL",
+                "custom_base_url_desc": "适用于 Docker Compose 网络环境",
+                "custom_base_url_reset": "重置"
             },
             "droid_sync": {
                 "modal_title": "添加模型到 Droid",

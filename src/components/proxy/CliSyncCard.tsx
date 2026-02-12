@@ -291,7 +291,8 @@ export const CliSyncCard = ({ proxyUrl, apiKey, className }: CliSyncCardProps) =
                         </div>
                     </div>
 
-                    {!isAppLoading && status?.installed && (
+                    {/* Show Sync Status if installed OR if it's OpenCode (which we now allow configuring even if not installed) */}
+                    {!isAppLoading && (status?.installed || app === 'OpenCode' && status?.current_base_url) && (
                         <div className={cn(
                             "inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-wide transition-all h-6 shrink-0 whitespace-nowrap shadow-sm",
                             status.is_synced
@@ -318,7 +319,7 @@ export const CliSyncCard = ({ proxyUrl, apiKey, className }: CliSyncCardProps) =
                     </div>
 
                     {/* Claude, Codex, Gemini 的模型选择 */}
-                    {status?.installed && (app === 'Claude' || app === 'Codex' || app === 'Gemini') && (
+                    {(status?.installed || app === 'OpenCode') && (app === 'Claude' || app === 'Codex' || app === 'Gemini') && (
                         <div className="space-y-1">
                             <div className="text-[9px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-wider px-1">
                                 {t('proxy.cli_sync.model_select', { defaultValue: 'Select Model' })}
@@ -333,8 +334,8 @@ export const CliSyncCard = ({ proxyUrl, apiKey, className }: CliSyncCardProps) =
                         </div>
                     )}
 
-                    {/* OpenCode 独有的账号同步选项 */}
-                    {app === 'OpenCode' && status?.installed && (
+                    {/* OpenCode 独有的账号同步选项 - Allow even if not installed */}
+                    {app === 'OpenCode' && (
                         <div className="flex items-center gap-2 p-2 bg-gray-50/50 dark:bg-gray-900/20 rounded-lg">
                             <input
                                 type="checkbox"
@@ -350,7 +351,7 @@ export const CliSyncCard = ({ proxyUrl, apiKey, className }: CliSyncCardProps) =
                     )}
 
                     <div className="flex items-center gap-2">
-                        {status?.installed && (
+                        {(status?.installed || app === 'OpenCode') && (
                             <>
                                 {/* 对于 OpenCode，如果未同步，则不显示查看按钮（因为文件尚未生成，后端会报错） */}
                                 {(app !== 'OpenCode' || status?.is_synced) && (
@@ -383,7 +384,7 @@ export const CliSyncCard = ({ proxyUrl, apiKey, className }: CliSyncCardProps) =
                         )}
                         <button
                             onClick={() => handleSync(app)}
-                            disabled={!status?.installed || isAppSyncing || isAppLoading}
+                            disabled={(app !== 'OpenCode' && !status?.installed) || isAppSyncing || isAppLoading}
                             className={cn(
                                 "btn btn-sm flex-1 gap-2 rounded-xl transition-all font-bold shadow-sm",
                                 status?.is_synced

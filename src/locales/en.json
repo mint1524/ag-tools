@@ -806,7 +806,10 @@
                 "modal_title": "Select OpenCode Models",
                 "select_models": "Select models to sync",
                 "auth_plugin_warning": "Detected opencode-antigravity-auth plugin. Sync only creates provider antigravity-manager and will not overwrite the google provider/plugin.",
-                "btn_confirm_sync": "Confirm Sync"
+                "btn_confirm_sync": "Confirm Sync",
+                "custom_base_url_label": "Custom Manager BaseURL",
+                "custom_base_url_desc": "For Docker Compose networking",
+                "custom_base_url_reset": "Reset"
             },
             "droid_sync": {
                 "modal_title": "Add models to Droid",

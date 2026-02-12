@@ -1554,11 +1554,7 @@ pub fn read_opencode_config_content(file_name: Option<String>) -> Result<String,
 #[tauri::command]
 pub async fn get_opencode_sync_status(proxy_url: String) -> Result<OpencodeStatus, String> {
     let (installed, version) = check_opencode_installed();
-    let (is_synced, has_backup, current_base_url) = if installed {
-        get_sync_status(&proxy_url)
-    } else {
-        (false, false, None)
-    };
+    let (is_synced, has_backup, current_base_url) = get_sync_status(&proxy_url);
 
     Ok(OpencodeStatus {
         installed,
