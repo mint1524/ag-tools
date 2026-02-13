@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.1.16)
+> Professional AI Account Management & Protocol Proxy System (v4.1.17)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -9,7 +9,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.16-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.17-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -132,7 +132,7 @@ irm https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.ps
 
 > **Supported formats**: Linux (`.deb` / `.rpm` / `.AppImage`) | macOS (`.dmg`) | Windows (NSIS `.exe`)
 >
-> **Advanced usage**: Install a specific version `curl -fsSL ... | bash -s -- --version 4.1.16`, dry-run mode `curl -fsSL ... | bash -s -- --dry-run`
+> **Advanced usage**: Install a specific version `curl -fsSL ... | bash -s -- --version 4.1.17`, dry-run mode `curl -fsSL ... | bash -s -- --dry-run`
 
 #### macOS - Homebrew
 If you have [Homebrew](https://brew.sh/) installed, you can also install via:
