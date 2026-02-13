@@ -113,10 +113,28 @@ graph TD
 
 ##  安装指南 (Installation)
 
-### 选项 A: 终端安装 (macOS & Linux 推荐)
+### 选项 A: 终端安装 (推荐)
 
-#### macOS 
-如果您已安装 [Homebrew](https://brew.sh/)，可以通过以下命令快速安装：
+#### 跨平台一键安装脚本
+
+自动检测操作系统、架构和包管理器，一条命令完成下载与安装。
+
+**Linux / macOS:**
+```bash
+curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+```powershell
+irm https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.ps1 | iex
+```
+
+> **支持的格式**: Linux (`.deb` / `.rpm` / `.AppImage`) | macOS (`.dmg`) | Windows (NSIS `.exe`)
+>
+> **高级用法**: 安装指定版本 `curl -fsSL ... | bash -s -- --version 4.1.16`，预览模式 `curl -fsSL ... | bash -s -- --dry-run`
+
+#### macOS - Homebrew
+如果您已安装 [Homebrew](https://brew.sh/)，也可以通过以下命令安装：
 
 ```bash
 # 1. 订阅本仓库的 Tap
