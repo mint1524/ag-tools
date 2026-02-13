@@ -291,6 +291,9 @@ print(response.choices[0].message.content)
             -   **Logic Optimization**: Prioritized checking `updater.json` to reduce direct dependency on GitHub API, improving check speed.
         -   **[Documentation] Cross-Platform Install Scripts (PR #1931)**:
             -   **One-Click Install**: Updated Option A in README to recommend the cross-platform one-click installation script.
+        -   **[Community] Added Telegram Channel Entry**:
+            -   **Community Card**: Added a Telegram Channel card to the "Settings -> About" page, allowing users to quickly join the official channel for the latest updates.
+            -   **Layout Optimization**: Adjusted the grid layout of cards on the About page to fit 5 columns, ensuring a clean and organized interface.
     *   **v4.1.16 (2026-02-12)**:
         -   **[Core Fix] Resolve Claude Protocol (Thinking Model) 400 Errors (V4 Scheme)**:
             -   **Protocol Alignment**: Completely fixed the `400 Invalid Argument` error caused by parameter structure mismatch when calling models like Claude 3.7/4.5 Thinking via proxy.
