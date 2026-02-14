@@ -453,7 +453,8 @@ impl StreamingState {
                 }
             }
 
-            if !grounding_text.is_empty() {
+            let trimmed_grounding = grounding_text.trim();
+            if !trimmed_grounding.is_empty() {
                 // 发送一个新的 text 块
                 chunks.push(self.emit(
                     "content_block_start",
@@ -463,7 +464,7 @@ impl StreamingState {
                         "content_block": { "type": "text", "text": "" }
                     }),
                 ));
-                chunks.push(self.emit_delta("text_delta", json!({ "text": grounding_text })));
+                chunks.push(self.emit_delta("text_delta", json!({ "text": trimmed_grounding })));
                 chunks.push(self.emit(
                     "content_block_stop",
                     json!({ "type": "content_block_stop", "index": self.block_index }),

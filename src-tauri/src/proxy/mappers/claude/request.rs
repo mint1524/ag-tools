@@ -916,8 +916,9 @@ fn build_contents(
     match content {
         MessageContent::String(text) => {
             if text != "(no content)" {
-                if !text.trim().is_empty() {
-                    parts.push(json!({"text": text.trim()}));
+                let trimmed = text.trim();
+                if !trimmed.is_empty() {
+                    parts.push(json!({"text": trimmed}));
                 }
             }
         }
@@ -925,7 +926,7 @@ fn build_contents(
             for item in blocks {
                 match item {
                     ContentBlock::Text { text } => {
-                        if text != "(no content)" {
+                        if text != "(no content)" && !text.trim().is_empty() {
                             // [NEW] 任务去重逻辑: 如果当前是 User 消息，且紧跟在 ToolResult 之后，
                             // 检查该文本是否与上一轮任务描述完全一致。
                             if !is_assistant && *previous_was_tool_result {
@@ -966,9 +967,9 @@ fn build_contents(
                         // If we already have content (like Text), we must downgrade this thinking block to Text.
                         if saw_non_thinking || !parts.is_empty() {
                             tracing::warn!("[Claude-Request] Thinking block found at non-zero index (prev parts: {}). Downgrading to Text.", parts.len());
-                            if !thinking.is_empty() {
+                            if !thinking.trim().is_empty() {
                                 parts.push(json!({
-                                    "text": thinking
+                                    "text": thinking.trim()
                                 }));
                                 saw_non_thinking = true;
                             }
@@ -979,10 +980,11 @@ fn build_contents(
                         // to avoid "thinking is disabled but message contains thinking" error
                         if !is_thinking_enabled {
                             tracing::warn!("[Claude-Request] Thinking disabled. Downgrading thinking block to text.");
-                            if !thinking.is_empty() {
+                            if !thinking.trim().is_empty() {
                                 parts.push(json!({
-                                    "text": thinking
+                                    "text": thinking.trim()
                                 }));
+                                saw_non_thinking = true;
                             }
                             continue;
                         }
