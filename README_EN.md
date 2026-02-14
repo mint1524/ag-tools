@@ -285,7 +285,7 @@ print(response.choices[0].message.content)
 *   **Changelog**:
     *   **v4.1.18 (2026-02-14)**:
         -   **[Core Upgrade] Full Implementation of JA3 Fingerprint Spoofing (Chrome 123)**:
-            -   **Anti-Bot Evasion**: Integrated `rquest` with BoringSSL to perfectly mimic Chrome 123's TLS fingerprint (JA3/JA4), resolving 403/Captchas issues from strict upstream providers.
+            -   **Anti-Bot Evasion**: Integrated `rquest` with BoringSSL to perfectly mimic Chrome 123's TLS fingerprint (JA3/JA4), effectively resolving 403/Captchas issues from strict upstream providers.
             -   **Global Application**: Applied spoofing to both global shared clients and the proxy pool manager, ensuring all outbound traffic (from quota fetching to chat completion) appears as legitimate browser requests.
         -   **[Refactor] Universal Stream Handling (Issue #1955)**:
             -   **Dual-Core Compatibility**: Refactored SSE handling and debug logging to support `Box<dyn Stream>`, enabling unified compatibility for both `reqwest` (standard) and `rquest` (spoofed) response streams and resolving underlying type conflicts.

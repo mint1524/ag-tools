@@ -22,8 +22,8 @@ use futures::Stream;
 use std::pin::Pin;
 
 /// 创建从 Gemini SSE 流到 Claude SSE 流的转换
-pub fn create_claude_sse_stream(
-    mut gemini_stream: Pin<Box<dyn Stream<Item = Result<Bytes, reqwest::Error>> + Send>>,
+pub fn create_claude_sse_stream<S, E>(
+    mut gemini_stream: Pin<Box<S>>,
     trace_id: String,
     email: String,
     session_id: Option<String>, // [NEW v3.3.17] Session ID for signature caching
@@ -32,7 +32,11 @@ pub fn create_claude_sse_stream(
     estimated_prompt_tokens: Option<u32>, // [FIX] Estimated tokens for calibrator learning
     message_count: usize, // [NEW v4.0.0] Message count for rewind detection
     client_adapter: Option<std::sync::Arc<dyn ClientAdapter>>, // [NEW] Adapter reference
-) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>> {
+) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>> 
+where
+    S: Stream<Item = Result<Bytes, E>> + Send + ?Sized + 'static,
+    E: std::fmt::Display + Send + 'static,
+{
     use async_stream::stream;
     use bytes::BytesMut;
     use futures::StreamExt;
@@ -484,7 +488,7 @@ mod tests {
                 "modelVersion": "gemini-2.0-flash-thinking",
                 "responseId": "msg_interrupted"
             });
-            yield Ok(bytes::Bytes::from(format!("data: {}\n\n", thinking_json)));
+            yield Ok::<_, String>(bytes::Bytes::from(format!("data: {}\n\n", thinking_json)));
             
             // 然后突然结束 (没有 Text, 没有 Usage, 直接 None)
         };

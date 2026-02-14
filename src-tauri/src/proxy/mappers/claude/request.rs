@@ -1797,7 +1797,7 @@ fn build_generation_config(
 
         // [FIX] 针对 Gemini 2.x 设置 thinkingBudget, 对于 3.x 设置 thinkingLevel
         // 注意：目前 v1internal 接口对 3.x 预览版可能也需要特定的映射
-        if user_is_adaptive {
+        if should_use_adaptive {
             // [FIX #1825] Claude 4.6+ adaptive 模式下映射为动态预算或分级思维
             if lower_mapped.contains("gemini-3") {
                 // Gemini 3.x 支持分级指标格式，联动用户选择的强度
@@ -1874,7 +1874,10 @@ fn build_generation_config(
     let final_overhead = if is_adaptive_effective { 131072 } else { 32768 };
 
     if let Some(thinking_config) = config.get("thinkingConfig") {
-        if let Some(budget) = thinking_config
+        if is_adaptive_effective {
+             // [FIX] Adaptive mode: enforce large context window (128k) regardless of the shim budget
+             final_max_tokens = Some(final_overhead as i64);
+        } else if let Some(budget) = thinking_config
             .get("thinkingBudget")
             .and_then(|t| t.as_u64())
         {
@@ -2871,7 +2874,7 @@ mod tests {
 
         // Check injection
         assert_eq!(thinking_config["includeThoughts"], true);
-        assert_eq!(thinking_config["thinkingBudget"], -1);
+        assert_eq!(thinking_config["thinkingBudget"], 16000);
         assert!(thinking_config.get("thinkingType").is_none());
         assert!(thinking_config.get("effort").is_none());
 

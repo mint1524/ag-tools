@@ -433,7 +433,7 @@ response = client.chat.completions.create(
 *   **版本演进 (Changelog)**:
     *   **v4.1.18 (2026-02-14)**:
         -   **[核心升级] JA3 指纹伪装 (Chrome 123) 全面实装**:
-            -   **反爬虫突破**: 引入 `rquest` 核心库并集成 BoringSSL，实现了像素级复刻 Chrome 123 的 TLS 指纹 (JA3/JA4)，彻底解决高防护上游的 403/Captchas 拦截问题。
+            -   **反爬虫突破**: 引入 `rquest` 核心库并集成 BoringSSL，实现了像素级复刻 Chrome 123 的 TLS 指纹 (JA3/JA4)，有效解决高防护上游的 403/Captchas 拦截问题。
             -   **全局覆盖**: 指纹伪装已应用至全局共享客户端及代理池管理器，确保从配额查询到对话补全的所有出站流量均模拟为真实浏览器行为。
         -   **[架构重构] 通用流式响应处理 (Universal Stream Handling) (Issue #1955)**:
             -   **双核兼容**: 重构了 SSE 处理与调试日志模块，通过 `Box<dyn Stream>` 实现了对 `reqwest` (标准) 与 `rquest` (伪装) 响应流的统一兼容，消除了底层类型冲突。
