@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.1.17)
+> Professional AI Account Management & Protocol Proxy System (v4.1.18)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -9,7 +9,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.17-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.18-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -122,7 +122,7 @@ Automatically detects your OS, architecture, and package manager — one command
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.1.18/install.sh | bash
 ```
 
 **Windows (PowerShell):**
@@ -283,6 +283,17 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.1.18 (2026-02-14)**:
+        -   **[Core Feature] Account Error Details Expansion**:
+            -   **In-depth Insights**: Introduced a detailed error modal for "Disabled" and "403 Forbidden" accounts, automatically displaying underlying API error reasons (e.g., `invalid_grant`).
+            -   **Verification Link Detection**: [New] Intelligently detects Google verification/appeal links in error messages, supporting direct one-click navigation within the modal to accelerate recovery.
+            -   **Time Calibration**: Fixed a bug where "Detection Time" was incorrectly displayed as a future date due to unit conversion errors.
+        -   **[i18n] Full Multilingual Localization Completion**:
+            -   **All Languages Supported**: Synchronized account details and error status entries across all 12 supported languages (AR, ES, JA, KO, MY, PT, RU, TR, VI, EN, and ZH-Hans/Hant).
+            -   **Localization Refinement**: Optimized terminology for various locales (especially Japanese, Turkish, and Traditional Chinese), ensuring a professional native experience for users worldwide.
+        -   **[Core Fix] Resolve Quota Matching Failure for Image Model Suffixes (Issue #1955)**:
+            -   **Normalization Optimization**: Fixed an issue where `gemini-3-pro-image` variants with resolution or aspect-ratio suffixes (e.g., `-4k`, `-16x9`) failed to normalize correctly, leading to precise matching failures in the quota system.
+            -   **Quota Alignment**: Ensures all image model variants are correctly mapped to their standard IDs, accurately triggering account quota protection and resolving the "No accounts available with quota" error.
     *   **v4.1.17 (2026-02-13)**:
         -   **[UX] Auto-Update Experience Upgrade (PR #1923)**:
             -   **Background Download**: Implemented silent background downloading of updates, no longer blocking user operations during the process.

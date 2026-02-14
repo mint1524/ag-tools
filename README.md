@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业级 AI 账号管理与协议代理系统 (v4.1.17)
+> 专业级 AI 账号管理与协议代理系统 (v4.1.18)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.17-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.18-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -121,7 +121,7 @@ graph TD
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.1.18/install.sh | bash
 ```
 
 **Windows (PowerShell):**
@@ -431,6 +431,17 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
+    *   **v4.1.18 (2026-02-14)**:
+        -   **[核心功能] 账号错误详情增强 (Account Error Details Expansion)**:
+            -   **详情解读**: 为“已禁用”和“403 Forbidden”状态的账号引入了深度错误详情弹窗，自动展示底层 API 报错原因（如 `invalid_grant` 等）。
+            -   **验证链接识别**: [新] 智能检测错误文本中的 Google 验证/申诉链接，支持在弹窗内直接点击跳转，加速账号修复流程。
+            -   **时间校准**: 修复了由于单位转换错误导致的“检测时间”显示为未来的 Bug。
+        -   **[i18n] 全球化多语言支持大满贯**:
+            -   **全语言适配**: 为全部 12 种支持语言（阿、西、日、韩、缅、葡、俄、土、越、英及简繁中）同步补全了账号详情与错误状态词条。
+            -   **本地化精修**: 优化了各语言下的术语匹配（特别是日语、土耳其语和繁体中文），确保全球用户都能获得准确的母语提示。
+        -   **[核心修复] 修复图像生成模型后缀导致的配额匹配失效 (Issue #1955)**:
+            -   **模式归一化**: 修复了 `gemini-3-pro-image` 及其分辨率/比例后缀（如 `-4k`, `-16x9`）因归一化匹配不精确导致的配额校验失效问题。
+            -   **配额对齐**: 确保所有图像模型变体都能正确映射到标准 ID，从而准确触发账号配额保护，解决了“无可用配额账号”的误报。
     *   **v4.1.17 (2026-02-13)**:
         -   **[用户体验] 自动更新体验升级 (PR #1923)**:
             -   **后台下载**: 实现了更新包的后台静默下载，下载过程中不再阻断用户操作。
