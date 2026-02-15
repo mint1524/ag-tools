@@ -26,7 +26,7 @@ serde_json = { version = "1", features = ["preserve_order"] }
 uuid = { version = "1.10", features = ["v4", "serde"] }
 chrono = "0.4"
 dirs = "5.0"
-reqwest = { version = "0.12", features = ["json", "stream", "socks", "blocking"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "socks", "blocking", "rustls-tls"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "time"] }
 rusqlite = { version = "0.32", features = ["bundled"] }
@@ -78,4 +78,4 @@ rquest-util = "2.2.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
-openssl = { version = "0.10", features = ["vendored"] }
+
