@@ -1438,9 +1438,9 @@ pub async fn fetch_quota_with_retry(account: &mut Account) -> crate::error::AppR
     }
 
     // 3. Handle 401 error
-    if let Err(AppError::Network(ref e)) = result {
-        if let Some(status) = e.status() {
-            if status == StatusCode::UNAUTHORIZED {
+    if let Err(AppError::Network(_, status)) = result {
+        if let Some(code) = status {
+            if code == 401 {
                 modules::logger::log_warn(&format!(
                     "401 Unauthorized for {}, forcing refresh...",
                     account.email
@@ -1513,9 +1513,9 @@ pub async fn fetch_quota_with_retry(account: &mut Account) -> crate::error::AppR
                     }
                 }
 
-                if let Err(AppError::Network(ref e)) = retry_result {
-                    if let Some(s) = e.status() {
-                        if s == StatusCode::FORBIDDEN {
+                if let Err(AppError::Network(_, status)) = retry_result {
+                    if let Some(code) = status {
+                        if code == 403 {
                             let mut q = QuotaData::new();
                             q.is_forbidden = true;
                             return Ok(q);

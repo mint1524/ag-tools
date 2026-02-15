@@ -1,4 +1,4 @@
-use reqwest;
+use rquest;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use crate::models::QuotaData;
@@ -53,7 +53,7 @@ struct Tier {
 }
 
 /// Get shared HTTP Client (15s timeout)
-async fn create_client(account_id: Option<&str>) -> reqwest::Client {
+async fn create_client(account_id: Option<&str>) -> rquest::Client {
     if let Some(pool) = crate::proxy::proxy_pool::get_global_proxy_pool() {
         pool.get_effective_client(account_id, 15).await
     } else {
@@ -63,7 +63,7 @@ async fn create_client(account_id: Option<&str>) -> reqwest::Client {
 
 /// Get shared HTTP Client (60s timeout)
 #[allow(dead_code)] // 预留给预热/后台任务调用
-async fn create_warmup_client(account_id: Option<&str>) -> reqwest::Client {
+async fn create_warmup_client(account_id: Option<&str>) -> rquest::Client {
     if let Some(pool) = crate::proxy::proxy_pool::get_global_proxy_pool() {
         pool.get_effective_client(account_id, 60).await
     } else {
@@ -80,9 +80,9 @@ async fn fetch_project_id(access_token: &str, email: &str, account_id: Option<&s
 
     let res = client
         .post(format!("{}/v1internal:loadCodeAssist", CLOUD_CODE_BASE_URL))
-        .header(reqwest::header::AUTHORIZATION, format!("Bearer {}", access_token))
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
-        .header(reqwest::header::USER_AGENT, crate::constants::USER_AGENT.as_str())
+        .header(rquest::header::AUTHORIZATION, format!("Bearer {}", access_token))
+        .header(rquest::header::CONTENT_TYPE, "application/json")
+        .header(rquest::header::USER_AGENT, crate::constants::USER_AGENT.as_str())
         .json(&meta)
         .send()
         .await;
@@ -155,7 +155,7 @@ pub async fn fetch_quota_with_cache(
         match client
             .post(url)
             .bearer_auth(access_token)
-            .header(reqwest::header::USER_AGENT, crate::constants::USER_AGENT.as_str())
+            .header(rquest::header::USER_AGENT, crate::constants::USER_AGENT.as_str())
             .json(&json!(payload))
             .send()
             .await
@@ -166,7 +166,7 @@ pub async fn fetch_quota_with_cache(
                     let status = response.status();
                     
                     // ✅ Special handling for 403 Forbidden - return directly, no retry
-                    if status == reqwest::StatusCode::FORBIDDEN {
+                    if status == rquest::StatusCode::FORBIDDEN {
                         crate::modules::logger::log_warn(&format!(
                             "Account unauthorized (403 Forbidden), marking as forbidden"
                         ));
@@ -192,7 +192,7 @@ pub async fn fetch_quota_with_cache(
                 let quota_response: QuotaResponse = response
                     .json()
                     .await
-                    .map_err(|e| AppError::Network(e))?;
+                    .map_err(AppError::from)?;
                 
                 let mut quota_data = QuotaData::new();
                 
@@ -221,7 +221,7 @@ pub async fn fetch_quota_with_cache(
             },
             Err(e) => {
                 crate::modules::logger::log_warn(&format!("Request failed: {} (Attempt {}/{})", e, attempt, MAX_RETRIES));
-                last_error = Some(AppError::Network(e));
+                last_error = Some(AppError::from(e));
                 if attempt < MAX_RETRIES {
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 }
@@ -297,11 +297,11 @@ pub async fn warmup_model_directly(
 
     // Use a no-proxy client for local loopback requests
     // This prevents Docker environments from routing localhost through external proxies
-    let client = reqwest::Client::builder()
+    let client = rquest::Client::builder()
         .timeout(std::time::Duration::from_secs(60))
         .no_proxy()
         .build()
-        .unwrap_or_else(|_| reqwest::Client::new());
+        .unwrap_or_else(|_| rquest::Client::new());
     let resp = client
         .post(&warmup_url)
         .header("Content-Type", "application/json")

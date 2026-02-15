@@ -2,7 +2,7 @@
 // 基于高性能通讯接口封装
 
 use dashmap::DashMap;
-use reqwest::{header, Client, Response, StatusCode};
+use rquest::{header, Client, Response, StatusCode};
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -82,8 +82,9 @@ impl UpstreamClient {
     /// Internal helper to build a client with optional upstream proxy config
     fn build_client_internal(
         proxy_config: Option<crate::proxy::config::UpstreamProxyConfig>,
-    ) -> Result<Client, reqwest::Error> {
+    ) -> Result<Client, rquest::Error> {
         let mut builder = Client::builder()
+            .emulation(rquest_util::Emulation::Chrome123)
             // Connection settings (优化连接复用，减少建立开销)
             .connect_timeout(Duration::from_secs(20))
             .pool_max_idle_per_host(16) // 每主机最多 16 个空闲连接
@@ -95,7 +96,7 @@ impl UpstreamClient {
         if let Some(config) = proxy_config {
             if config.enabled && !config.url.is_empty() {
                 let url = crate::proxy::config::normalize_proxy_url(&config.url);
-                if let Ok(proxy) = reqwest::Proxy::all(&url) {
+                if let Ok(proxy) = rquest::Proxy::all(&url) {
                     builder = builder.proxy(proxy);
                     tracing::info!("UpstreamClient enabled proxy: {}", url);
                 }
@@ -109,9 +110,10 @@ impl UpstreamClient {
     fn build_client_with_proxy(
         &self,
         proxy_config: crate::proxy::proxy_pool::PoolProxyConfig,
-    ) -> Result<Client, reqwest::Error> {
+    ) -> Result<Client, rquest::Error> {
         // Reuse base settings similar to default client but with specific proxy
         Client::builder()
+            .emulation(rquest_util::Emulation::Chrome123)
             .connect_timeout(Duration::from_secs(20))
             .pool_max_idle_per_host(16)
             .pool_idle_timeout(Duration::from_secs(90))

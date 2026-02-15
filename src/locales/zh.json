@@ -113,6 +113,7 @@
         }
     },
     "accounts": {
+        "account": "账号",
         "search_placeholder": "搜索邮箱...",
         "all": "全部",
         "available": "可用",
@@ -149,6 +150,16 @@
         "forbidden_badge": "403",
         "forbidden_tooltip": "API 返回 403 Forbidden，账号无权使用 Gemini Code Assist",
         "forbidden_msg": "账号无权限，已跳过自动刷新",
+        "status": {
+            "forbidden": "403 Forbidden",
+            "disabled": "账号已禁用",
+            "proxy_disabled": "反代已禁用"
+        },
+        "error_details": "错误详情",
+        "error_status": "错误状态",
+        "error_time": "检测时间",
+        "view_error": "查看原因",
+        "click_to_verify": "点击去验证",
         "no_data": "无数据",
         "last_used": "最后使用",
         "reset_time": "重置时间",

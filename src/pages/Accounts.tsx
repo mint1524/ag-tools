@@ -20,6 +20,7 @@ import AddAccountDialog from "../components/accounts/AddAccountDialog";
 import DeviceFingerprintDialog from "../components/accounts/DeviceFingerprintDialog";
 import ModalDialog from "../components/common/ModalDialog";
 import Pagination from "../components/common/Pagination";
+import AccountErrorDialog from "../components/accounts/AccountErrorDialog";
 import { showToast } from "../components/common/ToastContainer";
 import { exportAccounts } from "../services/accountService";
 import { useAccountStore } from "../stores/useAccountStore";
@@ -79,6 +80,7 @@ function Accounts() {
   const [isWarmupConfirmOpen, setIsWarmupConfirmOpen] = useState(false);
   const [isWarmuping, setIsWarmuping] = useState(false);
   const [refreshingIds, setRefreshingIds] = useState<Set<string>>(new Set());
+  const [errorAccountId, setErrorAccountId] = useState<string | null>(null);
 
   const handleWarmup = async (accountId: string) => {
     setRefreshingIds((prev) => {
@@ -1074,6 +1076,7 @@ function Accounts() {
                 onReorder={reorderAccounts}
                 onWarmup={handleWarmup}
                 onUpdateLabel={handleUpdateLabel}
+                onViewError={(id: string) => setErrorAccountId(id)}
               />
             </div>
           </div>
@@ -1100,6 +1103,7 @@ function Accounts() {
               }
               onWarmup={handleWarmup}
               onUpdateLabel={handleUpdateLabel}
+              onViewError={(id: string) => setErrorAccountId(id)}
             />
           </div>
         )}
@@ -1217,6 +1221,18 @@ function Accounts() {
         isDestructive={false}
         onConfirm={handleWarmupAll}
         onCancel={() => setIsWarmupConfirmOpen(false)}
+      />
+
+      {/* 账号详情弹窗 */}
+      <AccountDetailsDialog
+        account={detailsAccount}
+        onClose={() => setDetailsAccount(null)}
+      />
+
+      {/* 账号错误详情弹窗 */}
+      <AccountErrorDialog
+        account={accounts.find(a => a.id === errorAccountId) || null}
+        onClose={() => setErrorAccountId(null)}
       />
     </div>
   );

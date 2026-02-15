@@ -338,7 +338,7 @@ pub async fn handle_chat_completions(
                     "status": status.as_u16(),
                     "upstream_url": upstream_url,
                 });
-                let gemini_stream = debug_logger::wrap_reqwest_stream_with_debug(
+                let gemini_stream = debug_logger::wrap_stream_with_debug(
                     Box::pin(response.bytes_stream()),
                     debug_cfg.clone(),
                     trace_id.clone(),

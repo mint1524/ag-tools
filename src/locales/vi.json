@@ -112,6 +112,7 @@
         }
     },
     "accounts": {
+        "account": "Tài khoản",
         "search_placeholder": "Tìm kiếm email...",
         "all": "Tất cả",
         "available": "Khả dụng",
@@ -142,7 +143,17 @@
         "forbidden": "403",
         "forbidden_badge": "403",
         "forbidden_tooltip": "API trả về 403 Forbidden, tài khoản không có quyền truy cập Gemini Code Assist",
-        "forbidden_msg": "Bị chặn, bỏ qua tự động làm mới",
+        "forbidden_msg": "Bị cấm, bỏ qua tự động làm mới",
+        "status": {
+            "forbidden": "403 Bị cấm",
+            "disabled": "Tài khoản bị vô hiệu hóa",
+            "proxy_disabled": "Proxy bị vô hiệu hóa"
+        },
+        "error_details": "Chi tiết lỗi",
+        "error_status": "Trạng thái lỗi",
+        "error_time": "Thời gian phát hiện",
+        "view_error": "Xem lý do",
+        "click_to_verify": "Nhấp để xác minh",
         "no_data": "Không có dữ liệu",
         "last_used": "Dùng lần cuối",
         "reset_time": "Thời gian reset",

@@ -73,6 +73,7 @@ interface AccountTableProps {
     onUpdateLabel?: (accountId: string, label: string) => void;
     /** 拖拽排序回调，当用户完成拖拽时触发 */
     onReorder?: (accountIds: string[]) => void;
+    onViewError: (accountId: string) => void;
 }
 
 interface SortableRowProps {
@@ -92,6 +93,7 @@ interface SortableRowProps {
     onToggleProxy: () => void;
     onWarmup?: () => void;
     onUpdateLabel?: (label: string) => void;
+    onViewError: () => void;
 }
 
 interface AccountRowContentProps {
@@ -99,6 +101,7 @@ interface AccountRowContentProps {
     isCurrent: boolean;
     isRefreshing: boolean;
     isSwitching: boolean;
+    isDisabled: boolean;
     onSwitch: () => void;
     onRefresh: () => void;
     onViewDevice: () => void;
@@ -108,6 +111,7 @@ interface AccountRowContentProps {
     onToggleProxy: () => void;
     onWarmup?: () => void;
     onUpdateLabel?: (label: string) => void;
+    onViewError: () => void;
 }
 
 // ============================================================================
@@ -193,6 +197,7 @@ function SortableAccountRow({
     onToggleProxy,
     onWarmup,
     onUpdateLabel,
+    onViewError,
 }: SortableRowProps) {
     const { t } = useTranslation();
     const {
@@ -248,6 +253,7 @@ function SortableAccountRow({
                 isCurrent={isCurrent}
                 isRefreshing={isRefreshing}
                 isSwitching={isSwitching}
+                isDisabled={Boolean(account.disabled)}
                 onSwitch={onSwitch}
                 onRefresh={onRefresh}
                 onViewDevice={onViewDevice}
@@ -257,6 +263,7 @@ function SortableAccountRow({
                 onToggleProxy={onToggleProxy}
                 onWarmup={onWarmup}
                 onUpdateLabel={onUpdateLabel}
+                onViewError={onViewError}
             />
         </tr>
     );
@@ -271,6 +278,7 @@ function AccountRowContent({
     isCurrent,
     isRefreshing,
     isSwitching,
+    isDisabled,
     onSwitch,
     onRefresh,
     onViewDevice,
@@ -280,6 +288,7 @@ function AccountRowContent({
     onToggleProxy,
     onWarmup,
     onUpdateLabel,
+    onViewError,
 }: AccountRowContentProps) {
     const { t } = useTranslation();
     const { config, showAllQuotas } = useConfigStore();
@@ -337,7 +346,6 @@ function AccountRowContent({
         ).filter(m => m.id !== 'claude-sonnet-4-5-thinking' && m.id !== 'claude-opus-4-5-thinking')
     );
 
-    const isDisabled = Boolean(account.disabled);
 
     return (
         <>
@@ -357,11 +365,9 @@ function AccountRowContent({
                                 {t('accounts.current').toUpperCase()}
                             </span>
                         )}
-
                         {isDisabled && (
                             <span
                                 className="px-2 py-0.5 rounded-md bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 text-[10px] font-bold flex items-center gap-1 shadow-sm border border-rose-200/50"
-                                title={account.disabled_reason || t('accounts.disabled_tooltip')}
                             >
                                 <Ban className="w-2.5 h-2.5" />
                                 <span>{t('accounts.disabled')}</span>
@@ -371,7 +377,6 @@ function AccountRowContent({
                         {account.proxy_disabled && (
                             <span
                                 className="px-2 py-0.5 rounded-md bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300 text-[10px] font-bold flex items-center gap-1 shadow-sm border border-orange-200/50"
-                                title={account.proxy_disabled_reason || t('accounts.proxy_disabled_tooltip')}
                             >
                                 <Ban className="w-2.5 h-2.5" />
                                 <span>{t('accounts.proxy_disabled')}</span>
@@ -379,11 +384,12 @@ function AccountRowContent({
                         )}
 
                         {account.quota?.is_forbidden && (
-                            <span className="px-2 py-0.5 rounded-md bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-[10px] font-bold flex items-center gap-1 shadow-sm border border-red-200/50" title={t('accounts.forbidden_tooltip')}>
+                            <span className="px-2 py-0.5 rounded-md bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 text-[10px] font-bold flex items-center gap-1 shadow-sm border border-red-200/50">
                                 <Lock className="w-2.5 h-2.5" />
                                 <span>{t('accounts.forbidden')}</span>
                             </span>
                         )}
+
 
                         {/* 订阅类型徽章 */}
                         {account.quota?.subscription_tier && (() => {
@@ -447,15 +453,27 @@ function AccountRowContent({
                             </div>
                         )}
                     </div>
+
                 </div>
             </td>
 
             {/* 模型配额列 */}
             <td className="px-2 py-1 align-middle">
-                {account.quota?.is_forbidden ? (
-                    <div className="flex items-center gap-2 text-xs text-red-500 dark:text-red-400 bg-red-50/50 dark:bg-red-900/10 p-1.5 rounded-lg border border-red-100 dark:border-red-900/30">
-                        <Ban className="w-4 h-4 shrink-0" />
-                        <span>{t('accounts.forbidden_msg')}</span>
+                {isDisabled || account.quota?.is_forbidden ? (
+                    <div className="flex items-center justify-center gap-3 bg-red-50/50 dark:bg-red-900/10 py-1.5 px-4 rounded-xl border border-red-100/50 dark:border-red-900/20 group/error">
+                        <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
+                            {account.quota?.is_forbidden ? <Lock className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
+                            <span className="text-[11px] font-bold text-red-700/80 dark:text-red-400">
+                                {isDisabled ? t('accounts.status.disabled') : t('accounts.forbidden_msg')}
+                            </span>
+                        </div>
+                        <div className="w-px h-3 bg-red-200 dark:bg-red-800/50" />
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onViewError(); }}
+                            className="text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+                        >
+                            {t('accounts.view_error')}
+                        </button>
                     </div>
                 ) : (
                     <div className={cn(
@@ -619,6 +637,7 @@ function AccountTable({
     onReorder,
     onWarmup,
     onUpdateLabel,
+    onViewError,
 }: AccountTableProps) {
     const { t } = useTranslation();
 
@@ -716,6 +735,7 @@ function AccountTable({
                                     onToggleProxy={() => onToggleProxy(account.id)}
                                     onWarmup={onWarmup ? () => onWarmup(account.id) : undefined}
                                     onUpdateLabel={onUpdateLabel ? (label: string) => onUpdateLabel(account.id, label) : undefined}
+                                    onViewError={() => onViewError(account.id)}
                                 />
                             ))}
                         </tbody>
@@ -755,6 +775,8 @@ function AccountTable({
                                         onExport={() => { }}
                                         onDelete={() => { }}
                                         onToggleProxy={() => { }}
+                                        isDisabled={Boolean(activeAccount.disabled)}
+                                        onViewError={() => { }}
                                     />
                                 </tr>
                             </tbody>

@@ -1,6 +1,7 @@
 use crate::modules::config::load_app_config;
 use once_cell::sync::Lazy;
-use reqwest::{Client, Proxy};
+use rquest::{Client, Proxy};
+use rquest_util::Emulation;
 
 /// Global shared HTTP client (15s timeout)
 /// Client has a built-in connection pool; cloning it is light and shares the pool
@@ -11,7 +12,9 @@ pub static SHARED_CLIENT_LONG: Lazy<Client> = Lazy::new(|| create_base_client(60
 
 /// Base client creation logic
 fn create_base_client(timeout_secs: u64) -> Client {
-    let mut builder = Client::builder().timeout(std::time::Duration::from_secs(timeout_secs));
+    let mut builder = Client::builder()
+        .emulation(Emulation::Chrome123)
+        .timeout(std::time::Duration::from_secs(timeout_secs));
 
     if let Ok(config) = load_app_config() {
         let proxy_config = config.proxy.upstream_proxy;
@@ -31,6 +34,7 @@ fn create_base_client(timeout_secs: u64) -> Client {
         }
     }
 
+    tracing::info!("Initialized JA3/TLS Impersonation (Chrome123)");
     builder.build().unwrap_or_else(|_| Client::new())
 }
 

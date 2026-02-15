@@ -112,6 +112,7 @@
         }
     },
     "accounts": {
+        "account": "계정",
         "search_placeholder": "이메일 검색...",
         "all": "전체",
         "available": "사용 가능",
@@ -148,6 +149,16 @@
         "forbidden_badge": "403",
         "forbidden_tooltip": "API가 403 Forbidden을 반환했습니다. 계정에 Gemini Code Assist 권한이 없습니다.",
         "forbidden_msg": "권한 없음, 자동 새로고침 건너뜀",
+        "status": {
+            "forbidden": "403 금지됨",
+            "disabled": "계정 비활성화됨",
+            "proxy_disabled": "프록시 비활성화됨"
+        },
+        "error_details": "오류 상세 정보",
+        "error_status": "오류 상태",
+        "error_time": "감지 시간",
+        "view_error": "사유 보기",
+        "click_to_verify": "확인하려면 클릭",
         "no_data": "데이터 없음",
         "last_used": "최근 사용",
         "reset_time": "초기화 시간",

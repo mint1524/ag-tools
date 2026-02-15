@@ -120,7 +120,8 @@
     }
   },
   "accounts": {
-    "search_placeholder": "メールアドレスで検索...",
+    "account": "アカウント",
+    "search_placeholder": "メールを検索...",
     "all": "すべて",
     "available": "利用可能",
     "low_quota": "低クォータ",
@@ -150,7 +151,17 @@
     "forbidden": "403",
     "forbidden_badge": "403",
     "forbidden_tooltip": "APIが403 Forbiddenを返しました。このアカウントにはGemini Code Assistの権限がありません",
-    "forbidden_msg": "アクセス禁止のため自動更新をスキップ",
+    "forbidden_msg": "閲覧禁止、自動更新をスキップ",
+    "status": {
+      "forbidden": "403 閲覧禁止",
+      "disabled": "アカウント無効",
+      "proxy_disabled": "プロキシ無効"
+    },
+    "error_details": "エラーの詳細",
+    "error_status": "エラーステータス",
+    "error_time": "検出時間",
+    "view_error": "原因を表示",
+    "click_to_verify": "クリックして確認",
     "no_data": "データなし",
     "last_used": "最終使用",
     "reset_time": "リセット時間",

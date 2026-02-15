@@ -110,7 +110,8 @@
         }
     },
     "accounts": {
-        "search_placeholder": "Pesquisar email...",
+        "account": "Conta",
+        "search_placeholder": "Pesquisar e-mail...",
         "all": "Todas",
         "available": "Disponíveis",
         "low_quota": "Cota Baixa",
@@ -140,8 +141,18 @@
         "forbidden": "403",
         "forbidden_badge": "403",
         "forbidden_tooltip": "API retornou 403 Forbidden, conta não tem permissão para Gemini Code Assist",
-        "forbidden_msg": "Proibido, pular atualização automática",
-        "no_data": "Sem Dados",
+        "forbidden_msg": "Proibido, ignorar atualização automática",
+        "status": {
+            "forbidden": "403 Proibido",
+            "disabled": "Conta desativada",
+            "proxy_disabled": "Proxy desativado"
+        },
+        "error_details": "Detalhes do erro",
+        "error_status": "Status do erro",
+        "error_time": "Hora de detecção",
+        "view_error": "Ver motivo",
+        "click_to_verify": "Clique para verificar",
+        "no_data": "Nenhum dado",
         "last_used": "Último Uso",
         "reset_time": "Tempo de Reset",
         "switch_to": "Alternar para esta conta",

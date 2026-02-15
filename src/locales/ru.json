@@ -112,7 +112,8 @@
         }
     },
     "accounts": {
-        "search_placeholder": "Поиск по email...",
+        "account": "Аккаунт",
+        "search_placeholder": "Поиск почты...",
         "all": "Все",
         "available": "Доступны",
         "low_quota": "Низкая квота",
@@ -142,7 +143,17 @@
         "forbidden": "403",
         "forbidden_badge": "403",
         "forbidden_tooltip": "API вернул 403 Forbidden, у аккаунта нет прав для Gemini Code Assist",
-        "forbidden_msg": "Запрещено, пропуск автоматического обновления",
+        "forbidden_msg": "Запрещено, пропуск автообновления",
+        "status": {
+            "forbidden": "403 Запрещено",
+            "disabled": "Аккаунт отключен",
+            "proxy_disabled": "Прокси отключен"
+        },
+        "error_details": "Детали ошибки",
+        "error_status": "Статус ошибки",
+        "error_time": "Время обнаружения",
+        "view_error": "Посмотреть причину",
+        "click_to_verify": "Нажмите для проверки",
         "no_data": "Нет данных",
         "last_used": "Последнее использование",
         "reset_time": "Время сброса",

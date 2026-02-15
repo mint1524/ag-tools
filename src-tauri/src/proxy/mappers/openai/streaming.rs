@@ -63,12 +63,16 @@ fn extract_usage_metadata(u: &Value) -> Option<super::models::OpenAIUsage> {
     })
 }
 
-pub fn create_openai_sse_stream(
-    mut gemini_stream: Pin<Box<dyn Stream<Item = Result<Bytes, reqwest::Error>> + Send>>,
+pub fn create_openai_sse_stream<S, E>(
+    mut gemini_stream: Pin<Box<S>>,
     model: String,
     session_id: String,
     message_count: usize,
-) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>> {
+) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>> 
+where
+    S: Stream<Item = Result<Bytes, E>> + Send + ?Sized + 'static,
+    E: std::fmt::Display + Send + 'static,
+{
     let mut buffer = BytesMut::new();
     let stream_id = format!("chatcmpl-{}", Uuid::new_v4());
     let created_ts = Utc::now().timestamp();
@@ -312,12 +316,16 @@ pub fn create_openai_sse_stream(
     Box::pin(stream)
 }
 
-pub fn create_legacy_sse_stream(
-    mut gemini_stream: Pin<Box<dyn Stream<Item = Result<Bytes, reqwest::Error>> + Send>>,
+pub fn create_legacy_sse_stream<S, E>(
+    mut gemini_stream: Pin<Box<S>>,
     model: String,
     session_id: String,
     message_count: usize,
-) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>> {
+) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>> 
+where
+    S: Stream<Item = Result<Bytes, E>> + Send + ?Sized + 'static,
+    E: std::fmt::Display + Send + 'static,
+{
     let mut buffer = BytesMut::new();
     let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let mut rng = rand::thread_rng();
@@ -410,12 +418,16 @@ pub fn create_legacy_sse_stream(
     Box::pin(stream)
 }
 
-pub fn create_codex_sse_stream(
-    mut gemini_stream: Pin<Box<dyn Stream<Item = Result<Bytes, reqwest::Error>> + Send>>,
+pub fn create_codex_sse_stream<S, E>(
+    mut gemini_stream: Pin<Box<S>>,
     _model: String,
     session_id: String,
     message_count: usize,
-) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>> {
+) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>> 
+where
+    S: Stream<Item = Result<Bytes, E>> + Send + ?Sized + 'static,
+    E: std::fmt::Display + Send + 'static,
+{
     let mut buffer = BytesMut::new();
     let charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     let mut rng = rand::thread_rng();

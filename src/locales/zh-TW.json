@@ -113,6 +113,7 @@
         }
     },
     "accounts": {
+        "account": "帳號",
         "search_placeholder": "搜尋信箱...",
         "all": "全部",
         "available": "可用",
@@ -144,6 +145,16 @@
         "forbidden_badge": "403",
         "forbidden_tooltip": "API 返回 403 Forbidden，帳號無權使用 Gemini Code Assist",
         "forbidden_msg": "帳號無權限，已跳過自動重新整理",
+        "status": {
+            "forbidden": "403 Forbidden",
+            "disabled": "帳號已停用",
+            "proxy_disabled": "反向代理已停用"
+        },
+        "error_details": "錯誤詳情",
+        "error_status": "錯誤狀態",
+        "error_time": "檢測時間",
+        "view_error": "檢視原因",
+        "click_to_verify": "點選去驗證",
         "no_data": "無資料",
         "last_used": "最後使用",
         "reset_time": "重置時間",

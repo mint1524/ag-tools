@@ -109,7 +109,8 @@
         }
     },
     "accounts": {
-        "search_placeholder": "Cari e-mel...",
+        "account": "အကောင့်",
+        "search_placeholder": "အီးမေးလ် ရှာရန်...",
         "all": "Semua",
         "available": "Tersedia",
         "low_quota": "Kuota Rendah",
@@ -144,8 +145,18 @@
         "forbidden": "403",
         "forbidden_badge": "403",
         "forbidden_tooltip": "API mengembalikan 403 Forbidden, akaun tiada kebenaran untuk Gemini Code Assist",
-        "forbidden_msg": "Dilarang, langkau muat semula automatik",
-        "no_data": "Tiada Data",
+        "forbidden_msg": "တားမြစ်ထားသည်၊ အလိုအလျောက် အသစ်တင်ခြင်းကို ကျော်ရန်",
+        "status": {
+            "forbidden": "403 တားမြစ်ထားသည်",
+            "disabled": "အကောင့် ပိတ်ထားသည်",
+            "proxy_disabled": "ပရောက်စီ ပိတ်ထားသည်"
+        },
+        "error_details": "အမှား အသေးစိတ်",
+        "error_status": "အမှား အခြေအနေ",
+        "error_time": "ရှာဖွေတွေ့ရှိချိန်",
+        "view_error": "အကြောင်းပြချက် ကြည့်ရန်",
+        "click_to_verify": "အတည်ပြုရန် နှိပ်ပါ",
+        "no_data": "ဒေတာမရှိပါ",
         "last_used": "Terakhir Digunakan",
         "reset_time": "Masa Reset",
         "switch_to": "Tukar ke akaun ini",

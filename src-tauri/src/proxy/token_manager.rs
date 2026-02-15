@@ -2431,12 +2431,14 @@ impl TokenManager {
         // Update quota.is_forbidden
         if let Some(quota) = account.get_mut("quota") {
             quota["is_forbidden"] = serde_json::Value::Bool(true);
+            quota["forbidden_reason"] = serde_json::Value::String(reason.to_string());
         } else {
             // Create quota object if not exists
             account["quota"] = serde_json::json!({
                 "models": [],
                 "last_updated": chrono::Utc::now().timestamp(),
-                "is_forbidden": true
+                "is_forbidden": true,
+                "forbidden_reason": reason
             });
         }
 

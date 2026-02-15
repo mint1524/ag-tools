@@ -110,6 +110,7 @@
         }
     },
     "accounts": {
+        "account": "Hesap",
         "search_placeholder": "E-posta ara...",
         "all": "Tümü",
         "available": "Kullanılabilir",
@@ -141,6 +142,16 @@
         "forbidden_badge": "403",
         "forbidden_tooltip": "API 403 Forbidden döndürdü, hesap Gemini Code Assist için izne sahip değil",
         "forbidden_msg": "Yasaklı, otomatik yenileme atlandı",
+        "status": {
+            "forbidden": "403 Yasaklandı",
+            "disabled": "Hesap Devre Dışı",
+            "proxy_disabled": "Proxy Devre Dışı"
+        },
+        "error_details": "Hata Detayları",
+        "error_status": "Hata Durumu",
+        "error_time": "Tespit Süresi",
+        "view_error": "Nedeni Görüntüle",
+        "click_to_verify": "Doğrulamak için tıklayın",
         "no_data": "Veri Yok",
         "last_used": "Son Kullanım",
         "reset_time": "Sıfırlama Zamanı",

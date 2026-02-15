@@ -15,6 +15,9 @@ pub struct QuotaData {
     pub last_updated: i64,
     #[serde(default)]
     pub is_forbidden: bool,
+    /// 禁止访问的原因 (403 详细信息)
+    #[serde(default)]
+    pub forbidden_reason: Option<String>,
     /// 订阅等级 (FREE/PRO/ULTRA)
     #[serde(default)]
     pub subscription_tier: Option<String>,
@@ -26,6 +29,7 @@ impl QuotaData {
             models: Vec::new(),
             last_updated: chrono::Utc::now().timestamp(),
             is_forbidden: false,
+            forbidden_reason: None,
             subscription_tier: None,
         }
     }

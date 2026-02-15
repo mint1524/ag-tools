@@ -111,6 +111,7 @@
         }
     },
     "accounts": {
+        "account": "الحساب",
         "search_placeholder": "بحث عن بريد إلكتروني...",
         "all": "الكل",
         "available": "متاح",
@@ -147,6 +148,16 @@
         "forbidden_badge": "403",
         "forbidden_tooltip": "أعاد API الخطأ 403 Forbidden، الحساب ليس لديه إذن لخدمة Gemini Code Assist",
         "forbidden_msg": "ممنوع، تخطي التحديث التلقائي",
+        "status": {
+            "forbidden": "403 Forbidden",
+            "disabled": "الحساب معطل",
+            "proxy_disabled": "الوكيل معطل"
+        },
+        "error_details": "تفاصيل الخطأ",
+        "error_status": "حالة الخطأ",
+        "error_time": "وقت الكشف",
+        "view_error": "عرض السبب",
+        "click_to_verify": "انقر للتحقق",
         "no_data": "لا توجد بيانات",
         "last_used": "آخر استخدام",
         "reset_time": "وقت إعادة التعيين",

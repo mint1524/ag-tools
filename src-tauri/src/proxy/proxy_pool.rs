@@ -2,11 +2,12 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use dashmap::DashMap;
-use reqwest::Client;
+use rquest::Client;
 use futures::{stream, StreamExt};
 use std::time::Duration;
 use crate::proxy::config::{ProxyPoolConfig, ProxySelectionStrategy, ProxyEntry};
 
+use rquest_util::Emulation;
 use std::sync::OnceLock;
 
 /// 全局代理池管理器单例
@@ -28,7 +29,7 @@ pub fn init_global_proxy_pool(config: Arc<RwLock<ProxyPoolConfig>>) -> Arc<Proxy
 /// 注意：重命名为 PoolProxyConfig 以避免与 config::ProxyConfig 冲突
 #[derive(Debug, Clone)]
 pub struct PoolProxyConfig {
-    pub proxy: reqwest::Proxy,
+    pub proxy: rquest::Proxy,
     pub entry_id: String,
 }
 
@@ -76,7 +77,9 @@ impl ProxyPoolManager {
     /// 2. 如果无绑定，且开启了“自动全局”，取池中第一个节点
     /// 3. 如果以上均无，则检查全局上游代理 (Upstream Proxy) [由调用方 fallback]
     pub async fn get_effective_client(&self, account_id: Option<&str>, timeout_secs: u64) -> Client {
-        let mut builder = Client::builder().timeout(Duration::from_secs(timeout_secs));
+        let mut builder = Client::builder()
+            .emulation(Emulation::Chrome123)
+            .timeout(Duration::from_secs(timeout_secs));
         
         // 尝试获取代理配置
         let proxy_opt = if let Some(acc_id) = account_id {
@@ -107,7 +110,7 @@ impl ProxyPoolManager {
             if let Ok(app_cfg) = crate::modules::config::load_app_config() {
                 let up = app_cfg.proxy.upstream_proxy;
                 if up.enabled && !up.url.is_empty() {
-                    if let Ok(p) = reqwest::Proxy::all(&up.url) {
+                    if let Ok(p) = rquest::Proxy::all(&up.url) {
                         tracing::info!("[Proxy] Route: {:?} -> Upstream: {} (AppConfig)", account_id.unwrap_or("Generic"), up.url);
                         builder = builder.proxy(p);
                     }
@@ -252,7 +255,7 @@ impl ProxyPoolManager {
     fn build_proxy_config(&self, entry: &ProxyEntry) -> Result<PoolProxyConfig, String> {
         let url = crate::proxy::config::normalize_proxy_url(&entry.url);
 
-        let mut proxy = reqwest::Proxy::all(&url)
+        let mut proxy = rquest::Proxy::all(&url)
             .map_err(|e| format!("Invalid proxy URL: {}", e))?;
         
         // 添加认证
@@ -419,8 +422,9 @@ impl ProxyPoolManager {
 
         let client_result = Client::builder()
             .proxy(proxy_cfg.proxy)
+            .emulation(Emulation::Chrome123)
             .timeout(Duration::from_secs(10))
-            .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+            .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")
             .build();
         
         let client = match client_result {

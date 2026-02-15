@@ -127,13 +127,17 @@ fn parse_sse_stream(raw: &str) -> (String, String) {
     (thinking_parts.join(""), content_parts.join(""))
 }
 
-pub fn wrap_reqwest_stream_with_debug(
-    stream: std::pin::Pin<Box<dyn futures::Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send>>,
+pub fn wrap_stream_with_debug<S, E>(
+    stream: std::pin::Pin<Box<S>>,
     cfg: DebugLoggingConfig,
     trace_id: String,
     prefix: &'static str,
     meta: Value,
-) -> std::pin::Pin<Box<dyn futures::Stream<Item = Result<bytes::Bytes, reqwest::Error>> + Send>> {
+) -> std::pin::Pin<Box<dyn futures::Stream<Item = Result<bytes::Bytes, E>> + Send>>
+where
+    S: futures::Stream<Item = Result<bytes::Bytes, E>> + Send + 'static,
+    E: std::fmt::Display + Send + 'static,
+{
     if !is_enabled(&cfg) {
         return stream;
     }

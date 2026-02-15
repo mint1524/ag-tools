@@ -31,6 +31,7 @@ export interface QuotaData {
     models: ModelQuota[];
     last_updated: number;
     is_forbidden?: boolean;
+    forbidden_reason?: string;
     subscription_tier?: string;  // 订阅类型: FREE/PRO/ULTRA
 }
 
