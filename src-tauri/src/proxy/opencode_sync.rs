@@ -81,6 +81,16 @@ fn build_model_catalog() -> Vec<ModelDef> {
             reasoning: true,
             variant_type: Some(VariantType::ClaudeThinking),
         },
+        ModelDef {
+            id: "claude-opus-4-6-thinking",
+            name: "Claude Opus 4.6 Thinking",
+            context_limit: 200_000,
+            output_limit: 64_000,
+            input_modalities: &["text", "image", "pdf"],
+            output_modalities: &["text"],
+            reasoning: true,
+            variant_type: Some(VariantType::ClaudeThinking),
+        },
         // Gemini 3 Pro models
         ModelDef {
             id: "gemini-3-pro-high",
