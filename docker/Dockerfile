@@ -50,6 +50,8 @@ RUN apt-get update && apt-get install -y \
     perl \
     cmake \
     golang-go \
+    clang \
+    libclang-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Use Aliyun mirror for Cargo if needed (Sparse Index)
