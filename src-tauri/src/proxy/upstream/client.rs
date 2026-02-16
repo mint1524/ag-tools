@@ -68,8 +68,25 @@ impl UpstreamClient {
         proxy_config: Option<crate::proxy::config::UpstreamProxyConfig>,
         proxy_pool: Option<Arc<crate::proxy::proxy_pool::ProxyPoolManager>>,
     ) -> Self {
-        let default_client = Self::build_client_internal(proxy_config)
-            .expect("Failed to create default HTTP client");
+        let default_client = match Self::build_client_internal(proxy_config.clone()) {
+            Ok(client) => client,
+            Err(err_with_proxy) => {
+                tracing::error!(
+                    error = %err_with_proxy,
+                    "Failed to create default HTTP client with configured upstream proxy; retrying without proxy"
+                );
+                match Self::build_client_internal(None) {
+                    Ok(client) => client,
+                    Err(err_without_proxy) => {
+                        tracing::error!(
+                            error = %err_without_proxy,
+                            "Failed to create default HTTP client without proxy; falling back to bare client"
+                        );
+                        Client::new()
+                    }
+                }
+            }
+        };
 
         Self {
             default_client,
@@ -90,8 +107,9 @@ impl UpstreamClient {
             .pool_max_idle_per_host(16) // 每主机最多 16 个空闲连接
             .pool_idle_timeout(Duration::from_secs(90)) // 空闲连接保持 90 秒
             .tcp_keepalive(Duration::from_secs(60)) // TCP 保活探测 60 秒
-            .timeout(Duration::from_secs(600))
-            .user_agent(crate::constants::USER_AGENT.as_str());
+            .timeout(Duration::from_secs(600));
+
+        builder = Self::apply_default_user_agent(builder);
 
         if let Some(config) = proxy_config {
             if config.enabled && !config.url.is_empty() {
@@ -112,16 +130,29 @@ impl UpstreamClient {
         proxy_config: crate::proxy::proxy_pool::PoolProxyConfig,
     ) -> Result<Client, rquest::Error> {
         // Reuse base settings similar to default client but with specific proxy
-        Client::builder()
+        let builder = Client::builder()
             .emulation(rquest_util::Emulation::Chrome123)
             .connect_timeout(Duration::from_secs(20))
             .pool_max_idle_per_host(16)
             .pool_idle_timeout(Duration::from_secs(90))
             .tcp_keepalive(Duration::from_secs(60))
             .timeout(Duration::from_secs(600))
-            .user_agent(crate::constants::USER_AGENT.as_str())
-            .proxy(proxy_config.proxy) // Apply the specific proxy
-            .build()
+            .proxy(proxy_config.proxy); // Apply the specific proxy
+
+        Self::apply_default_user_agent(builder).build()
+    }
+
+    fn apply_default_user_agent(builder: rquest::ClientBuilder) -> rquest::ClientBuilder {
+        let ua = crate::constants::USER_AGENT.as_str();
+        if header::HeaderValue::from_str(ua).is_ok() {
+            builder.user_agent(ua)
+        } else {
+            tracing::warn!(
+                user_agent = %ua,
+                "Invalid default User-Agent value, using fallback"
+            );
+            builder.user_agent("antigravity")
+        }
     }
 
     /// Set dynamic User-Agent override
