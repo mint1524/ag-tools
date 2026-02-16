@@ -51,6 +51,28 @@ fn should_enable_tray() -> bool {
     true
 }
 
+#[cfg(target_os = "linux")]
+fn configure_linux_gdk_backend() {
+    if std::env::var("GDK_BACKEND").is_ok() {
+        return;
+    }
+
+    let is_wayland = is_wayland_session();
+    let has_x11_display = std::env::var("DISPLAY")
+        .map(|v| !v.trim().is_empty())
+        .unwrap_or(false);
+    let force_wayland = env_flag_enabled("ANTIGRAVITY_FORCE_WAYLAND");
+    let force_x11 = env_flag_enabled("ANTIGRAVITY_FORCE_X11");
+
+    if force_x11 || (is_wayland && has_x11_display && !force_wayland) {
+        // Force X11 backend under Wayland sessions to avoid a GTK Wayland shm crash.
+        std::env::set_var("GDK_BACKEND", "x11");
+        warn!(
+            "Forcing GDK_BACKEND=x11 for stability on Wayland. Set ANTIGRAVITY_FORCE_WAYLAND=1 to keep Wayland backend."
+        );
+    }
+}
+
 /// Increase file descriptor limit for macOS to prevent "Too many open files" errors
 #[cfg(target_os = "macos")]
 fn increase_nofile_limit() {
@@ -95,6 +117,9 @@ pub fn run() {
 
     // Initialize logger
     logger::init_logger();
+
+    #[cfg(target_os = "linux")]
+    configure_linux_gdk_backend();
 
     // Initialize token stats database
     if let Err(e) = modules::token_stats::init_db() {
@@ -299,7 +324,9 @@ pub fn run() {
             #[cfg(target_os = "linux")]
             {
                 use tauri::Manager;
-                if let Some(window) = app.get_webview_window("main") {
+                if is_wayland_session() {
+                    info!("Linux Wayland session detected; skipping transparent window workaround");
+                } else if let Some(window) = app.get_webview_window("main") {
                     // Access GTK window and disable transparency at the GTK level
                     if let Ok(gtk_window) = window.gtk_window() {
                         use gtk::prelude::WidgetExt;
@@ -309,8 +336,8 @@ pub fn run() {
                             if let Some(visual) = screen.system_visual() {
                                 gtk_window.set_visual(Some(&visual));
                             }
+                            info!("Linux: Applied transparent window workaround");
                         }
-                        info!("Linux: Applied transparent window workaround");
                     }
                 }
             }
