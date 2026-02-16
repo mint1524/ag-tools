@@ -432,6 +432,7 @@ response = client.chat.completions.create(
 
 *   **版本演进 (Changelog)**:
     *   **v4.1.20 (2026-02-16)**:
+        *   **[✨ 新春祝福] 祝大家马年一马当先，万事如意！Code 运昌隆，上线无 Bug！🧧**
         *   **[Critical]** 修复了 Claude Opus/Haiku 等模型在 Antigravity API 上的 `400 INVALID_ARGUMENT` 错误（通过恢复 v4.1.16 的核心协议格式）。
         *   增强了流式响应的健壮性，优化了对心跳包和非从零开始的 Thinking Block 的处理。
         *   **[核心修复] 修复图像生成配额同步问题 (Issue #1995)**：
