@@ -284,6 +284,9 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.21 (2026-02-17)**:
+        -   **[Core Fix] Cherry Studio / Claude Protocol Compatibility (Fix Issue #2007)**:
+            -   **maxOutputTokens Capping**: Fixed `400 INVALID_ARGUMENT` errors caused by Cherry Studio sending excessive `maxOutputTokens` (128k). The system now automatically caps Claude protocol output to **65536**, ensuring requests remain within Gemini's limits.
+            -   **Adaptive Thinking Alignment**: Optimized `thinking: { type: "adaptive" }` behavior for Gemini models in Claude protocol. It now maps to a fixed thinking budget of **24576** (aligned with OpenAI protocol), resolving Gemini Vertex AI incompatibility with `thinkingBudget: -1` and significantly improving stability in Cherry Studio.
         -   **[Core Fix] Enable Custom Protocol in Production (PR #2005)**:
             -   **Protocol Fix**: Enabled `custom-protocol` feature by default, resolving issues with custom protocols (e.g., `tauri://`) failing to load in production builds, ensuring stability for local resources.
         -   **[Core Optimization] Tray Icon & Window Lifecycle Management**:
@@ -292,8 +295,7 @@ print(response.choices[0].message.content)
         -   **[Core Enhancement] Linux Version Detection & HTTP Client Robustness**:
             -   **Version Parsing**: Enhanced Linux version extraction logic (`extract_semver`) to accurately identify semantic versions from complex command outputs, improving auto-update and environment detection accuracy.
             -   **Client Fallback**: Added automatic fallback mechanisms for HTTP client construction. If proxy configuration fails, the system automatically reverts to no-proxy mode or default settings, preventing total application failure due to network misconfiguration.
-    *   **v4.1.21 (2026-02-17)**:
-        *   **UI Improvement**: Enhanced the readability of cooldown times by changing the text color to blue (Fix #2008).
+        -   **UI Improvement (Fix #2008)**: Enhanced the readability of cooldown times by changing the text color to blue.
     *   **v4.1.20 (2026-02-16)**:
         *   Fixed `400 INVALID_ARGUMENT` error in Claude Proxy during tool calls.
         *   Removed redundant `role: "user"` fields in protocol translation for better Google API compatibility.
