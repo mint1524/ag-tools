@@ -292,6 +292,8 @@ print(response.choices[0].message.content)
         -   **[Core Enhancement] Linux Version Detection & HTTP Client Robustness**:
             -   **Version Parsing**: Enhanced Linux version extraction logic (`extract_semver`) to accurately identify semantic versions from complex command outputs, improving auto-update and environment detection accuracy.
             -   **Client Fallback**: Added automatic fallback mechanisms for HTTP client construction. If proxy configuration fails, the system automatically reverts to no-proxy mode or default settings, preventing total application failure due to network misconfiguration.
+    *   **v4.1.21 (2026-02-17)**:
+        *   **UI Improvement**: Enhanced the readability of cooldown times by changing the text color to blue (Fix #2008).
     *   **v4.1.20 (2026-02-16)**:
         *   Fixed `400 INVALID_ARGUMENT` error in Claude Proxy during tool calls.
         *   Removed redundant `role: "user"` fields in protocol translation for better Google API compatibility.
