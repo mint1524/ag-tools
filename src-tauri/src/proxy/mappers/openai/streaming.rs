@@ -107,6 +107,10 @@ where
                                             }
 
                                             if let Some(candidates) = actual_data.get("candidates").and_then(|c| c.as_array()) {
+                                                // [DEBUG] 打印原始 candidate 以排查空回复问题
+                                                if candidates.len() > 0 {
+                                                     tracing::debug!("[Stream-Debug] Raw Candidate: {:?}", candidates[0]);
+                                                }
                                                 for (idx, candidate) in candidates.iter().enumerate() {
                                                     let parts = candidate.get("content").and_then(|c| c.get("parts")).and_then(|p| p.as_array());
                                                     let mut content_out = String::new();
@@ -436,12 +440,42 @@ where
         charset.chars().nth(idx).unwrap()
     }).collect();
     let response_id = format!("resp-{}", random_str);
+    let item_id = format!("item-{}", &random_str[..16]);
 
     let stream = async_stream::stream! {
-        let created_ev = json!({ "type": "response.created", "response": { "id": &response_id, "object": "response" } });
+        // 1. response.created
+        let created_ev = json!({ "type": "response.created", "response": { "id": &response_id, "object": "response", "status": "in_progress", "output": [] } });
         yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&created_ev).unwrap())));
 
+        // 2. response.output_item.added - 告诉客户端开始一个输出项
+        let output_item_added = json!({
+            "type": "response.output_item.added",
+            "output_index": 0,
+            "item": {
+                "id": &item_id,
+                "type": "message",
+                "role": "assistant",
+                "status": "in_progress",
+                "content": []
+            }
+        });
+        yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&output_item_added).unwrap())));
+
+        // 3. response.content_part.added - 告诉客户端开始一个文本内容块
+        let content_part_added = json!({
+            "type": "response.content_part.added",
+            "item_id": &item_id,
+            "output_index": 0,
+            "content_index": 0,
+            "part": {
+                "type": "output_text",
+                "text": ""
+            }
+        });
+        yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&content_part_added).unwrap())));
+
         let mut emitted_tool_calls = std::collections::HashSet::new();
+        let mut accumulated_text = String::new();
         let mut heartbeat_interval = tokio::time::interval(std::time::Duration::from_secs(15));
         heartbeat_interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
@@ -462,12 +496,25 @@ where
                                     if let Ok(mut json) = serde_json::from_str::<Value>(json_part) {
                                         let actual_data = if let Some(inner) = json.get_mut("response").map(|v| v.take()) { inner } else { json };
                                         if let Some(candidates) = actual_data.get("candidates").and_then(|c| c.as_array()) {
+                                            if candidates.len() > 0 {
+                                                tracing::debug!("[Codex-Stream-Debug] Raw Candidate: {:?}", candidates[0]);
+                                            }
                                             if let Some(candidate) = candidates.get(0) {
                                                 if let Some(parts) = candidate.get("content").and_then(|c| c.get("parts")).and_then(|p| p.as_array()) {
                                                     for part in parts {
                                                         if let Some(text) = part.get("text").and_then(|t| t.as_str()) {
-                                                            let delta_ev = json!({ "type": "response.output_text.delta", "delta": text });
-                                                            yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&delta_ev).unwrap())));
+                                                            if !text.is_empty() {
+                                                                accumulated_text.push_str(text);
+                                                                // 4. response.output_text.delta - 文本增量
+                                                                let delta_ev = json!({
+                                                                    "type": "response.output_text.delta",
+                                                                    "item_id": &item_id,
+                                                                    "output_index": 0,
+                                                                    "content_index": 0,
+                                                                    "delta": text
+                                                                });
+                                                                yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&delta_ev).unwrap())));
+                                                            }
                                                         }
                                                         if let Some(sig) = part.get("thoughtSignature").or(part.get("thought_signature")).and_then(|s| s.as_str()) {
                                                             store_thought_signature(sig, &session_id, message_count);
@@ -476,9 +523,45 @@ where
                                                             let call_key = serde_json::to_string(func_call).unwrap_or_default();
                                                             if !emitted_tool_calls.contains(&call_key) {
                                                                 emitted_tool_calls.insert(call_key);
-                                                                // (Codex tool call mapping logic omitted for brevity, keeping it simple but valid)
                                                             }
                                                         }
+                                                    }
+                                                }
+
+                                                // 处理 groundingMetadata (搜索引文)
+                                                if let Some(grounding) = candidate.get("groundingMetadata") {
+                                                    let mut grounding_text = String::new();
+                                                    if let Some(queries) = grounding.get("webSearchQueries").and_then(|q| q.as_array()) {
+                                                        let query_list: Vec<&str> = queries.iter().filter_map(|v| v.as_str()).collect();
+                                                        if !query_list.is_empty() {
+                                                            grounding_text.push_str("\n\n---\n**🔍 已为您搜索：** ");
+                                                            grounding_text.push_str(&query_list.join(", "));
+                                                        }
+                                                    }
+                                                    if let Some(chunks) = grounding.get("groundingChunks").and_then(|c| c.as_array()) {
+                                                        let mut links = Vec::new();
+                                                        for (i, chunk) in chunks.iter().enumerate() {
+                                                            if let Some(web) = chunk.get("web") {
+                                                                let title = web.get("title").and_then(|v| v.as_str()).unwrap_or("网页来源");
+                                                                let uri = web.get("uri").and_then(|v| v.as_str()).unwrap_or("#");
+                                                                links.push(format!("[{}] [{}]({})", i + 1, title, uri));
+                                                            }
+                                                        }
+                                                        if !links.is_empty() {
+                                                            grounding_text.push_str("\n\n**🌐 来源引文：**\n");
+                                                            grounding_text.push_str(&links.join("\n"));
+                                                        }
+                                                    }
+                                                    if !grounding_text.is_empty() {
+                                                        accumulated_text.push_str(&grounding_text);
+                                                        let delta_ev = json!({
+                                                            "type": "response.output_text.delta",
+                                                            "item_id": &item_id,
+                                                            "output_index": 0,
+                                                            "content_index": 0,
+                                                            "delta": grounding_text
+                                                        });
+                                                        yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&delta_ev).unwrap())));
                                                     }
                                                 }
                                             }
@@ -494,6 +577,66 @@ where
                 _ = heartbeat_interval.tick() => { yield Ok::<Bytes, String>(Bytes::from(": ping\n\n")); }
             }
         }
+
+        // 5. response.output_text.done - 文本完成
+        let text_done = json!({
+            "type": "response.output_text.done",
+            "item_id": &item_id,
+            "output_index": 0,
+            "content_index": 0,
+            "text": &accumulated_text
+        });
+        yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&text_done).unwrap())));
+
+        // 6. response.content_part.done
+        let content_part_done = json!({
+            "type": "response.content_part.done",
+            "item_id": &item_id,
+            "output_index": 0,
+            "content_index": 0,
+            "part": {
+                "type": "output_text",
+                "text": &accumulated_text
+            }
+        });
+        yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&content_part_done).unwrap())));
+
+        // 7. response.output_item.done
+        let output_item_done = json!({
+            "type": "response.output_item.done",
+            "output_index": 0,
+            "item": {
+                "id": &item_id,
+                "type": "message",
+                "role": "assistant",
+                "status": "completed",
+                "content": [{
+                    "type": "output_text",
+                    "text": &accumulated_text
+                }]
+            }
+        });
+        yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&output_item_done).unwrap())));
+
+        // 8. response.completed
+        let completed_ev = json!({
+            "type": "response.completed",
+            "response": {
+                "id": &response_id,
+                "object": "response",
+                "status": "completed",
+                "output": [{
+                    "id": &item_id,
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [{
+                        "type": "output_text",
+                        "text": &accumulated_text
+                    }]
+                }]
+            }
+        });
+        yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&completed_ev).unwrap())));
     };
     Box::pin(stream)
 }

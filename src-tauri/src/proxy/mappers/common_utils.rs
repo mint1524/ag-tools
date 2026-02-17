@@ -379,6 +379,7 @@ pub fn detects_networking_tool(tools: &Option<Vec<Value>>) -> bool {
                     || n == "google_search"
                     || n == "web_search_20250305"
                     || n == "google_search_retrieval"
+                    || n == "builtin_web_search"
                 {
                     return true;
                 }
@@ -389,6 +390,7 @@ pub fn detects_networking_tool(tools: &Option<Vec<Value>>) -> bool {
                     || t == "google_search"
                     || t == "web_search"
                     || t == "google_search_retrieval"
+                    || t == "builtin_web_search"
                 {
                     return true;
                 }
@@ -402,6 +404,7 @@ pub fn detects_networking_tool(tools: &Option<Vec<Value>>) -> bool {
                         "google_search",
                         "web_search_20250305",
                         "google_search_retrieval",
+                        "builtin_web_search",
                     ];
                     if keywords.contains(&n) {
                         return true;
@@ -416,6 +419,7 @@ pub fn detects_networking_tool(tools: &Option<Vec<Value>>) -> bool {
                         if n == "web_search"
                             || n == "google_search"
                             || n == "google_search_retrieval"
+                            || n == "builtin_web_search"
                         {
                             return true;
                         }
@@ -445,6 +449,7 @@ pub fn contains_non_networking_tool(tools: &Option<Vec<Value>>) -> bool {
                     "google_search",
                     "web_search_20250305",
                     "google_search_retrieval",
+                    "builtin_web_search",
                 ];
                 if keywords.contains(&n) {
                     is_networking = true;
@@ -456,6 +461,7 @@ pub fn contains_non_networking_tool(tools: &Option<Vec<Value>>) -> bool {
                         "google_search",
                         "web_search_20250305",
                         "google_search_retrieval",
+                        "builtin_web_search",
                     ];
                     if keywords.contains(&n) {
                         is_networking = true;
@@ -471,7 +477,7 @@ pub fn contains_non_networking_tool(tools: &Option<Vec<Value>>) -> bool {
                     for decl in decls {
                         if let Some(n) = decl.get("name").and_then(|v| v.as_str()) {
                             let keywords =
-                                ["web_search", "google_search", "google_search_retrieval"];
+                                ["web_search", "google_search", "google_search_retrieval", "builtin_web_search"];
                             if !keywords.contains(&n) {
                                 return true; // 发现本地函数
                             }
