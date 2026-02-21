@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.1.21)
+> Professional AI Account Management & Protocol Proxy System (v4.1.22)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -9,7 +9,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.21-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.22-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -122,7 +122,7 @@ Automatically detects your OS, architecture, and package manager — one command
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.1.21/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.1.22/install.sh | bash
 ```
 
 **Windows (PowerShell):**
@@ -283,6 +283,8 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.1.22 (2026-02-21)**:
+        -   **[Core Optimization] Gemini Pro Model Migration (PR #2063)**: Migrated `gemini-pro-high/low` to `gemini-3.1-pro` to align with the latest Google API naming conventions.
     *   **v4.1.21 (2026-02-17)**:
         -   **[Core Fix] Cherry Studio / Claude Protocol Compatibility (Fix Issue #2007)**:
             -   **maxOutputTokens Capping**: Fixed `400 INVALID_ARGUMENT` errors caused by Cherry Studio sending excessive `maxOutputTokens` (128k). The system now automatically caps Claude protocol output to **65536**, ensuring requests remain within Gemini's limits.

@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业级 AI 账号管理与协议代理系统 (v4.1.21)
+> 专业级 AI 账号管理与协议代理系统 (v4.1.22)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.21-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.22-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -121,7 +121,7 @@ graph TD
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.1.21/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.1.22/install.sh | bash
 ```
 
 **Windows (PowerShell):**
@@ -431,6 +431,8 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
+    *   **v4.1.22 (2026-02-21)**:
+        -   **[核心优化] Gemini Pro 模型名称迁移 (PR #2063)**: 将 `gemini-pro-high/low` 迁移至 `gemini-3.1-pro`，确保与 Google 最新 API 命名对齐。
     *   **v4.1.21 (2026-02-17)**:
         -   **[核心修复] Cherry Studio / Claude 协议兼容性 (Fix Issue #2007)**:
             -   **maxOutputTokens 限制**: 修复了 Cherry Studio 等客户端发送超大 `maxOutputTokens` (128k) 导致 Google API 返回 `400 INVALID_ARGUMENT` 的问题。现在自动将 Claude 协议的输出上限限制为 **65536**，确保请求始终在 Gemini 允许的范围内。
