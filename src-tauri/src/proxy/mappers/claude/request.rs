@@ -1791,7 +1791,14 @@ fn build_generation_config(
                 config["maxOutputTokens"] = json!(64000);
             }
         } else {
-            thinking_config["thinkingBudget"] = json!(budget);
+            // [FIX #2007] Opus 4.6 Thinking Alignment (OpenAI Protocol Recipe)
+            // Explicitly set fixed budget for Opus 4.6 to match successful OpenAI pattern
+            if mapped_model.to_lowercase().contains("claude-opus-4-6-thinking") {
+                tracing::debug!("[Opus-Alignment] Enforcing fixed thinkingBudget 24576 for Opus 4.6");
+                thinking_config["thinkingBudget"] = json!(24576);
+            } else {
+                thinking_config["thinkingBudget"] = json!(budget);
+            }
         }
         
         config["thinkingConfig"] = thinking_config;
@@ -1831,6 +1838,13 @@ fn build_generation_config(
     // [FIX] Lower default overhead to keep total under 65536
     let final_overhead = if is_adaptive_effective { 64000 } else { 32768 };
 
+    // [FIX #2007] Opus 4.6 Thinking Alignment
+    // OpenAI logs show maxOutputTokens = 57344 (24576 + 32768)
+    if model_lower.contains("claude-opus-4-6-thinking") && is_thinking_enabled {
+        final_max_tokens = Some(57344);
+        tracing::debug!("[Opus-Alignment] Enforcing maxOutputTokens 57344 for Opus 4.6");
+    }
+
     if let Some(thinking_config) = config.get("thinkingConfig") {
         if let Some(budget) = thinking_config
             .get("thinkingBudget")
@@ -1849,7 +1863,7 @@ fn build_generation_config(
         } else if is_adaptive_effective {
              // [FIX] Adaptive mode (no budget set in thinkingConfig), apply default maxOutputTokens
              if final_max_tokens.is_none() {
-                 final_max_tokens = Some(final_overhead as i64);
+                  final_max_tokens = Some(final_overhead as i64);
              }
         }
     } else {
@@ -1876,14 +1890,13 @@ fn build_generation_config(
     }
 
     // [优化] 设置全局停止序列,防止模型幻觉出对话标记
-    // 注意: 不包含 "[DONE]" 是因为:
-    //   1. "[DONE]" 是 SSE 协议的标准结束标记,在代码/文档中经常出现
-    //   2. 将其作为 stopSequence 会导致模型输出被意外截断 (如解释 SSE 协议时)
-    //   3. Gemini 流的真正结束由 finishReason 字段控制,无需依赖 stopSequence
-    //   4. SSE 层面的 "data: [DONE]" 已在 mod.rs 中单独处理
-    // [优化] 设置全局停止序列,防止模型幻觉出对话标记
-    // ...
-    config["stopSequences"] = json!(["<|user|>", "<|end_of_turn|>", "\n\nHuman:"]);
+    // [FIX #2007] Opus 4.6 Thinking Alignment
+    // Successful OpenAI logs show NO stop sequences were sent for Opus 4.6 Thinking.
+    if !(model_lower.contains("claude-opus-4-6-thinking") && is_thinking_enabled) {
+        config["stopSequences"] = json!(["<|user|>", "<|end_of_turn|>", "\n\nHuman:"]);
+    } else {
+        tracing::debug!("[Opus-Alignment] Skipping stopSequences for Opus 4.6 to match OpenAI protocol");
+    }
 
     config
 }
