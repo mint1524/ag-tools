@@ -822,18 +822,9 @@
             "restore_defaults": "Pulihkan Konfigurasi Lalai",
             "reset_all": "Reset Semua"
         },
-        "models": {
-            "flash": "Ultra-pantas",
-            "flash_thinking": "Keupayaan Pemikiran",
-            "pro_high": "Penaakulan Terbaik",
-            "pro_low": "Kuota Rendah",
-            "sonnet": "Penaakulan Kod",
-            "sonnet_thinking": "Rantaian Pemikiran",
-            "opus_thinking": "Pemikiran Terkuat"
-        },
         "router": {
             "title": "Penghalaan Model",
-            "subtitle": "Halakan model mengikut siri atau tambah pemetaan tepat tersuai.\nNota: Model pass-through Claude asli (cth. claude-sonnet-4-6-thinking, claude-opus-4-6-thinking) memintas kumpulan siri secara lalai. Gunakan \"Penghalaan Tersuai Pakar\" untuk mengatasi.",
+            "subtitle": "Halakan model mengikut siri atau tambah pemetaan tepat tersuai.\nNota: Model pass-through Claude asli (cth. claude-opus-4-6-thinking) memintas kumpulan siri secara lalai. Gunakan \"Penghalaan Tersuai Pakar\" untuk mengatasi.",
             "subtitle_simple": "Sesuaikan penghalaan model dengan wildcard atau pemetaan tepat",
             "background_task_title": "Model Tugas Latar Belakang",
             "background_task_desc": "Model digunakan untuk tugas latar belakang Claude CLI seperti penjanaan tajuk, ringkasan, dll. (Lalai: gemini-2.5-flash)",
@@ -843,13 +834,9 @@
             "presets_applied": "Pratetap berjaya digunakan",
             "custom_mappings": "Pemetaan Tersuai",
             "group_title": "Kumpulan Siri",
-            "gemini3_group_label": "Gemini 3 (Disyorkan)",
-            "gemini3_option_high": "gemini-3.1-pro-high (Kualiti Tinggi)",
-            "gemini3_option_low": "gemini-3.1-pro-low (Seimbang)",
-            "gemini3_option_flash": "gemini-3-flash (Pantas)",
             "groups": {
                 "claude_45": {
-                    "name": "Siri Opus 4.6 TK",
+                    "name": "Siri Claude 4.6 TK",
                     "desc": "Opus 4.5 TK"
                 },
                 "claude_35": {

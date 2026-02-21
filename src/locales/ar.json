@@ -826,18 +826,9 @@
             "restore_defaults": "استعادة التكوين الافتراضي",
             "reset_all": "إعادة تعيين الكل"
         },
-        "models": {
-            "flash": "فائق السرعة",
-            "flash_thinking": "قدرة التفكير",
-            "pro_high": "أفضل منطق",
-            "pro_low": "حصة منخفضة",
-            "sonnet": "تفكير برمجي",
-            "sonnet_thinking": "سلسلة أفكار",
-            "opus_thinking": "أقوى تفكير"
-        },
         "router": {
             "title": "موجه النماذج",
-            "subtitle": "توجيه النماذج حسب السلسلة أو إضافة تعيينات دقيقة مخصصة.\nملاحظة: نماذج Claude الأصلية الممرة (مثل claude-sonnet-4-6-thinking, claude-opus-4-6-thinking) تتخطى مجموعات السلسلة افتراضيًا. استخدم \"توجيه مخصص خبير\" للتجاوز.",
+            "subtitle": "توجيه النماذج حسب السلسلة أو إضافة تعيينات دقيقة مخصصة.\nملاحظة: نماذج Claude الأصلية الممرة (مثل claude-opus-4-6-thinking) تتخطى مجموعات السلسلة افتراضيًا. استخدم \"توجيه مخصص خبير\" للتجاوز.",
             "subtitle_simple": "تخصيص توجيه النماذج باستخدام أحرف البدل أو التعيينات الدقيقة",
             "background_task_title": "نموذج المهام الخلفية",
             "background_task_desc": "النموذج المستخدم لمهام الخلفية لـ Claude CLI مثل توليد العناوين، والملخص، وما إلى ذلك. (الافتراضي: gemini-2.5-flash)",
@@ -847,13 +838,9 @@
             "presets_applied": "تم تطبيق الإعدادات المسبقة بنجاح",
             "custom_mappings": "تعيينات مخصصة",
             "group_title": "مجموعات السلاسل",
-            "gemini3_group_label": "Gemini 3 (موصى به)",
-            "gemini3_option_high": "gemini-3.1-pro-high (جودة عالية)",
-            "gemini3_option_low": "gemini-3.1-pro-low (متوازن)",
-            "gemini3_option_flash": "gemini-3-flash (سريع)",
             "groups": {
                 "claude_45": {
-                    "name": "سلسلة Opus 4.6 TK",
+                    "name": "سلسلة Claude 4.6 TK",
                     "desc": "Opus 4.5 TK"
                 },
                 "claude_35": {

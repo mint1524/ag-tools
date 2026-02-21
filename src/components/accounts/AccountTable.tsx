@@ -344,9 +344,10 @@ function AccountRowContent({
         (showAllQuotas
             ? (account.quota?.models || []).map(m => {
                 const config = MODEL_CONFIG[m.name.toLowerCase()];
+                const label = config?.i18nKey ? t(config.i18nKey) : (config?.shortLabel || config?.label || m.name);
                 return {
                     id: m.name.toLowerCase(),
-                    label: config?.shortLabel || config?.label || m.name,
+                    label: label,
                     protectedKey: config?.protectedKey || m.name.toLowerCase(),
                     data: m
                 };
@@ -354,21 +355,19 @@ function AccountRowContent({
             : pinnedModels.filter(modelId => MODEL_CONFIG[modelId]).map(modelId => {
                 const config = MODEL_CONFIG[modelId];
                 const aliases = getModelAliases(modelId);
+                const label = config.i18nKey ? t(config.i18nKey) : (config.shortLabel || config.label);
                 return {
                     id: modelId,
-                    label: config.shortLabel || config.label,
+                    label: label,
                     protectedKey: config.protectedKey,
                     data: account.quota?.models.find(m => aliases.includes(m.name.toLowerCase()))
                 };
             })
         ).filter(m => {
-            // 过滤特定的 Claude 变体
-            const isHiddenClaude = m.id === 'claude-sonnet-4-6-thinking' ||
-                m.id === 'claude-sonnet-4-5-thinking' ||
-                m.id === 'claude-opus-4-5-thinking' ||
-                m.id === 'claude-opus-4-6-thinking';
+            // 过滤特定的 Claude/Gemini 思考变体 (在列表页隐藏)
+            const isHiddenThinking = m.id.includes('thinking');
 
-            if (isHiddenClaude) return false;
+            if (isHiddenThinking) return false;
 
             // 基于标签去重 (例如 G3.1 Pro 只显示一次)
             // 优先显示有配额数据的 ID

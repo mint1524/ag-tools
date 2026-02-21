@@ -821,18 +821,9 @@
             "restore_defaults": "Restaurar Configuração Padrão",
             "reset_all": "Redefinir Tudo"
         },
-        "models": {
-            "flash": "Ultra-rápido",
-            "flash_thinking": "Capacidade de Pensamento",
-            "pro_high": "Melhor Raciocínio",
-            "pro_low": "Cota Baixa",
-            "sonnet": "Raciocínio de Código",
-            "sonnet_thinking": "Cadeia de Pensamento",
-            "opus_thinking": "Pensamento Mais Forte"
-        },
         "router": {
             "title": "Roteador de Modelos",
-            "subtitle": "Rotear modelos por série ou adicionar mapeamentos exatos personalizados.\nNota: Modelos de passagem nativa Claude (ex: claude-sonnet-4-6-thinking, claude-opus-4-6-thinking) ignoram grupos de série por padrão. Use \"Roteamento Personalizado Especialista\" para substituir.",
+            "subtitle": "Rotear modelos por série ou adicionar mapeamentos exatos personalizados.\nNota: Modelos de passagem nativa Claude (ex: claude-opus-4-6-thinking) ignoram grupos de série por padrão. Use \"Roteamento Personalizado Especialista\" para substituir.",
             "subtitle_simple": "Personalizar roteamento de modelos com curingas ou mapeamentos exatos",
             "background_task_title": "Modelo de Tarefa em Segundo Plano",
             "background_task_desc": "Modelo usado para tarefas em segundo plano do Claude CLI, como geração de título, resumo, etc. (Padrão: gemini-2.5-flash)",
@@ -842,13 +833,9 @@
             "presets_applied": "Predefinições aplicadas com sucesso",
             "custom_mappings": "Mapeamentos Personalizados",
             "group_title": "Grupos de Séries",
-            "gemini3_group_label": "Gemini 3 (Recomendado)",
-            "gemini3_option_high": "gemini-3.1-pro-high (Alta Qualidade)",
-            "gemini3_option_low": "gemini-3.1-pro-low (Equilibrado)",
-            "gemini3_option_flash": "gemini-3-flash (Rápido)",
             "groups": {
                 "claude_45": {
-                    "name": "Série Opus 4.6 TK",
+                    "name": "Série Claude 4.6 TK",
                     "desc": "Opus 4.5 TK"
                 },
                 "claude_35": {

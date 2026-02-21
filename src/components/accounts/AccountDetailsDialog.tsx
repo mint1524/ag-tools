@@ -89,9 +89,10 @@ export default function AccountDetailsDialog({ account, onClose }: AccountDetail
                             return sortModels(
                                 (account.quota?.models || []).map(model => {
                                     const config = MODEL_CONFIG[model.name.toLowerCase()];
+                                    const label = config?.i18nKey ? t(config.i18nKey) : (config?.label || model.name);
                                     return {
                                         id: model.name.toLowerCase(),
-                                        label: config?.label || model.name,
+                                        label: label,
                                         model
                                     };
                                 })
@@ -99,7 +100,7 @@ export default function AccountDetailsDialog({ account, onClose }: AccountDetail
                                 if (uniqueLabels.has(m.label)) return false;
                                 uniqueLabels.add(m.label);
                                 return true;
-                            }).map(({ model }) => (
+                            }).map(({ model, label }) => (
                                 <div key={model.name} className="p-4 rounded-xl border border-gray-100 dark:border-base-200 bg-white dark:bg-base-100 hover:border-blue-100 dark:hover:border-blue-900 hover:shadow-sm transition-all group">
                                     <div className="flex justify-between items-start mb-3">
                                         <div className="flex items-center gap-2">
@@ -108,7 +109,7 @@ export default function AccountDetailsDialog({ account, onClose }: AccountDetail
                                                 return Icon ? <Icon size={16} className="shrink-0" /> : null;
                                             })()}
                                             <span className="text-sm font-medium font-mono text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
-                                                {MODEL_CONFIG[model.name.toLowerCase()]?.label || model.name}
+                                                {label}
                                             </span>
                                         </div>
                                         <span
