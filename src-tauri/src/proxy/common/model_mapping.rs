@@ -169,6 +169,8 @@ pub async fn get_all_dynamic_models(
     model_ids.insert("gemini-2.5-flash".to_string());
     // gemini-2.5-pro removed 
     model_ids.insert("gemini-3-flash".to_string());
+    model_ids.insert("gemini-3-pro-high".to_string());
+    model_ids.insert("gemini-3-pro-low".to_string());
     model_ids.insert("gemini-3.1-pro-high".to_string());
     model_ids.insert("gemini-3.1-pro-low".to_string());
 

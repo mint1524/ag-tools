@@ -18,6 +18,13 @@ export const useProxyModels = () => {
             icon: <Cpu size={16} />
         },
         {
+            id: 'gemini-3-pro-high',
+            name: 'Gemini 3 Pro High',
+            desc: t('proxy.model.pro_high'),
+            group: 'Gemini 3',
+            icon: <Cpu size={16} />
+        },
+        {
             id: 'gemini-3-flash',
             name: 'Gemini 3 Flash',
             desc: t('proxy.model.flash_preview'),
@@ -36,6 +43,13 @@ export const useProxyModels = () => {
             name: 'Gemini 3.1 Pro Low',
             desc: t('proxy.model.pro_low'),
             group: 'Gemini 3.1',
+            icon: <Cpu size={16} />
+        },
+        {
+            id: 'gemini-3-pro-low',
+            name: 'Gemini 3 Pro Low',
+            desc: t('proxy.model.pro_low'),
+            group: 'Gemini 3',
             icon: <Cpu size={16} />
         },
 
