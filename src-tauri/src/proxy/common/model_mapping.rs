@@ -60,10 +60,13 @@ static CLAUDE_TO_GEMINI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|
     m.insert("gemini-3.1-pro-high", "gemini-3.1-pro-preview");
     m.insert("gemini-3.1-pro-preview", "gemini-3.1-pro-preview");
     m.insert("gemini-3.1-pro", "gemini-3.1-pro-preview");
-    m.insert("gemini-3-pro-low", "gemini-3.1-pro-preview");
-    m.insert("gemini-3-pro-high", "gemini-3.1-pro-preview");
-    m.insert("gemini-3-pro-preview", "gemini-3.1-pro-preview");
-    m.insert("gemini-3-pro", "gemini-3.1-pro-preview");
+    
+    // [Restore] Gemini 3 Pro aliases for independent routing
+    m.insert("gemini-3-pro-low", "gemini-3-pro-low");
+    m.insert("gemini-3-pro-high", "gemini-3-pro-high");
+    m.insert("gemini-3-pro-preview", "gemini-3-pro-preview");
+    m.insert("gemini-3-pro", "gemini-3-pro-high");
+    
     m.insert("gemini-2.5-flash", "gemini-2.5-flash");
     m.insert("gemini-3-flash", "gemini-3-flash");
     m.insert("gemini-3-pro-image", "gemini-3-pro-image");

@@ -112,6 +112,27 @@ fn build_model_catalog() -> Vec<ModelDef> {
             reasoning: true,
             variant_type: Some(VariantType::Gemini3Pro),
         },
+        // [Restore] Gemini 3 Pro models (1.5 Pro)
+        ModelDef {
+            id: "gemini-3-pro-high",
+            name: "Gemini 3 Pro High",
+            context_limit: 1_048_576,
+            output_limit: 65_535,
+            input_modalities: &["text", "image", "pdf"],
+            output_modalities: &["text", "image"],
+            reasoning: true,
+            variant_type: Some(VariantType::Gemini3Pro),
+        },
+        ModelDef {
+            id: "gemini-3-pro-low",
+            name: "Gemini 3 Pro Low",
+            context_limit: 1_048_576,
+            output_limit: 65_535,
+            input_modalities: &["text", "image", "pdf"],
+            output_modalities: &["text", "image"],
+            reasoning: true,
+            variant_type: Some(VariantType::Gemini3Pro),
+        },
         ModelDef {
             id: "gemini-3-flash",
             name: "Gemini 3 Flash",
