@@ -132,7 +132,7 @@ irm https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.ps
 
 > **Supported formats**: Linux (`.deb` / `.rpm` / `.AppImage`) | macOS (`.dmg`) | Windows (NSIS `.exe`)
 >
-> **Advanced usage**: Install a specific version `curl -fsSL ... | bash -s -- --version 4.1.21`, dry-run mode `curl -fsSL ... | bash -s -- --dry-run`
+> **Advanced usage**: Install a specific version `curl -fsSL ... | bash -s -- --version 4.1.22`, dry-run mode `curl -fsSL ... | bash -s -- --dry-run`
 
 #### macOS - Homebrew
 If you have [Homebrew](https://brew.sh/) installed, you can also install via:
@@ -284,6 +284,10 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.22 (2026-02-21)**:
+        -   **[Important Warning] 2api Risk Control Alert**:
+            -   Due to recent Google risk control measures, utilizing 2api features significantly increases the probability of your account being flagged.
+            -   **Highly Recommended**: To ensure account safety and interaction stability, we strongly advise reducing or discontinuing the use of 2api features. Support for the more native and stable **gRPC (`application/grpc`)** or **gRPC-Web (`application/grpc-web`)** protocols is currently under active testing. If you have any testing experience, ideas, or suggestions, please feel free to reach out for a discussion, or create a new branch to explore with us!
+            -   <details><summary>📸 View gRPC to OpenAI Proxy Test Screenshot</summary><img src="docs/images/usage/grpc-test.png" alt="gRPC Test" width="600"></details>
         -   **[Core Optimization] Claude Sonnet 4.5 to 4.6 Migration (PR #2014)**:
             -   **Model Upgrade**: Introduced `claude-sonnet-4-6` and `claude-sonnet-4-6-thinking` as primary models.
             -   **Seamless Transition**: Automatically redirect `claude-sonnet-4-5` (legacy) to `4.6`.

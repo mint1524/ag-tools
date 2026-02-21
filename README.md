@@ -131,7 +131,7 @@ irm https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.ps
 
 > **支持的格式**: Linux (`.deb` / `.rpm` / `.AppImage`) | macOS (`.dmg`) | Windows (NSIS `.exe`)
 >
-> **高级用法**: 安装指定版本 `curl -fsSL ... | bash -s -- --version 4.1.21`，预览模式 `curl -fsSL ... | bash -s -- --dry-run`
+> **高级用法**: 安装指定版本 `curl -fsSL ... | bash -s -- --version 4.1.22`，预览模式 `curl -fsSL ... | bash -s -- --dry-run`
 
 #### macOS - Homebrew
 如果您已安装 [Homebrew](https://brew.sh/)，也可以通过以下命令安装：
@@ -432,6 +432,10 @@ response = client.chat.completions.create(
 
 *   **版本演进 (Changelog)**:
     *   **v4.1.22 (2026-02-21)**:
+        -   **[重要提醒] 2api 风控风险提示**:
+            -   由于近期的谷歌风控原因，使用 2api 功能会导致账号被风控的概率显著增加。
+            -   **强烈建议**: 为了确保您的账号安全与调用稳定性，建议减少或停止使用 2api 功能。目前更原生、更稳定的 **gRPC (`application/grpc`)** 或 **gRPC-Web (`application/grpc-web`)** 协议代理支持仍在积极测试中，如果您有相关的测试经验或想法，非常欢迎联系讨论，也欢迎您建立新分支一起探索！
+            -   <details><summary>📸 点击查看 gRPC 实时转换 OpenAI 规范测试演示</summary><img src="docs/images/usage/grpc-test.png" alt="gRPC Test" width="600"></details>
         -   **[核心优化] Claude Sonnet 4.5 迁移至 4.6 (PR #2014)**:
             -   **模型升级**: 引入 `claude-sonnet-4-6` 及 `claude-sonnet-4-6-thinking` 作为主推模型。
             -   **平滑过渡**: 自动将 legacy 模型 `claude-sonnet-4-5` 重定向至 `4.6`。

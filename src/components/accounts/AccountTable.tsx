@@ -41,6 +41,7 @@ import {
     Tag,
     X,
     Check,
+    Clock,
 } from 'lucide-react';
 import { Account } from '../../types/account';
 import { useTranslation } from 'react-i18next';
@@ -430,6 +431,12 @@ function AccountRowContent({
                                 <span>{t('accounts.forbidden')}</span>
                             </span>
                         )}
+                        {account.validation_blocked && (
+                            <span className="px-2 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 text-[10px] font-bold flex items-center gap-1 shadow-sm border border-amber-200/50">
+                                <Clock className="w-2.5 h-2.5" />
+                                <span>{t('accounts.status.validation_required')}</span>
+                            </span>
+                        )}
 
 
                         {/* 订阅类型徽章 */}
@@ -500,15 +507,27 @@ function AccountRowContent({
 
             {/* 模型配额列 */}
             <td className="px-2 py-1 align-middle">
-                {isDisabled || account.quota?.is_forbidden ? (
-                    <div className="flex items-center justify-center gap-3 bg-red-50/50 dark:bg-red-900/10 py-1.5 px-4 rounded-xl border border-red-100/50 dark:border-red-900/20 group/error">
-                        <div className="flex items-center gap-1.5 text-red-600 dark:text-red-400">
-                            {account.quota?.is_forbidden ? <Lock className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />}
-                            <span className="text-[11px] font-bold text-red-700/80 dark:text-red-400">
-                                {isDisabled ? t('accounts.status.disabled') : t('accounts.forbidden_msg')}
+                {isDisabled || account.quota?.is_forbidden || account.validation_blocked ? (
+                    <div className={cn(
+                        "flex items-center justify-center gap-3 py-1.5 px-4 rounded-xl border group/error",
+                        account.validation_blocked ? "bg-amber-50/50 dark:bg-amber-900/10 border-amber-100/50 dark:border-amber-900/20" : "bg-red-50/50 dark:bg-red-900/10 border-red-100/50 dark:border-red-900/20"
+                    )}>
+                        <div className={cn(
+                            "flex items-center gap-1.5",
+                            account.validation_blocked ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
+                        )}>
+                            {account.validation_blocked ? <Clock className="w-3.5 h-3.5" /> : (account.quota?.is_forbidden ? <Lock className="w-3.5 h-3.5" /> : <Ban className="w-3.5 h-3.5" />)}
+                            <span className={cn(
+                                "text-[11px] font-bold",
+                                account.validation_blocked ? "text-amber-700/80 dark:text-amber-400" : "text-red-700/80 dark:text-red-400"
+                            )}>
+                                {account.validation_blocked ? t('accounts.status.validation_required') : (isDisabled ? t('accounts.status.disabled') : t('accounts.forbidden_msg'))}
                             </span>
                         </div>
-                        <div className="w-px h-3 bg-red-200 dark:bg-red-800/50" />
+                        <div className={cn(
+                            "w-px h-3",
+                            account.validation_blocked ? "bg-amber-200 dark:bg-amber-800/50" : "bg-red-200 dark:bg-red-800/50"
+                        )} />
                         <button
                             onClick={(e) => { e.stopPropagation(); onViewError(); }}
                             className="text-[10px] font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
