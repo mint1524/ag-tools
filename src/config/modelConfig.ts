@@ -29,8 +29,8 @@ export const MODEL_CONFIG: Record<string, ModelConfig> = {
     },
     // Backward-compatible alias
     'gemini-3-pro-high': {
-        label: 'Gemini 3 Pro High',
-        shortLabel: 'G3 Pro',
+        label: 'Gemini 3.1 Pro High',
+        shortLabel: 'G3.1 Pro',
         protectedKey: 'gemini-pro',
         Icon: Gemini.Color,
     },
@@ -54,8 +54,8 @@ export const MODEL_CONFIG: Record<string, ModelConfig> = {
     },
     // Backward-compatible alias
     'gemini-3-pro-low': {
-        label: 'Gemini 3 Pro Low',
-        shortLabel: 'G3 Low',
+        label: 'Gemini 3.1 Pro Low',
+        shortLabel: 'G3.1 Low',
         protectedKey: 'gemini-pro',
         Icon: Gemini.Color,
     },

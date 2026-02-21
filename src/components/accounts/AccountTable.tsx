@@ -339,6 +339,7 @@ function AccountRowContent({
     const pinnedModels = config?.pinned_quota_models?.models || Object.keys(MODEL_CONFIG);
 
     // 根据 show_all 状态决定显示哪些模型
+    const uniqueLabels = new Set<string>();
     const displayModels = sortModels(
         (showAllQuotas
             ? (account.quota?.models || []).map(m => {
@@ -360,8 +361,32 @@ function AccountRowContent({
                     data: account.quota?.models.find(m => aliases.includes(m.name.toLowerCase()))
                 };
             })
-        ).filter(m => m.id !== 'claude-sonnet-4-6-thinking' && m.id !== 'claude-sonnet-4-5-thinking' && m.id !== 'claude-opus-4-5-thinking')
-    );
+        ).filter(m => {
+            // 过滤特定的 Claude 变体
+            const isHiddenClaude = m.id === 'claude-sonnet-4-6-thinking' ||
+                m.id === 'claude-sonnet-4-5-thinking' ||
+                m.id === 'claude-opus-4-5-thinking' ||
+                m.id === 'claude-opus-4-6-thinking';
+
+            if (isHiddenClaude) return false;
+
+            // 基于标签去重 (例如 G3.1 Pro 只显示一次)
+            // 优先显示有配额数据的 ID
+            const labelKey = `${m.label}-${m.protectedKey}`;
+            if (uniqueLabels.has(labelKey)) {
+                return false;
+            }
+            if (m.data) {
+                uniqueLabels.add(labelKey);
+                return true;
+            }
+            return true;
+        })
+    ).filter((m, index, self) => {
+        // 第二次过滤：确保即使没有数据的重复 Label 也只保留一个
+        const labelKey = `${m.label}-${m.protectedKey}`;
+        return self.findIndex(t => `${t.label}-${t.protectedKey}` === labelKey) === index;
+    });
 
 
     return (
