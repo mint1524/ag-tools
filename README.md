@@ -441,10 +441,9 @@ response = client.chat.completions.create(
             -   **原子文件写入 (`account.rs`)**: `save_account` 改为先写入 UUID 后缀的临时文件，再通过 `fs::rename`（POSIX）/ `MoveFileExW`（Windows）原子替换目标文件，与已有的 `save_account_index` 保持一致，从根本上消除并发写导致的 JSON 损坏。
             -   **setInterval 溢出保护 (`BackgroundTaskRunner.tsx`)**: 对 `refresh_interval` 和 `sync_interval` 两个定时器的延迟参数加上 `Math.min(..., 2147483647)` 上界限制，防止超过 INT32_MAX 后被浏览器截断为 1ms 无限循环。
             -   **输入验证 (`Settings.tsx`)**: 将 `refresh_interval` 和 `sync_interval` 输入框的 `max` 属性从 `60` 更新为 `35791`（35791 min × 60000 < INT32_MAX），并在 `onChange` 中添加 `NaN` fallback（默认为 1）及范围夹紧 `[1, 35791]`，从源头阻断非法值输入。
-        -   **[核心优化] 纯净化与动态 User-Agent 伪装提取**:
-            -   **动态读取**: 系统现在自动提取编译时的当前版本号 (`CURRENT_VERSION`) 构建对 Google 的原生 OAuth `User-Agent`，替换了早期硬编码的方式。
-            -   **深度伪装**: `exchange_code` 和 `refresh_access_token` 换票请求时，自动注入如 `Antigravity/4.1.23` 形式的标识，高度还原官方客户端网络特征。
-            -   **降级保护**: 针对 Docker 及 Headless 等无明显运行时版本特征的环境，提供默认的回退安全版本（如 `4.1.22`），确保风险控制绕过的稳定性。
+        -   **[核心优化] OAuth 换票专属：剔除 JA3 指纹与动态 User-Agent 伪装**:
+            -   **纯净请求**: 仅针对 `exchange_code`（首次授权）和 `refresh_access_token`（静默续期）的换票请求，移除了底层网络库的 Chrome JA3 指纹伪装，恢复标准纯净的 TLS特征。
+            -   **动态 UA**: 换票时自动提取编译时版本号 (`CURRENT_VERSION`) 构建专属的 `User-Agent`（如 `vscode/1.X.X (Antigravity/4.1.23)`），以匹配纯净 TLS 链路。
     *   **v4.1.22 (2026-02-21)**:
         -   **[重要提醒] 2api 风控风险提示**:
             -   由于近期的谷歌风控原因，使用 2api 功能会导致账号被风控的概率显著增加。

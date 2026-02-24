@@ -77,9 +77,9 @@ pub fn get_auth_url(redirect_uri: &str, state: &str) -> String {
 pub async fn exchange_code(code: &str, redirect_uri: &str) -> Result<TokenResponse, String> {
     // [PHASE 2] 对于登录行为，尚未有 account_id，使用全局池阶梯逻辑
     let client = if let Some(pool) = crate::proxy::proxy_pool::get_global_proxy_pool() {
-        pool.get_effective_client(None, 60).await
+        pool.get_effective_standard_client(None, 60).await
     } else {
-        crate::utils::http::get_long_client()
+        crate::utils::http::get_long_standard_client()
     };
     
     let params = [
@@ -89,6 +89,11 @@ pub async fn exchange_code(code: &str, redirect_uri: &str) -> Result<TokenRespon
         ("redirect_uri", redirect_uri),
         ("grant_type", "authorization_code"),
     ];
+
+    tracing::debug!(
+        "[OAuth] Sending exchange_code request with User-Agent: {}",
+        crate::constants::NATIVE_OAUTH_USER_AGENT.as_str()
+    );
 
     let response = client
         .post(TOKEN_URL)
@@ -137,9 +142,9 @@ pub async fn exchange_code(code: &str, redirect_uri: &str) -> Result<TokenRespon
 pub async fn refresh_access_token(refresh_token: &str, account_id: Option<&str>) -> Result<TokenResponse, String> {
     // [PHASE 2] 根据 account_id 使用对应的代理
     let client = if let Some(pool) = crate::proxy::proxy_pool::get_global_proxy_pool() {
-        pool.get_effective_client(account_id, 60).await
+        pool.get_effective_standard_client(account_id, 60).await
     } else {
-        crate::utils::http::get_long_client()
+        crate::utils::http::get_long_standard_client()
     };
     
     let params = [
@@ -156,6 +161,11 @@ pub async fn refresh_access_token(refresh_token: &str, account_id: Option<&str>)
         crate::modules::logger::log_info("Refreshing Token for generic request (no account_id)...");
     }
     
+    tracing::debug!(
+        "[OAuth] Sending refresh_access_token request with User-Agent: {}",
+        crate::constants::NATIVE_OAUTH_USER_AGENT.as_str()
+    );
+
     let response = client
         .post(TOKEN_URL)
         .header(rquest::header::USER_AGENT, crate::constants::NATIVE_OAUTH_USER_AGENT.as_str())

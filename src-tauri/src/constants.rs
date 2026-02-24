@@ -94,9 +94,9 @@ pub static CURRENT_VERSION: LazyLock<String> = LazyLock::new(|| {
 });
 
 /// Native OAuth Authorization User-Agent
-/// Formatted exactly as: {nameLong}/{version} from native app configs
+/// Formatted exactly as: {nameLong}// User-Agent string for native OAuth requests
 pub static NATIVE_OAUTH_USER_AGENT: LazyLock<String> = LazyLock::new(|| {
-    format!("Antigravity/{}", *CURRENT_VERSION)
+    format!("vscode/1.X.X (Antigravity/{})", CURRENT_VERSION.as_str())
 });
 
 /// Global Session ID (generated once per app launch)

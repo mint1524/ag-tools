@@ -293,10 +293,9 @@ print(response.choices[0].message.content)
             -   **Atomic File Writes (`account.rs`)**: `save_account` now writes to a UUID-suffixed temp file first, then atomically replaces the target via `fs::rename` (POSIX) / `MoveFileExW` (Windows), consistent with the existing `save_account_index` implementation, eliminating race-condition corruption at the source.
             -   **setInterval Overflow Guard (`BackgroundTaskRunner.tsx`)**: Applied `Math.min(..., 2147483647)` to the computed delay for both the refresh and sync timers, preventing INT32_MAX overflow from silently clamping intervals to 1ms.
             -   **Input Validation (`Settings.tsx`)**: Updated the `max` attribute for `refresh_interval` and `sync_interval` inputs from `60` to `35791` (35791 min × 60000 < INT32_MAX), and added `NaN` fallback (defaults to 1) with range clamping `[1, 35791]` in `onChange` to block invalid values at the source.
-        -   **[Core Optimization] Native and Dynamic User-Agent Masking**:
-            -   **Dynamic Extraction**: The system now automatically extracts the compiled version (`CURRENT_VERSION`) to construct the native Google OAuth `User-Agent`, replacing the earlier hardcoded approach.
-            -   **Deep Disguise**: Automatically injects identifiers like `Antigravity/4.1.23` during `exchange_code` and `refresh_access_token` token exchanges, highly replicating the network signature of official clients.
-            -   **Fallback Protection**: For Docker and headless environments where runtime versions are not explicitly available, it provides a safe fallback version (e.g., `4.1.22`) to ensure stable risk mitigation.
+        -   **[Core Optimization] OAuth Token Exchange Only: Remove JA3 Fingerprinting and Dynamic User-Agent Masking**:
+            -   **Pure Requests**: Specifically for `exchange_code` (initial authorization) and `refresh_access_token` (silent renewal) requests, the Chrome JA3 fingerprint emulation has been removed to revert to standard pure TLS characteristics.
+            -   **Dynamic UA**: During token exchange, the system automatically extracts the compiled version (`CURRENT_VERSION`) to construct a dedicated `User-Agent` (e.g., `vscode/1.X.X (Antigravity/4.1.23)`), matching the pure TLS connection.
     *   **v4.1.22 (2026-02-21)**:
         -   **[Important Warning] 2api Risk Control Alert**:
             -   Due to recent Google risk control measures, utilizing 2api features significantly increases the probability of your account being flagged.
