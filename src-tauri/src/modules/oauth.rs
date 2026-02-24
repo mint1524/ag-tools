@@ -92,6 +92,7 @@ pub async fn exchange_code(code: &str, redirect_uri: &str) -> Result<TokenRespon
 
     let response = client
         .post(TOKEN_URL)
+        .header(rquest::header::USER_AGENT, crate::constants::NATIVE_OAUTH_USER_AGENT.as_str())
         .form(&params)
         .send()
         .await
@@ -157,6 +158,7 @@ pub async fn refresh_access_token(refresh_token: &str, account_id: Option<&str>)
     
     let response = client
         .post(TOKEN_URL)
+        .header(rquest::header::USER_AGENT, crate::constants::NATIVE_OAUTH_USER_AGENT.as_str())
         .form(&params)
         .send()
         .await

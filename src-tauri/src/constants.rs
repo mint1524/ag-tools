@@ -11,8 +11,8 @@ const CHANGELOG_URL: &str = "https://antigravity.google/changelog";
 const FALLBACK_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Known stable configuration (for Docker/Headless fallback)
-/// Antigravity 1.16.5 uses Electron 39.2.3 which corresponds to Chrome 132.0.6834.160
-const KNOWN_STABLE_VERSION: &str = "1.16.5";
+/// Antigravity 4.1.22 uses Electron 39.2.3 which corresponds to Chrome 132.0.6834.160
+const KNOWN_STABLE_VERSION: &str = "4.1.22";
 const KNOWN_STABLE_ELECTRON: &str = "39.2.3";
 const KNOWN_STABLE_CHROME: &str = "132.0.6834.160";
 
@@ -91,6 +91,12 @@ fn resolve_version_config() -> (VersionConfig, VersionSource) {
 pub static CURRENT_VERSION: LazyLock<String> = LazyLock::new(|| {
     let (config, _) = resolve_version_config();
     config.version
+});
+
+/// Native OAuth Authorization User-Agent
+/// Formatted exactly as: {nameLong}/{version} from native app configs
+pub static NATIVE_OAUTH_USER_AGENT: LazyLock<String> = LazyLock::new(|| {
+    format!("Antigravity/{}", *CURRENT_VERSION)
 });
 
 /// Global Session ID (generated once per app launch)
