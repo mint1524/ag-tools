@@ -222,21 +222,29 @@ fn wildcard_match(pattern: &str, text: &str) -> bool {
 }
 
 /// 核心模型路由解析引擎
-/// 优先级：精确匹配 > 通配符匹配 > 系统默认映射
+/// 优先级：精确匹配 > 官方降级别名 > 通配符匹配 > 系统默认映射
 /// 
 /// # 参数
 /// - `original_model`: 原始模型名称
+/// - `official_aliases`: 官方动态下发的别名表 (DeprecatedModelIds)
 /// - `custom_mapping`: 用户自定义映射表
 /// 
 /// # 返回
 /// 映射后的目标模型名称
 pub fn resolve_model_route(
     original_model: &str,
+    official_aliases: &std::collections::HashMap<String, String>,
     custom_mapping: &std::collections::HashMap<String, String>,
 ) -> String {
-    // 1. 精确匹配 (最高优先级)
+    // 1. 精确匹配 (最高优先级 - 用户自定义覆盖一切)
     if let Some(target) = custom_mapping.get(original_model) {
         crate::modules::logger::log_info(&format!("[Router] 精确映射: {} -> {}", original_model, target));
+        return target.clone();
+    }
+    
+    // 1.5 官方动态映射 (次高优先级 - 拦截下架模型请求)
+    if let Some(target) = official_aliases.get(original_model) {
+        crate::modules::logger::log_info(&format!("[Router] 官方退避映射: {} -> {}", original_model, target));
         return target.clone();
     }
     
@@ -396,12 +404,14 @@ mod tests {
         custom.insert("claude-opus-*".to_string(), "opus-default".to_string());
         custom.insert("claude-opus*thinking".to_string(), "opus-thinking".to_string());
 
+        let official_empty = std::collections::HashMap::new();
+
         // More specific pattern wins
-        assert_eq!(resolve_model_route("gpt-4-turbo", &custom), "specific");
-        assert_eq!(resolve_model_route("gpt-3.5", &custom), "fallback");
+        assert_eq!(resolve_model_route("gpt-4-turbo", &official_empty, &custom), "specific");
+        assert_eq!(resolve_model_route("gpt-3.5", &official_empty, &custom), "fallback");
         // Suffix constraint is more specific than prefix-only
-        assert_eq!(resolve_model_route("claude-opus-4-5-thinking", &custom), "opus-thinking");
-        assert_eq!(resolve_model_route("claude-opus-4", &custom), "opus-default");
+        assert_eq!(resolve_model_route("claude-opus-4-5-thinking", &official_empty, &custom), "opus-thinking");
+        assert_eq!(resolve_model_route("claude-opus-4", &official_empty, &custom), "opus-default");
     }
 
     #[test]
@@ -411,23 +421,25 @@ mod tests {
         custom.insert("gpt-*-*".to_string(), "gpt-multi".to_string());
         custom.insert("*thinking*".to_string(), "has-thinking".to_string());
 
+        let official_empty = std::collections::HashMap::new();
+
         // Multi-wildcard patterns should work
         assert_eq!(
-            resolve_model_route("claude-3-5-sonnet-20241022", &custom),
+            resolve_model_route("claude-3-5-sonnet-20241022", &official_empty, &custom),
             "sonnet-versioned"
         );
         assert_eq!(
-            resolve_model_route("gpt-4-turbo-preview", &custom),
+            resolve_model_route("gpt-4-turbo-preview", &official_empty, &custom),
             "gpt-multi"
         );
         assert_eq!(
-            resolve_model_route("claude-thinking-extended", &custom),
+            resolve_model_route("claude-thinking-extended", &official_empty, &custom),
             "has-thinking"
         );
 
         // Negative case: *thinking* should NOT match models without "thinking"
         assert_eq!(
-            resolve_model_route("random-model-name", &custom),
+            resolve_model_route("random-model-name", &official_empty, &custom),
             "random-model-name"  // Falls back to system default (pass-through)
         );
     }
@@ -439,11 +451,13 @@ mod tests {
         custom.insert("*".to_string(), "catch-all".to_string());
         custom.insert("a*b*c".to_string(), "multi-wild".to_string());
 
+        let official_empty = std::collections::HashMap::new();
+
         // Specificity: "prefix*" (6) > "*" (0)
-        assert_eq!(resolve_model_route("prefix-anything", &custom), "prefix-match");
+        assert_eq!(resolve_model_route("prefix-anything", &official_empty, &custom), "prefix-match");
         // Catch-all has lowest specificity
-        assert_eq!(resolve_model_route("random-model", &custom), "catch-all");
+        assert_eq!(resolve_model_route("random-model", &official_empty, &custom), "catch-all");
         // Multi-wildcard: "a*b*c" (3)
-        assert_eq!(resolve_model_route("a-test-b-foo-c", &custom), "multi-wild");
+        assert_eq!(resolve_model_route("a-test-b-foo-c", &official_empty, &custom), "multi-wild");
     }
 }

@@ -158,8 +158,10 @@ pub async fn handle_detect_model(
     }
 
     // 1. Resolve mapping
+    let official_aliases = token_manager.get_global_official_aliases();
     let mapped_model = crate::proxy::common::model_mapping::resolve_model_route(
         model_name,
+        &official_aliases,
         &*state.custom_mapping.read().await,
     );
 

@@ -526,8 +526,10 @@ pub async fn handle_messages(
     
     for attempt in 0..max_attempts {
         // 2. 模型路由解析
+        let official_aliases = token_manager.get_global_official_aliases();
         let mut mapped_model = crate::proxy::common::model_mapping::resolve_model_route(
             &request_for_body.model,
+            &official_aliases,
             &*state.custom_mapping.read().await,
         );
         last_mapped_model = Some(mapped_model.clone());
@@ -595,8 +597,10 @@ pub async fn handle_messages(
             
             // [FIX] 必须根据虚拟 ID Re-resolve 路由，以支持用户自定义映射 (如 internal-task -> gemini-3)
             // 否则会直接使用 generic ID 导致下游无法识别或只能使用静态默认值
+            let official_aliases = token_manager.get_global_official_aliases();
             let resolved_model = crate::proxy::common::model_mapping::resolve_model_route(
                 virtual_model_id, 
+                &official_aliases,
                 &*state.custom_mapping.read().await
             );
 

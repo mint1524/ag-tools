@@ -96,8 +96,10 @@ pub async fn handle_generate(
 
     for attempt in 0..max_attempts {
         // 3. 模型路由解析
+        let official_aliases = token_manager.get_global_official_aliases();
         let mapped_model = crate::proxy::common::model_mapping::resolve_model_route(
             &model_name,
+            &official_aliases,
             &*state.custom_mapping.read().await,
         );
         // 提取 tools 列表以进行联网探测 (Gemini 风格可能是嵌套的)
