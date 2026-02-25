@@ -150,10 +150,8 @@ pub async fn handle_chat_completions(
     let mut last_email: Option<String> = None;
 
     // 2. 模型路由解析 (移到循环外以支持在所有路径返回 X-Mapped-Model)
-    let official_aliases = token_manager.get_global_official_aliases();
     let mapped_model = crate::proxy::common::model_mapping::resolve_model_route(
         &openai_req.model,
-        &official_aliases,
         &*state.custom_mapping.read().await,
     );
 
@@ -1129,10 +1127,8 @@ pub async fn handle_completions(
     let mut last_email: Option<String> = None;
 
     // 2. 模型路由解析 (移到循环外以支持在所有路径返回 X-Mapped-Model)
-    let official_aliases = token_manager.get_global_official_aliases();
     let mapped_model = crate::proxy::common::model_mapping::resolve_model_route(
         &openai_req.model,
-        &official_aliases,
         &*state.custom_mapping.read().await,
     );
     let trace_id = format!("req_{}", chrono::Utc::now().timestamp_subsec_millis());
@@ -1569,7 +1565,7 @@ pub async fn handle_completions(
 pub async fn handle_list_models(State(state): State<AppState>) -> impl IntoResponse {
     use crate::proxy::common::model_mapping::get_all_dynamic_models;
 
-    let model_ids = get_all_dynamic_models(&state.custom_mapping).await;
+    let model_ids = get_all_dynamic_models(&state.custom_mapping, Some(&state.token_manager)).await;
 
     let data: Vec<_> = model_ids
         .into_iter()

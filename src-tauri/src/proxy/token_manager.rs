@@ -2370,6 +2370,18 @@ impl TokenManager {
         earliest_ts
     }
 
+    /// 获取当前所有可用账号中收集到的官方下发的所有动态模型集合
+    pub fn get_all_collected_models(&self) -> std::collections::HashSet<String> {
+        let mut all_models = std::collections::HashSet::new();
+        for entry in self.tokens.iter() {
+            let token = entry.value();
+            for model_id in token.model_quotas.keys() {
+                all_models.insert(model_id.clone());
+            }
+        }
+        all_models
+    }
+
     /// Helper to find account ID by email
     pub fn get_account_id_by_email(&self, email: &str) -> Option<String> {
         for entry in self.tokens.iter() {

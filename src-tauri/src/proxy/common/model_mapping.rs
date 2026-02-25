@@ -136,9 +136,10 @@ pub fn get_supported_models() -> Vec<String> {
     CLAUDE_TO_GEMINI.keys().map(|s| s.to_string()).collect()
 }
 
-/// 动态获取所有可用模型列表 (包含内置与用户自定义)
+/// 动态获取所有可用模型列表 (包含内置与用户自定义与官方端点动态下发)
 pub async fn get_all_dynamic_models(
     custom_mapping: &tokio::sync::RwLock<std::collections::HashMap<String, String>>,
+    token_manager: Option<&crate::proxy::token_manager::TokenManager>,
 ) -> Vec<String> {
     use std::collections::HashSet;
     let mut model_ids = HashSet::new();
@@ -153,6 +154,13 @@ pub async fn get_all_dynamic_models(
         let mapping = custom_mapping.read().await;
         for key in mapping.keys() {
             model_ids.insert(key.clone());
+        }
+    }
+
+    // 3. [NEW] 获取所有账号从官方接口汇聚而来的动态模型
+    if let Some(tm) = token_manager {
+        for dynamic_model in tm.get_all_collected_models() {
+            model_ids.insert(dynamic_model);
         }
     }
 

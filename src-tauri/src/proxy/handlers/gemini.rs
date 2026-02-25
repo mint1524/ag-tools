@@ -96,10 +96,8 @@ pub async fn handle_generate(
 
     for attempt in 0..max_attempts {
         // 3. 模型路由解析
-        let official_aliases = token_manager.get_global_official_aliases();
         let mapped_model = crate::proxy::common::model_mapping::resolve_model_route(
             &model_name,
-            &official_aliases,
             &*state.custom_mapping.read().await,
         );
         // 提取 tools 列表以进行联网探测 (Gemini 风格可能是嵌套的)
@@ -644,7 +642,7 @@ pub async fn handle_list_models(
     use crate::proxy::common::model_mapping::get_all_dynamic_models;
 
     // 获取所有动态模型列表（与 /v1/models 一致）
-    let model_ids = get_all_dynamic_models(&state.custom_mapping).await;
+    let model_ids = get_all_dynamic_models(&state.custom_mapping, Some(&state.token_manager)).await;
 
     // 转换为 Gemini API 格式
     let models: Vec<_> = model_ids
