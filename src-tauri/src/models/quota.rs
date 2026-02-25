@@ -39,6 +39,9 @@ pub struct QuotaData {
     /// 订阅等级 (FREE/PRO/ULTRA)
     #[serde(default)]
     pub subscription_tier: Option<String>,
+    /// 模型淘汰重定向规则表 (old_model_id -> new_model_id)
+    #[serde(default)]
+    pub model_forwarding_rules: std::collections::HashMap<String, String>,
 }
 
 impl QuotaData {
@@ -49,6 +52,7 @@ impl QuotaData {
             is_forbidden: false,
             forbidden_reason: None,
             subscription_tier: None,
+            model_forwarding_rules: std::collections::HashMap::new(),
         }
     }
 

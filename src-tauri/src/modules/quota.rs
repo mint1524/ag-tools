@@ -14,6 +14,14 @@ const RETRY_DELAY_SECS: u64 = 30;
 #[derive(Debug, Serialize, Deserialize)]
 struct QuotaResponse {
     models: std::collections::HashMap<String, ModelInfo>,
+    #[serde(rename = "deprecatedModelIds")]
+    deprecated_model_ids: Option<std::collections::HashMap<String, DeprecatedModelInfo>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct DeprecatedModelInfo {
+    #[serde(rename = "newModelId")]
+    new_model_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -271,6 +279,13 @@ pub async fn fetch_quota_with_cache(
                             };
                             quota_data.add_model(model_quota);
                         }
+                    }
+                }
+                
+                // Parse deprecated model routing rules
+                if let Some(deprecated) = quota_response.deprecated_model_ids {
+                    for (old_id, info) in deprecated {
+                        quota_data.model_forwarding_rules.insert(old_id, info.new_model_id);
                     }
                 }
                 

@@ -1,6 +1,17 @@
 // 模型名称映射
 use std::collections::HashMap;
 use once_cell::sync::Lazy;
+use dashmap::DashMap;
+
+// 动态官方废弃模型转发表 (old_model_id -> new_model_id)
+pub static DYNAMIC_MODEL_FORWARDING_RULES: Lazy<DashMap<String, String>> = Lazy::new(|| DashMap::new());
+
+pub fn update_dynamic_forwarding_rules(old_model: String, new_model: String) {
+    if !DYNAMIC_MODEL_FORWARDING_RULES.contains_key(&old_model) {
+        crate::modules::logger::log_info(&format!("[Mapping] Registered automatic forwarding rule: {} -> {}", old_model, new_model));
+    }
+    DYNAMIC_MODEL_FORWARDING_RULES.insert(old_model, new_model);
+}
 
 static CLAUDE_TO_GEMINI: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     let mut m = HashMap::new();
@@ -222,29 +233,28 @@ fn wildcard_match(pattern: &str, text: &str) -> bool {
 }
 
 /// 核心模型路由解析引擎
-/// 优先级：精确匹配 > 官方降级别名 > 通配符匹配 > 系统默认映射
+/// 优先级：精确匹配 > 通配符匹配 > 系统默认映射
 /// 
 /// # 参数
 /// - `original_model`: 原始模型名称
-/// - `official_aliases`: 官方动态下发的别名表 (DeprecatedModelIds)
 /// - `custom_mapping`: 用户自定义映射表
 /// 
 /// # 返回
 /// 映射后的目标模型名称
 pub fn resolve_model_route(
     original_model: &str,
-    official_aliases: &std::collections::HashMap<String, String>,
     custom_mapping: &std::collections::HashMap<String, String>,
 ) -> String {
-    // 1. 精确匹配 (最高优先级 - 用户自定义覆盖一切)
+    // 0. API 热更新废弃模型转发 (最高物理优先级，强制纠正)
+    // 如果用户非要用已经被移除的模型，并且官方下发了 fallback path，我们在此拦截并纠正
+    if let Some(forwarded) = DYNAMIC_MODEL_FORWARDING_RULES.get(original_model) {
+        crate::modules::logger::log_info(&format!("[Router] 官方淘汰重定向: {} -> {}", original_model, forwarded.value()));
+        return forwarded.value().clone();
+    }
+
+    // 1. 精确匹配 (次高优先级)
     if let Some(target) = custom_mapping.get(original_model) {
         crate::modules::logger::log_info(&format!("[Router] 精确映射: {} -> {}", original_model, target));
-        return target.clone();
-    }
-    
-    // 1.5 官方动态映射 (次高优先级 - 拦截下架模型请求)
-    if let Some(target) = official_aliases.get(original_model) {
-        crate::modules::logger::log_info(&format!("[Router] 官方退避映射: {} -> {}", original_model, target));
         return target.clone();
     }
     
@@ -404,14 +414,12 @@ mod tests {
         custom.insert("claude-opus-*".to_string(), "opus-default".to_string());
         custom.insert("claude-opus*thinking".to_string(), "opus-thinking".to_string());
 
-        let official_empty = std::collections::HashMap::new();
-
         // More specific pattern wins
-        assert_eq!(resolve_model_route("gpt-4-turbo", &official_empty, &custom), "specific");
-        assert_eq!(resolve_model_route("gpt-3.5", &official_empty, &custom), "fallback");
+        assert_eq!(resolve_model_route("gpt-4-turbo", &custom), "specific");
+        assert_eq!(resolve_model_route("gpt-3.5", &custom), "fallback");
         // Suffix constraint is more specific than prefix-only
-        assert_eq!(resolve_model_route("claude-opus-4-5-thinking", &official_empty, &custom), "opus-thinking");
-        assert_eq!(resolve_model_route("claude-opus-4", &official_empty, &custom), "opus-default");
+        assert_eq!(resolve_model_route("claude-opus-4-5-thinking", &custom), "opus-thinking");
+        assert_eq!(resolve_model_route("claude-opus-4", &custom), "opus-default");
     }
 
     #[test]
@@ -421,25 +429,23 @@ mod tests {
         custom.insert("gpt-*-*".to_string(), "gpt-multi".to_string());
         custom.insert("*thinking*".to_string(), "has-thinking".to_string());
 
-        let official_empty = std::collections::HashMap::new();
-
         // Multi-wildcard patterns should work
         assert_eq!(
-            resolve_model_route("claude-3-5-sonnet-20241022", &official_empty, &custom),
+            resolve_model_route("claude-3-5-sonnet-20241022", &custom),
             "sonnet-versioned"
         );
         assert_eq!(
-            resolve_model_route("gpt-4-turbo-preview", &official_empty, &custom),
+            resolve_model_route("gpt-4-turbo-preview", &custom),
             "gpt-multi"
         );
         assert_eq!(
-            resolve_model_route("claude-thinking-extended", &official_empty, &custom),
+            resolve_model_route("claude-thinking-extended", &custom),
             "has-thinking"
         );
 
         // Negative case: *thinking* should NOT match models without "thinking"
         assert_eq!(
-            resolve_model_route("random-model-name", &official_empty, &custom),
+            resolve_model_route("random-model-name", &custom),
             "random-model-name"  // Falls back to system default (pass-through)
         );
     }
@@ -451,13 +457,11 @@ mod tests {
         custom.insert("*".to_string(), "catch-all".to_string());
         custom.insert("a*b*c".to_string(), "multi-wild".to_string());
 
-        let official_empty = std::collections::HashMap::new();
-
         // Specificity: "prefix*" (6) > "*" (0)
-        assert_eq!(resolve_model_route("prefix-anything", &official_empty, &custom), "prefix-match");
+        assert_eq!(resolve_model_route("prefix-anything", &custom), "prefix-match");
         // Catch-all has lowest specificity
-        assert_eq!(resolve_model_route("random-model", &official_empty, &custom), "catch-all");
+        assert_eq!(resolve_model_route("random-model", &custom), "catch-all");
         // Multi-wildcard: "a*b*c" (3)
-        assert_eq!(resolve_model_route("a-test-b-foo-c", &official_empty, &custom), "multi-wild");
+        assert_eq!(resolve_model_route("a-test-b-foo-c", &custom), "multi-wild");
     }
 }
