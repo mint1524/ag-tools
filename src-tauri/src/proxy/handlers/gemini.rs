@@ -155,7 +155,7 @@ pub async fn handle_generate(
 
         // 5. 包装请求 (project injection)
         // [FIX #765] Pass session_id to wrap_request for signature injection
-        let wrapped_body = wrap_request(&body, &project_id, &mapped_model, Some(&session_id));
+        let wrapped_body = wrap_request(&body, &project_id, &mapped_model, Some(account_id.as_str()), Some(&session_id));
 
         if debug_logger::is_enabled(&debug_cfg) {
             let payload = json!({

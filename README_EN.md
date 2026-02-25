@@ -284,6 +284,7 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.23 (2026-02-25)**:
+        -   **[Security Enhancement] Aligned application-layer and low-level protocol fingerprints with native clients to improve request stability and anti-interception capabilities.**
         -   **[Core Fix] Convert v1beta thinkingLevel to v1internal thinkingBudget (PR #2095)**:
             -   **Root Cause**: Clients like OpenClaw and Cline send v1beta-style `thinkingLevel` strings (`"NONE"` / `"LOW"` / `"MEDIUM"` / `"HIGH"`) in `generationConfig.thinkingConfig`. When AGM proxies through Google's v1internal API, Google rejects `thinkingLevel` with `400 INVALID_ARGUMENT` because v1internal only accepts the numeric `thinkingBudget`.
             -   **Fix**: Inserted an early conversion step inside `wrap_request()` before any existing budget processing logic: detect the `thinkingLevel` string, map it to a numeric `thinkingBudget` (`NONE`→0, `LOW`→4096, `MEDIUM`→8192, `HIGH`→24576), remove `thinkingLevel`, and write `thinkingBudget`. This ensures all downstream logic (budget capping, `maxOutputTokens` adjustment, adaptive detection) sees the correct numeric budget.
@@ -296,6 +297,13 @@ print(response.choices[0].message.content)
         -   **[Core Optimization] OAuth Token Exchange Only: Remove JA3 Fingerprinting and Dynamic User-Agent Masking**:
             -   **Pure Requests**: Specifically for `exchange_code` (initial authorization) and `refresh_access_token` (silent renewal) requests, the Chrome JA3 fingerprint emulation has been removed to revert to standard pure TLS characteristics.
             -   **Dynamic UA**: During token exchange, the system automatically extracts the compiled version (`CURRENT_VERSION`) to construct a dedicated `User-Agent` (e.g., `vscode/1.X.X (Antigravity/4.1.23)`), matching the pure TLS connection.
+        -   **[Feature Enhancement] API Proxy Page and Settings Model Lists Now Fully Dynamic**:
+            -   **Root Cause**: The "API Proxy → Supported Models & Integration" list, the target model dropdown in "Model Router", and the "Settings → Pinned Quota Models" list all previously read only from the static `MODEL_CONFIG`, causing dynamically issued models (e.g., `GPT-OSS 120B`, `Gemini 3.1 Pro (High)`) to never appear in these lists.
+            -   **Fix**:
+                -   Refactored the `useProxyModels` Hook: account `quota.models` dynamic data is now the primary data source, aggregating `display_name` (as the primary label) and `name` (as the model ID) across all accounts; `MODEL_CONFIG` is used only for icon/group styling and as a static fallback when no account data is available.
+                -   Added automatic lazy-loading: since `ApiProxy` itself does not call `fetchAccounts`, the Hook now auto-triggers a fetch when the store is empty, ensuring dynamic models appear regardless of the navigation path.
+                -   Refactored `PinnedQuotaModels` component: applies the same strategy and fixes the issue where previously-pinned "thinking" models displayed as "Unknown", now correctly resolving their real `display_name`.
+            -   **Deduplication**: All lists deduplicate by original `name` (lowercase) and additionally filter out `-thinking` suffix entries from `MODEL_CONFIG` (these variants are already covered by the `supports_thinking` flag in account data).
     *   **v4.1.22 (2026-02-21)**:
         -   **[Important Warning] 2api Risk Control Alert**:
             -   Due to recent Google risk control measures, utilizing 2api features significantly increases the probability of your account being flagged.

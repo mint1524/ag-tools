@@ -336,7 +336,11 @@ pub fn transform_claude_request_in(
     claude_req: &ClaudeRequest,
     project_id: &str,
     is_retry: bool,
+    account_id: Option<&str>,
+    session_id: &str,
 ) -> Result<Value, String> {
+    let message_count = claude_req.messages.len();
+
     // [CRITICAL FIX] 预先清理所有消息中的 cache_control 字段
     // 这解决了 VS Code 插件等客户端在多轮对话中将历史消息的 cache_control 字段
     // 原封不动发回导致的 "Extra inputs are not permitted" 错误
@@ -628,9 +632,14 @@ pub fn transform_claude_request_in(
         }
     }
 
+    // [ADDED v4.1.24] 注入稳定 sessionId 对齐官方规范
+    if let Some(account_id) = account_id {
+        inner_request["sessionId"] = json!(crate::proxy::common::session::derive_session_id(account_id));
+    }
 
     // 生成 requestId
-    let request_id = format!("agent-{}", uuid::Uuid::new_v4());
+    // [CHANGED v4.1.24] Structured requestId to match official format
+    let request_id = format!("agent/antigravity/{}/{}", &session_id[..session_id.len().min(8)], message_count);
 
     // 构建最终请求体
     let mut body = json!({
@@ -639,7 +648,8 @@ pub fn transform_claude_request_in(
         "request": inner_request,
         "model": config.final_model,
         "userAgent": "antigravity",
-        "requestType": config.request_type,
+        // [CHANGED v4.1.24] Use "agent" for all non-image requests
+        "requestType": if config.request_type == "image_gen" { "image_gen" } else { "agent" },
     });
 
     // 如果提供了 metadata.user_id，则复用为 sessionId
@@ -1810,9 +1820,13 @@ fn build_generation_config(
     }
     if let Some(top_p) = claude_req.top_p {
         config["topP"] = json!(top_p);
+    } else {
+        config["topP"] = json!(1.0); // [CHANGED v4.1.24] Default topP=1.0 to match official client
     }
     if let Some(top_k) = claude_req.top_k {
         config["topK"] = json!(top_k);
+    } else {
+        config["topK"] = json!(40); // [ADDED v4.1.24] Default topK=40 to match official client
     }
 
 
@@ -2033,7 +2047,7 @@ mod tests {
             quality: None,
         };
 
-        let result = transform_claude_request_in(&req, "test-project", false);
+        let result = transform_claude_request_in(&req, "test-project", false, None, "test_session");
         assert!(result.is_ok());
 
         let body = result.unwrap();
@@ -2130,7 +2144,7 @@ mod tests {
             quality: None,
         };
 
-        let result = transform_claude_request_in(&req, "test-project", false);
+        let result = transform_claude_request_in(&req, "test-project", false, None, "test_session");
         assert!(result.is_ok());
 
         let body = result.unwrap();
@@ -2200,7 +2214,7 @@ mod tests {
             quality: None,
         };
 
-        let result = transform_claude_request_in(&req, "test-project", false);
+        let result = transform_claude_request_in(&req, "test-project", false, None, "test_session");
         assert!(result.is_ok());
 
         // 验证请求成功转换
@@ -2274,7 +2288,7 @@ mod tests {
             quality: None,
         };
 
-        let result = transform_claude_request_in(&req, "test-project", false);
+        let result = transform_claude_request_in(&req, "test-project", false, None, "test_session");
         assert!(result.is_ok());
 
         let body = result.unwrap();
@@ -2324,7 +2338,7 @@ mod tests {
             quality: None,
         };
 
-        let result = transform_claude_request_in(&req, "test-project", false);
+        let result = transform_claude_request_in(&req, "test-project", false, None, "test_session");
         assert!(result.is_ok());
 
         let body = result.unwrap();
@@ -2380,7 +2394,7 @@ mod tests {
             quality: None,
         };
 
-        let result = transform_claude_request_in(&req, "test-project", false);
+        let result = transform_claude_request_in(&req, "test-project", false, None, "test_session");
         assert!(result.is_ok(), "Transformation failed");
         let body = result.unwrap();
         let contents = body["request"]["contents"].as_array().unwrap();
@@ -2428,7 +2442,7 @@ mod tests {
             quality: None,
         };
 
-        let result = transform_claude_request_in(&req, "test-project", false);
+        let result = transform_claude_request_in(&req, "test-project", false, None, "test_session");
         assert!(result.is_ok());
         let body = result.unwrap();
         let parts = body["request"]["contents"][0]["parts"].as_array().unwrap();
@@ -2619,7 +2633,7 @@ mod tests {
             quality: None,
         };
 
-        let result = transform_claude_request_in(&req, "test-v", false).unwrap();
+        let result = transform_claude_request_in(&req, "test-v", false, None, "test_session").unwrap();
         // [FIX] Since we removed the default 81920, maxOutputTokens should NOT be present
         // when max_tokens is None and thinking is disabled
         let gen_config = &result["request"]["generationConfig"];
@@ -2657,7 +2671,7 @@ mod tests {
         };
 
         // Should cap at 24576
-        let result = transform_claude_request_in(&req, "proj", false).unwrap();
+        let result = transform_claude_request_in(&req, "proj", false, None, "test_session").unwrap();
 
         let gen_config = &result["request"]["generationConfig"]; // Corrected path
         let budget = gen_config["thinkingConfig"]["thinkingBudget"]
@@ -2688,7 +2702,7 @@ mod tests {
         };
 
         // Should cap
-        let result_pro = transform_claude_request_in(&req_pro, "proj", false).unwrap();
+        let result_pro = transform_claude_request_in(&req_pro, "proj", false, None, "test_session").unwrap();
         let budget_pro = result_pro["request"]["generationConfig"]["thinkingConfig"]
             ["thinkingBudget"]
             .as_u64()
@@ -2725,7 +2739,7 @@ mod tests {
         };
 
         // Transform
-        let result = transform_claude_request_in(&req, "proj", false).unwrap();
+        let result = transform_claude_request_in(&req, "proj", false, None, "test_session").unwrap();
         let gen_config = &result["request"]["generationConfig"];
 
         // thinkingConfig should be present (not forced disabled)
@@ -2765,7 +2779,7 @@ mod tests {
         };
 
         // Transform
-        let result = transform_claude_request_in(&req, "proj", false).unwrap();
+        let result = transform_claude_request_in(&req, "proj", false, None, "test_session").unwrap();
         let gen_config = &result["request"]["generationConfig"];
 
         // thinkingConfig SHOULD be injected because of default-on logic
@@ -2802,7 +2816,7 @@ mod tests {
         };
 
         // 3. Transform request
-        let result = transform_claude_request_in(&req, "test-proj", false).unwrap();
+        let result = transform_claude_request_in(&req, "test-proj", false, None, "test_session").unwrap();
 
         // 4. Verify thinkingConfig has includeThoughts: false
         let gen_config = result["request"]["generationConfig"].as_object().expect("Should have generationConfig");
@@ -2846,7 +2860,7 @@ mod tests {
         };
 
         // Transform
-        let result = transform_claude_request_in(&req, "test-proj", false).unwrap();
+        let result = transform_claude_request_in(&req, "test-proj", false, None, "test_session").unwrap();
         
         let gen_config = result["request"]["generationConfig"].as_object().unwrap();
         let thinking_config = gen_config["thinkingConfig"].as_object().unwrap();

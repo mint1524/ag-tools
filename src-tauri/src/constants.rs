@@ -105,8 +105,10 @@ pub static SESSION_ID: LazyLock<String> = LazyLock::new(|| {
 });
 
 /// Shared User-Agent string for all upstream API requests.
-/// Format matches official Electron client:
-/// "Antigravity/1.16.5 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Antigravity/1.16.5 Chrome/132.0.6834.160 Electron/39.2.3 Safari/537.36"
+/// Format matches the official Antigravity Electron desktop client (non-browser style):
+/// "Antigravity/4.1.23 (Macintosh; Intel Mac OS X 10_15_7) Chrome/132.0.6834.160 Electron/39.2.3"
+/// [CHANGED v4.1.24] Removed Mozilla/5.0 AppleWebKit/Safari browser wrapper to align with
+/// native desktop client fingerprint (closer to the actual official client behavior).
 pub static USER_AGENT: LazyLock<String> = LazyLock::new(|| {
     let (config, source) = resolve_version_config();
 
@@ -121,13 +123,13 @@ pub static USER_AGENT: LazyLock<String> = LazyLock::new(|| {
         "macos" => "Macintosh; Intel Mac OS X 10_15_7",
         "windows" => "Windows NT 10.0; Win64; x64",
         "linux" => "X11; Linux x86_64",
-        _ => "X11; Linux x86_64", // Default to Linux-like
+        _ => "X11; Linux x86_64",
     };
 
     format!(
-        "Mozilla/5.0 ({}) AppleWebKit/537.36 (KHTML, like Gecko) Antigravity/{} Chrome/{} Electron/{} Safari/537.36",
-        platform_info,
+        "Antigravity/{} ({}) Chrome/{} Electron/{}",
         config.version,
+        platform_info,
         config.chrome,
         config.electron
     )

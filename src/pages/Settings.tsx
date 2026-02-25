@@ -162,8 +162,7 @@ function Settings() {
                 return;
             }
 
-            // 强制开启后台自动刷新，确保联动逻辑生效
-            await saveConfig({ ...formData, auto_refresh: true });
+            await saveConfig(formData);
             showToast(t('common.saved'), 'success');
 
             // 如果修改了代理配置，提示用户需要重启
