@@ -93,7 +93,7 @@ export default function AccountErrorDialog({ account, onClose }: AccountErrorDia
 
     // 识别错误类型
     const isViolation = rawReason.toLowerCase().includes('terms of service') || rawReason.toLowerCase().includes('violation');
-    const isVerificationNeeded = !isViolation && (rawReason.toLowerCase().includes('verify your account') || !!validationUrl);
+    const isVerificationNeeded = !isViolation && (rawReason.toLowerCase().includes('verify your account') || !!account.validation_url);
 
     // 复制功能
     const handleCopyUrl = (url: string) => {
