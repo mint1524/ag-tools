@@ -13,27 +13,33 @@ const CREATE_NO_WINDOW: u32 = 0x08000000;
 /// Windows 常见 CLI 安装路径扫描
 #[cfg(target_os = "windows")]
 fn scan_windows_cli_paths(cmd: &str) -> Option<PathBuf> {
-    let app_data = std::env::var("APPDATA").unwrap_or_default();
-    let local_app_data = std::env::var("LOCALAPPDATA").unwrap_or_default();
+    let mut common_paths: Vec<PathBuf> = Vec::new();
 
-    // 常见 Windows 安装路径，按优先级排序
-    let common_paths = vec![
-        // npm 全局安装
-        PathBuf::from(&app_data).join("npm").join(format!("{}.cmd", cmd)),
-        PathBuf::from(&app_data).join("npm").join(cmd),
-        // pnpm 全局安装
-        PathBuf::from(&local_app_data).join("pnpm").join(format!("{}.cmd", cmd)),
-        PathBuf::from(&local_app_data).join("pnpm").join(cmd),
-        // Yarn 全局安装
-        PathBuf::from(&local_app_data).join("Yarn").join("bin").join(format!("{}.cmd", cmd)),
-        PathBuf::from(&local_app_data).join("Yarn").join("bin").join(cmd),
-        // bun 全局安装
-        dirs::home_dir().map(|h| h.join(".bun").join("bin").join(format!("{}.exe", cmd))).unwrap_or_default(),
-        dirs::home_dir().map(|h| h.join(".bun").join("bin").join(cmd)).unwrap_or_default(),
-    ];
+    // 常见 Windows 安装路径，按优先级排序（仅加入可推导出的绝对路径，避免空/相对路径误判）
+    if let Some(app_data) = std::env::var_os("APPDATA") {
+        let npm_base = PathBuf::from(app_data).join("npm");
+        common_paths.push(npm_base.join(format!("{}.cmd", cmd)));
+        common_paths.push(npm_base.join(cmd));
+    }
+
+    if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
+        let pnpm_base = PathBuf::from(&local_app_data).join("pnpm");
+        common_paths.push(pnpm_base.join(format!("{}.cmd", cmd)));
+        common_paths.push(pnpm_base.join(cmd));
+
+        let yarn_base = PathBuf::from(local_app_data).join("Yarn").join("bin");
+        common_paths.push(yarn_base.join(format!("{}.cmd", cmd)));
+        common_paths.push(yarn_base.join(cmd));
+    }
+
+    if let Some(home) = dirs::home_dir() {
+        let bun_base = home.join(".bun").join("bin");
+        common_paths.push(bun_base.join(format!("{}.exe", cmd)));
+        common_paths.push(bun_base.join(cmd));
+    }
 
     for path in common_paths {
-        if path.exists() {
+        if path.is_file() {
             tracing::debug!("[CLI-Sync] Detected {} via Windows explicit path: {:?}", cmd, path);
             return Some(path);
         }
@@ -42,17 +48,19 @@ fn scan_windows_cli_paths(cmd: &str) -> Option<PathBuf> {
     // 扫描 NVM Windows 目录
     if let Ok(nvm_home) = std::env::var("NVM_HOME") {
         let nvm_path = PathBuf::from(nvm_home);
-        if nvm_path.exists() {
+        if nvm_path.is_dir() {
             // NVM Windows 结构: %NVM_HOME%\v{version}\{cmd}.cmd
             if let Ok(entries) = fs::read_dir(&nvm_path) {
                 for entry in entries.flatten() {
                     let cmd_path = entry.path().join(format!("{}.cmd", cmd));
-                    if cmd_path.exists() {
+                    if cmd_path.is_file() {
+                        tracing::debug!("[CLI-Sync] Detected {} via NVM_HOME: {:?}", cmd, cmd_path);
                         return Some(cmd_path);
                     }
                     // 也检查 .exe 版本
                     let exe_path = entry.path().join(format!("{}.exe", cmd));
-                    if exe_path.exists() {
+                    if exe_path.is_file() {
+                        tracing::debug!("[CLI-Sync] Detected {} via NVM_HOME: {:?}", cmd, exe_path);
                         return Some(exe_path);
                     }
                 }
@@ -71,7 +79,7 @@ fn parse_where_output(output: &[u8]) -> Option<PathBuf> {
         let trimmed = line.trim();
         if !trimmed.is_empty() {
             let path = PathBuf::from(trimmed);
-            if path.exists() {
+            if path.is_file() {
                 return Some(path);
             }
         }
