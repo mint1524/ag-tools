@@ -15,6 +15,7 @@ jobs:
   build-frontend:
     name: Build Frontend
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,6 +39,7 @@ jobs:
   check-rust:
     name: Check Rust Code
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -50,8 +52,8 @@ jobs:
         if: startsWith(matrix.platform, 'ubuntu')
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libsoup-3.0-dev javascriptcoregtk-4.1 libjavascriptcoregtk-4.1-dev
-          sudo apt-get install -y libnm-dev xdg-utils
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libsoup-3.0-dev javascriptcoregtk-4.1 libjavascriptcoregtk-4.1-dev
+          sudo apt-get install -y --no-install-recommends libnm-dev xdg-utils
 
       - name: Rust setup
         uses: dtolnay/rust-toolchain@stable
@@ -70,7 +72,6 @@ jobs:
         run: |
           cd src-tauri
           cargo clippy --all-targets --all-features -- -D warnings
-        continue-on-error: true
 
       - name: Check Rust compilation
         run: |
@@ -81,6 +82,7 @@ jobs:
   build-tauri:
     name: Build Tauri App
     runs-on: ${{ matrix.platform }}
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -93,8 +95,8 @@ jobs:
         if: startsWith(matrix.platform, 'ubuntu')
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libsoup-3.0-dev javascriptcoregtk-4.1 libjavascriptcoregtk-4.1-dev
-          sudo apt-get install -y libnm-dev xdg-utils
+          sudo apt-get install -y --no-install-recommends libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf pkg-config libsoup-3.0-dev javascriptcoregtk-4.1 libjavascriptcoregtk-4.1-dev
+          sudo apt-get install -y --no-install-recommends libnm-dev xdg-utils
 
       - name: Rust setup
         uses: dtolnay/rust-toolchain@stable
