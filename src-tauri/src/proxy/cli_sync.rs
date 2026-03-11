@@ -39,7 +39,7 @@ fn scan_windows_cli_paths(cmd: &str) -> Option<PathBuf> {
     }
 
     for path in common_paths {
-        if path.is_file() {
+        if is_safe_path(&path) {
             tracing::debug!("[CLI-Sync] Detected {} via Windows explicit path: {:?}", cmd, path);
             return Some(path);
         }
@@ -53,13 +53,13 @@ fn scan_windows_cli_paths(cmd: &str) -> Option<PathBuf> {
             if let Ok(entries) = fs::read_dir(&nvm_path) {
                 for entry in entries.flatten() {
                     let cmd_path = entry.path().join(format!("{}.cmd", cmd));
-                    if cmd_path.is_file() {
+                    if is_safe_path(&cmd_path) {
                         tracing::debug!("[CLI-Sync] Detected {} via NVM_HOME: {:?}", cmd, cmd_path);
                         return Some(cmd_path);
                     }
                     // 也检查 .exe 版本
                     let exe_path = entry.path().join(format!("{}.exe", cmd));
-                    if exe_path.is_file() {
+                    if is_safe_path(&exe_path) {
                         tracing::debug!("[CLI-Sync] Detected {} via NVM_HOME: {:?}", cmd, exe_path);
                         return Some(exe_path);
                     }
@@ -79,7 +79,7 @@ fn parse_where_output(output: &[u8]) -> Option<PathBuf> {
         let trimmed = line.trim();
         if !trimmed.is_empty() {
             let path = PathBuf::from(trimmed);
-            if path.is_file() {
+            if is_safe_path(&path) {
                 return Some(path);
             }
         }
@@ -96,13 +96,44 @@ fn is_cmd_file(path: &PathBuf) -> bool {
         .unwrap_or(false)
 }
 
+/// 验证路径是否安全（防止命令注入）
+#[cfg(target_os = "windows")]
+fn is_safe_path(path: &PathBuf) -> bool {
+    // 检查路径是否存在且是文件
+    if !path.exists() || !path.is_file() {
+        return false;
+    }
+
+    // 必须为绝对路径，避免执行相对路径文件
+    if !path.is_absolute() {
+        return false;
+    }
+
+    // 检查路径是否包含危险字符
+    let path_str = path.to_string_lossy();
+    let dangerous_chars = ['&', '|', ';', '<', '>', '(', ')', '`', '$', '^', '%', '!'];
+    if path_str.chars().any(|c| dangerous_chars.contains(&c)) {
+        tracing::warn!("[CLI-Sync] Path contains dangerous characters: {}", path_str);
+        return false;
+    }
+
+    true
+}
+
 /// 执行版本命令（Windows 特殊处理 .cmd/.bat）
 #[cfg(target_os = "windows")]
 fn run_version_command(executable_path: &PathBuf) -> Option<String> {
+    // 安全校验：验证路径不包含危险字符
+    if !is_safe_path(executable_path) {
+        return None;
+    }
+
     let output = if is_cmd_file(executable_path) {
+        // 使用引号包裹路径防止注入，使用 /S 开关确保安全解析
+        let quoted_path = format!("\"{}\"", executable_path.to_string_lossy());
         Command::new("cmd.exe")
             .arg("/C")
-            .arg(executable_path)
+            .arg(&quoted_path)
             .arg("--version")
             .creation_flags(CREATE_NO_WINDOW)
             .output()
@@ -116,17 +147,20 @@ fn run_version_command(executable_path: &PathBuf) -> Option<String> {
     match output {
         Ok(out) if out.status.success() => {
             let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            // 优化：提取最末尾的数字版本号
-            let cleaned = s.split(|c: char| !c.is_numeric() && c != '.')
-                .filter(|part| !part.is_empty())
-                .last()
-                .map(|p| p.trim())
-                .unwrap_or(&s)
-                .to_string();
-            Some(cleaned)
+            // 使用正则提取版本号（更精确）
+            extract_version(&s)
         }
         _ => None,
     }
+}
+
+/// 提取版本号（使用更精确的 semver 匹配）
+fn extract_version(s: &str) -> Option<String> {
+    // 匹配 semver 格式: x.y.z 或 x.y
+    let re = regex::Regex::new(r"(\d+\.\d+(?:\.\d+)?)").ok()?;
+    re.captures(s)
+        .and_then(|caps| caps.get(1))
+        .map(|m| m.as_str().to_string())
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
