@@ -205,7 +205,7 @@ pub async fn handle_chat_completions(
             }
         };
 
-        // [NEW v4.1.28] 获取完整 Token 对象用于动态规格查询
+        // [NEW v4.1.29] 获取完整 Token 对象用于动态规格查询
         let proxy_token = token_manager.get_token_by_id(&account_id);
         let mapped_model = token_manager
             .resolve_dynamic_model_for_account(&account_id, &mapped_model)

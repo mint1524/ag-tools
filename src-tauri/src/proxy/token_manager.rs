@@ -213,7 +213,7 @@ impl TokenManager {
         }
     }
 
-    /// 根据账号 ID 获取完整的 ProxyToken 对象 (v4.1.28)
+    /// 根据账号 ID 获取完整的 ProxyToken 对象 (v4.1.29)
     pub fn get_token_by_id(&self, account_id: &str) -> Option<ProxyToken> {
         self.tokens.get(account_id).map(|t| t.clone())
     }
