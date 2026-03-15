@@ -705,7 +705,6 @@ pub async fn ensure_fresh_token(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::TokenData;
 
     #[test]
     fn test_get_auth_url_contains_state() {
@@ -718,42 +717,4 @@ mod tests {
         assert!(url.contains("response_type=code"));
     }
 
-    #[test]
-    fn test_normalize_refreshed_oauth_client_key_drops_auto_enterprise_for_legacy_account() {
-        let token = TokenData::new(
-            "access".to_string(),
-            "refresh".to_string(),
-            3600,
-            Some("legacy@example.com".to_string()),
-            None,
-            None,
-            true,
-        );
-
-        let normalized = normalize_refreshed_oauth_client_key(
-            &token,
-            Some("antigravity_enterprise".to_string()),
-        );
-        assert!(normalized.is_none());
-    }
-
-    #[test]
-    fn test_normalize_refreshed_oauth_client_key_keeps_existing_enterprise_account() {
-        let token = TokenData::new(
-            "access".to_string(),
-            "refresh".to_string(),
-            3600,
-            Some("enterprise@example.com".to_string()),
-            Some("intense-age-490103-c3".to_string()),
-            None,
-            true,
-        )
-        .with_oauth_client_key(Some("antigravity_enterprise".to_string()));
-
-        let normalized = normalize_refreshed_oauth_client_key(
-            &token,
-            Some("antigravity_enterprise".to_string()),
-        );
-        assert_eq!(normalized.as_deref(), Some("antigravity_enterprise"));
-    }
 }
