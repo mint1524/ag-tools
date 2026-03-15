@@ -4,7 +4,12 @@ use serde_json::json;
 use crate::models::QuotaData;
 use crate::modules::config;
 
-const QUOTA_API_URL: &str = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels";
+// Quota API endpoints (fallback order: Sandbox → Daily → Prod)
+const QUOTA_API_ENDPOINTS: [&str; 3] = [
+    "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:fetchAvailableModels",
+    "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+    "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels",
+];
 
 /// Critical retry threshold: considered near recovery when quota reaches 95%
 const NEAR_READY_THRESHOLD: i32 = 95;
@@ -207,15 +212,16 @@ pub async fn fetch_quota_with_cache(
         json!({}) // Empty payload fallback
     };
     
-    let url = QUOTA_API_URL;
     let mut last_error: Option<AppError> = None;
 
-    for attempt in 1..=MAX_RETRIES {
+    for (ep_idx, ep_url) in QUOTA_API_ENDPOINTS.iter().enumerate() {
+        let has_next = ep_idx + 1 < QUOTA_API_ENDPOINTS.len();
+
         match client
-            .post(url)
+            .post(*ep_url)
             .bearer_auth(access_token)
             .header(rquest::header::USER_AGENT, crate::constants::NATIVE_OAUTH_USER_AGENT.as_str())
-            .json(&json!(payload))
+            .json(&payload)
             .send()
             .await
         {
@@ -235,17 +241,21 @@ pub async fn fetch_quota_with_cache(
                         return Ok((q, project_id.clone()));
                     }
                     
-                    // Continue retry logic for other errors
-                    if attempt < MAX_RETRIES {
-                         let text = response.text().await.unwrap_or_default();
-                         crate::modules::logger::log_warn(&format!("API Error: {} - {} (Attempt {}/{})", status, text, attempt, MAX_RETRIES));
+                    let text = response.text().await.unwrap_or_default();
+
+                    // 429/5xx: fallback to next endpoint
+                    if has_next && (status == rquest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error()) {
+                         crate::modules::logger::log_warn(&format!("Quota API {} returned {}, falling back to next endpoint", ep_url, status));
                          last_error = Some(AppError::Unknown(format!("HTTP {} - {}", status, text)));
                          tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                          continue;
-                    } else {
-                         let text = response.text().await.unwrap_or_default();
-                         return Err(AppError::Unknown(format!("API Error: {} - {}", status, text)));
                     }
+
+                    return Err(AppError::Unknown(format!("API Error: {} - {}", status, text)));
+                }
+
+                if ep_idx > 0 {
+                    crate::modules::logger::log_info(&format!("Quota API fallback succeeded at endpoint #{}", ep_idx + 1));
                 }
 
                 let quota_response: QuotaResponse = response
@@ -299,16 +309,16 @@ pub async fn fetch_quota_with_cache(
                 return Ok((quota_data, project_id.clone()));
             },
             Err(e) => {
-                crate::modules::logger::log_warn(&format!("Request failed: {} (Attempt {}/{})", e, attempt, MAX_RETRIES));
+                crate::modules::logger::log_warn(&format!("Quota API request failed at {}: {}", ep_url, e));
                 last_error = Some(AppError::from(e));
-                if attempt < MAX_RETRIES {
+                if has_next {
                     tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 }
             }
         }
     }
     
-    Err(last_error.unwrap_or_else(|| AppError::Unknown("Quota fetch failed".to_string())))
+    Err(last_error.unwrap_or_else(|| AppError::Unknown("Quota fetch failed: all endpoints exhausted".to_string())))
 }
 
 /// Internal fetch quota logic
