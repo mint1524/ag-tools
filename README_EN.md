@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.1.32)
+> Professional AI Account Management & Protocol Proxy System (v4.1.33)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -9,7 +9,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.1.32-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.1.33-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -131,7 +131,7 @@ Automatically detects your OS, architecture, and package manager — one command
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.1.32/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.1.33/install.sh | bash
 ```
 
 **Windows (PowerShell):**
@@ -141,7 +141,7 @@ irm https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.ps
 
 > **Supported formats**: Linux (`.deb` / `.rpm` / `.AppImage`) | macOS (`.dmg`) | Windows (NSIS `.exe`)
 >
-> **Advanced usage**: Install a specific version `curl -fsSL ... | bash -s -- --version 4.1.32`，dry-run mode `curl -fsSL ... | bash -s -- --dry-run`
+> **Advanced usage**: Install a specific version `curl -fsSL ... | bash -s -- --version 4.1.33`，dry-run mode `curl -fsSL ... | bash -s -- --dry-run`
 
 #### macOS - Homebrew
 If you have [Homebrew](https://brew.sh/) installed, you can also install via:
@@ -292,6 +292,10 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.1.33 (2026-05-01)**:
+        -   **[Core Fix] Resolve Antigravity IDE (Windsurf) OAuth Token refresh failure and invalid_grant error.**
+        -   **[Core Fix] Resolve 403 Forbidden errors caused by Project ID conflicts and implement automatic retry/downgrade for enterprise/personal quotas.**
+        -   **[Enhancement] Support automatic compatibility and silent upgrade of old account data, restoring functionality for legacy users without re-login.**
     *   **v4.1.32 (2026-04-18)**:
         -   **[Proxy Enhancement] Gemini Proxy Production-Grade Stability Refactoring**:
             -   **Fingerprint Alignment**: Rewrote `requestId` generation logic to strictly follow the official `agent/{timestamp}/{hex8}` path fingerprint.

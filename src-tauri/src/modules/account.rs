@@ -76,6 +76,7 @@ mod tests {
                 None,
                 None,
                 true,
+                None,
             ),
         );
         
@@ -1729,6 +1730,7 @@ pub async fn fetch_quota_with_retry(account: &mut Account) -> crate::error::AppR
                     account.token.project_id.clone(), // Keep original project_id
                     None,                             // Add None as session_id
                     account.token.is_gcp_tos,
+                    token_res.id_token.clone(),
                 )
                 .with_oauth_client_key(
                     token_res

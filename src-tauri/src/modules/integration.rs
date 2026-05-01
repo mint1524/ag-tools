@@ -50,6 +50,8 @@ impl SystemIntegration for DesktopIntegration {
             &account.email,
             account.token.is_gcp_tos,
             account.token.project_id.as_deref(),
+            account.token.id_token.as_deref(),
+            account.token.oauth_client_key.as_deref(),
         )?;
         
         // 4.1 同步 Service Machine ID 到数据库 (关键修复点)
