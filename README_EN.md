@@ -293,7 +293,7 @@ print(response.choices[0].message.content)
 
 *   **Changelog**:
     *   **v4.1.33 (2026-05-01)**:
-        -   **[Core Fix] Resolve Antigravity IDE (Windsurf) OAuth Token refresh failure and invalid_grant error.**
+        -   **[Core Fix] Resolve Antigravity IDE  OAuth Token refresh failure and invalid_grant error.**
         -   **[Core Fix] Resolve 403 Forbidden errors caused by Project ID conflicts and implement automatic retry/downgrade for enterprise/personal quotas.**
         -   **[Enhancement] Support automatic compatibility and silent upgrade of old account data, restoring functionality for legacy users without re-login.**
     *   **v4.1.32 (2026-04-18)**:
