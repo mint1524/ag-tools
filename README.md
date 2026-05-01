@@ -441,7 +441,7 @@ response = client.chat.completions.create(
 
 *   **版本演进 (Changelog)**:
     *   **v4.1.33 (2026-05-01)**:
-        -   **[核心修复] 解决 Antigravity IDE (Windsurf) OAuth Token 刷新失效及 invalid_grant 报错问题。**
+        -   **[核心修复] 解决 Antigravity IDE  OAuth Token 刷新失效及 invalid_grant 报错问题。**
         -   **[核心修复] 解决由于项目 ID 冲突导致的 403 报错，并实现企业/个人配额的自动重试降级。**
         -   **[功能增强] 支持旧账号数据的自动兼容与静默升级，旧用户无需重新登录即可恢复功能。**
     *   **v4.1.32 (2026-04-18)**:
