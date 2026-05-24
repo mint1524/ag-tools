@@ -592,14 +592,6 @@ pub async fn sync_account_from_db(
     Ok(Some(account))
 }
 
-fn canonical_app_data_dir() -> Result<PathBuf, String> {
-    let data_dir = modules::account::get_data_dir()?;
-    std::fs::create_dir_all(&data_dir).map_err(|e| format!("failed_to_create_data_dir: {}", e))?;
-    data_dir
-        .canonicalize()
-        .map_err(|e| format!("failed_to_resolve_data_dir: {}", e))
-}
-
 fn resolve_existing_or_parent(path: &Path) -> Result<PathBuf, String> {
     if path.exists() {
         return path
@@ -619,16 +611,56 @@ fn resolve_existing_or_parent(path: &Path) -> Result<PathBuf, String> {
     Ok(canonical_parent.join(file_name))
 }
 
-fn validate_app_data_path(path: &str) -> Result<PathBuf, String> {
+fn is_sensitive_path(path: &Path) -> bool {
+    let lower = path.to_string_lossy().to_ascii_lowercase();
+    let sensitive_prefixes = [
+        "/etc/",
+        "/var/spool/cron",
+        "/root/",
+        "/proc/",
+        "/sys/",
+        "/dev/",
+        "c:\\windows",
+        "c:\\program files",
+        "c:\\program files (x86)",
+        "c:\\users\\administrator",
+        "c:\\pagefile.sys",
+    ];
+
+    sensitive_prefixes
+        .iter()
+        .any(|prefix| lower == *prefix || lower.starts_with(prefix))
+}
+
+fn validate_user_json_path(path: &str, must_exist: bool) -> Result<PathBuf, String> {
     let requested = PathBuf::from(path);
     if requested.as_os_str().is_empty() {
         return Err("invalid_path: empty path".to_string());
     }
+    if !requested.is_absolute() {
+        return Err("invalid_path: absolute path is required".to_string());
+    }
 
-    let data_dir = canonical_app_data_dir()?;
     let resolved = resolve_existing_or_parent(&requested)?;
-    if !resolved.starts_with(&data_dir) {
-        return Err("security_denied: path is outside the application data directory".to_string());
+    if is_sensitive_path(&resolved) {
+        return Err("security_denied: sensitive system path is not allowed".to_string());
+    }
+
+    let is_json = resolved
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| ext.eq_ignore_ascii_case("json"))
+        .unwrap_or(false);
+    if !is_json {
+        return Err("invalid_path: only .json files are allowed".to_string());
+    }
+
+    if must_exist {
+        let metadata = std::fs::metadata(&resolved)
+            .map_err(|e| format!("failed_to_read_file_metadata: {}", e))?;
+        if !metadata.is_file() {
+            return Err("invalid_path: expected a regular file".to_string());
+        }
     }
 
     Ok(resolved)
@@ -637,14 +669,14 @@ fn validate_app_data_path(path: &str) -> Result<PathBuf, String> {
 /// 保存文本文件 (绕过前端 Scope 限制)
 #[tauri::command]
 pub async fn save_text_file(path: String, content: String) -> Result<(), String> {
-    let path = validate_app_data_path(&path)?;
+    let path = validate_user_json_path(&path, false)?;
     std::fs::write(&path, content).map_err(|e| format!("写入文件失败: {}", e))
 }
 
 /// 读取文本文件 (绕过前端 Scope 限制)
 #[tauri::command]
 pub async fn read_text_file(path: String) -> Result<String, String> {
-    let path = validate_app_data_path(&path)?;
+    let path = validate_user_json_path(&path, true)?;
     std::fs::read_to_string(&path).map_err(|e| format!("读取文件失败: {}", e))
 }
 
