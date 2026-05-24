@@ -1,5 +1,6 @@
 use crate::models::{Account, AppConfig, QuotaData};
 use crate::modules;
+use std::path::{Path, PathBuf};
 use tauri::{Emitter, Manager};
 use tauri_plugin_opener::OpenerExt;
 
@@ -124,7 +125,9 @@ pub async fn switch_account(
         crate::modules::integration::SystemManager::Desktop(app.clone()),
     );
 
-    service.switch_account(&account_id, target_ide.as_deref()).await?;
+    service
+        .switch_account(&account_id, target_ide.as_deref())
+        .await?;
 
     // 同步托盘
     crate::modules::tray::update_tray_menus(&app);
@@ -396,7 +399,10 @@ pub async fn save_config(
 // --- OAuth 命令 ---
 
 #[tauri::command]
-pub async fn start_oauth_login(app_handle: tauri::AppHandle, oauth_client_key: Option<String>) -> Result<Account, String> {
+pub async fn start_oauth_login(
+    app_handle: tauri::AppHandle,
+    oauth_client_key: Option<String>,
+) -> Result<Account, String> {
     modules::logger::log_info("开始 OAuth 授权流程...");
     let service = modules::account_service::AccountService::new(
         crate::modules::integration::SystemManager::Desktop(app_handle.clone()),
@@ -440,7 +446,10 @@ pub async fn complete_oauth_login(app_handle: tauri::AppHandle) -> Result<Accoun
 
 /// 预生成 OAuth 授权链接 (不打开浏览器)
 #[tauri::command]
-pub async fn prepare_oauth_url(app_handle: tauri::AppHandle, oauth_client_key: Option<String>) -> Result<String, String> {
+pub async fn prepare_oauth_url(
+    app_handle: tauri::AppHandle,
+    oauth_client_key: Option<String>,
+) -> Result<String, String> {
     let service = modules::account_service::AccountService::new(
         crate::modules::integration::SystemManager::Desktop(app_handle.clone()),
     );
@@ -461,7 +470,8 @@ pub async fn submit_oauth_code(code: String, state: Option<String>) -> Result<()
 }
 
 #[tauri::command]
-pub async fn list_oauth_clients() -> Result<Vec<crate::modules::oauth::OAuthClientDescriptor>, String> {
+pub async fn list_oauth_clients(
+) -> Result<Vec<crate::modules::oauth::OAuthClientDescriptor>, String> {
     crate::modules::oauth::list_oauth_clients()
 }
 
@@ -582,45 +592,59 @@ pub async fn sync_account_from_db(
     Ok(Some(account))
 }
 
-fn validate_path(path: &str) -> Result<(), String> {
-    if path.contains("..") {
-        return Err("非法路径: 不允许目录遍历".to_string());
+fn canonical_app_data_dir() -> Result<PathBuf, String> {
+    let data_dir = modules::account::get_data_dir()?;
+    std::fs::create_dir_all(&data_dir).map_err(|e| format!("failed_to_create_data_dir: {}", e))?;
+    data_dir
+        .canonicalize()
+        .map_err(|e| format!("failed_to_resolve_data_dir: {}", e))
+}
+
+fn resolve_existing_or_parent(path: &Path) -> Result<PathBuf, String> {
+    if path.exists() {
+        return path
+            .canonicalize()
+            .map_err(|e| format!("failed_to_resolve_path: {}", e));
     }
 
-    // 检查是否指向系统敏感路径 (基础黑名单)
-    let lower_path = path.to_lowercase();
-    let sensitive_prefixes = [
-        "/etc/",
-        "/var/spool/cron",
-        "/root/",
-        "/proc/",
-        "/sys/",
-        "/dev/",
-        "c:\\windows",
-        "c:\\users\\administrator",
-        "c:\\pagefile.sys",
-    ];
+    let parent = path
+        .parent()
+        .ok_or_else(|| "invalid_path: missing parent directory".to_string())?;
+    let canonical_parent = parent
+        .canonicalize()
+        .map_err(|e| format!("failed_to_resolve_parent: {}", e))?;
+    let file_name = path
+        .file_name()
+        .ok_or_else(|| "invalid_path: missing file name".to_string())?;
+    Ok(canonical_parent.join(file_name))
+}
 
-    for prefix in sensitive_prefixes {
-        if lower_path.starts_with(prefix) {
-            return Err(format!("安全拒绝: 禁止访问系统敏感路径 ({})", prefix));
-        }
+fn validate_app_data_path(path: &str) -> Result<PathBuf, String> {
+    let requested = PathBuf::from(path);
+    if requested.as_os_str().is_empty() {
+        return Err("invalid_path: empty path".to_string());
     }
 
-    Ok(())
+    let data_dir = canonical_app_data_dir()?;
+    let resolved = resolve_existing_or_parent(&requested)?;
+    if !resolved.starts_with(&data_dir) {
+        return Err("security_denied: path is outside the application data directory".to_string());
+    }
+
+    Ok(resolved)
 }
 
 /// 保存文本文件 (绕过前端 Scope 限制)
 #[tauri::command]
 pub async fn save_text_file(path: String, content: String) -> Result<(), String> {
-    validate_path(&path)?;
+    let path = validate_app_data_path(&path)?;
     std::fs::write(&path, content).map_err(|e| format!("写入文件失败: {}", e))
 }
 
 /// 读取文本文件 (绕过前端 Scope 限制)
 #[tauri::command]
 pub async fn read_text_file(path: String) -> Result<String, String> {
-    validate_path(&path)?;
+    let path = validate_app_data_path(&path)?;
     std::fs::read_to_string(&path).map_err(|e| format!("读取文件失败: {}", e))
 }
 
@@ -760,7 +784,6 @@ pub async fn update_last_check_time() -> Result<(), String> {
     crate::modules::update_checker::update_last_check_time()
 }
 
-
 /// 检测是否通过 Homebrew Cask 安装
 #[tauri::command]
 pub async fn check_homebrew_installation() -> Result<bool, String> {
@@ -773,7 +796,6 @@ pub async fn brew_upgrade_cask() -> Result<String, String> {
     modules::logger::log_info("收到前端触发的 Homebrew 升级请求");
     crate::modules::update_checker::brew_upgrade_cask().await
 }
-
 
 /// 获取更新设置
 #[tauri::command]
