@@ -115,6 +115,15 @@ jobs:
       - name: Install frontend dependencies
         run: npm install --legacy-peer-deps
 
+      - name: Disable updater artifacts in unsigned CI builds
+        shell: pwsh
+        run: |
+          $configPath = "src-tauri/tauri.conf.json"
+          $config = Get-Content -Raw $configPath | ConvertFrom-Json
+          $config.bundle.createUpdaterArtifacts = $false
+          $config | ConvertTo-Json -Depth 32 | Set-Content -Path $configPath -Encoding UTF8
+          Write-Host "Disabled updater artifacts for unsigned CI build."
+
       - name: Build Tauri app (debug)
         run: npm run tauri build -- --debug
         env:

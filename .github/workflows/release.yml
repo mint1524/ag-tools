@@ -19,6 +19,7 @@ jobs:
             args: "--target x86_64-apple-darwin"
           - platform: "macos-latest"
             args: "--target universal-apple-darwin"
+            release_only: true
           - platform: "ubuntu-22.04"
             args: ""
           - platform: "ubuntu-24.04-arm"
@@ -27,6 +28,7 @@ jobs:
             args: ""
 
     runs-on: ${{ matrix.platform }}
+    if: ${{ matrix.release_only != true || startsWith(github.ref, 'refs/tags/') }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -51,6 +53,22 @@ jobs:
 
       - name: Install frontend dependencies
         run: npm install --legacy-peer-deps
+
+      - name: Disable updater artifacts without signing key
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if (-not [string]::IsNullOrWhiteSpace($env:TAURI_SIGNING_PRIVATE_KEY)) {
+            Write-Host "Updater signing key is configured; keeping updater artifacts enabled."
+            exit 0
+          }
+
+          $configPath = "src-tauri/tauri.conf.json"
+          $config = Get-Content -Raw $configPath | ConvertFrom-Json
+          $config.bundle.createUpdaterArtifacts = $false
+          $config | ConvertTo-Json -Depth 32 | Set-Content -Path $configPath -Encoding UTF8
+          Write-Host "No updater signing key configured; disabled updater artifacts for this build."
 
       - name: Build the app
         env:
