@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [main, master]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -43,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-latest, windows-latest, macos-latest]
+        platform: [ubuntu-latest, windows-2025, macos-latest]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -86,7 +89,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        platform: [ubuntu-latest, windows-latest, macos-latest]
+        platform: [ubuntu-latest, windows-2025, macos-latest]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -125,7 +128,7 @@ jobs:
           Write-Host "Disabled updater artifacts for unsigned CI build."
 
       - name: Build Tauri app (debug)
-        run: npm run tauri build -- --debug
+        run: npm run tauri build -- --debug --no-bundle
         env:
           # CI 环境不需要签名
           TAURI_SIGNING_PRIVATE_KEY: ""
