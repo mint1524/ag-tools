@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业级 AI 账号管理与协议代理系统 (v4.2.1)
+> 专业级 AI 账号管理与协议代理系统 (v4.2.2)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.2.1-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.2.2-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -131,7 +131,7 @@ graph TD
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.2.1/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.2.2/install.sh | bash
 ```
 
 **Windows (PowerShell):**
@@ -141,7 +141,7 @@ irm https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.ps
 
 > **支持的格式**: Linux (`.deb` / `.rpm` / `.AppImage`) | macOS (`.dmg`) | Windows (NSIS `.exe`)
 >
-> **高级用法**: 安装指定版本 `curl -fsSL ... | bash -s -- --version 4.2.1`，预览模式 `curl -fsSL ... | bash -s -- --dry-run`
+> **高级用法**: 安装指定版本 `curl -fsSL ... | bash -s -- --version 4.2.2`，预览模式 `curl -fsSL ... | bash -s -- --dry-run`
 
 #### macOS - Homebrew
 如果您已安装 [Homebrew](https://brew.sh/)，也可以通过以下命令安装：
@@ -441,7 +441,15 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
-    *   **v4.2.1 (2026-05-20)**:
+    *   **v4.2.2 (2026-06-12)**:
+        -   **[安全与稳定] 安全审计与错误修复 (Security & Bug Fixes)**:
+            -   **核心修复**: 修复了当代理认证模式设置为 `Off` 时，管理接口存在权限绕过的漏洞 ([PR #3134](https://github.com/lbjlaq/Antigravity-Manager/pull/3134))。
+            -   **凭证保护**: 修复了在 Headless 模式启动时明文打印敏感凭证的问题，现改为仅打印状态 ([PR #3134](https://github.com/lbjlaq/Antigravity-Manager/pull/3134))。
+            -   **路径隔离**: 增加了基于绝对路径的安全校验逻辑，修复了文本文件读写命令中的路径遍历漏洞 ([PR #3134](https://github.com/lbjlaq/Antigravity-Manager/pull/3134))。
+            -   **加密加固**: 修复了 AES-GCM 加密使用固定 Nonce 的漏洞，引入了安全的随机 Nonce 机制并向下兼容 ([PR #3134](https://github.com/lbjlaq/Antigravity-Manager/pull/3134))。
+            -   **前端安全**: 修复了 Tauri CSP 策略允许不安全的 `unsafe-eval` 的问题，防范 XSS 攻击 ([PR #3134](https://github.com/lbjlaq/Antigravity-Manager/pull/3134))。
+            -   **协议兼容**: 修复了在使用 Codex 时因混入不被支持的 `tools` 字段导致的 `400 INVALID_ARGUMENT` 错误 ([PR #3148](https://github.com/lbjlaq/Antigravity-Manager/pull/3148))。
+*   **v4.2.1 (2026-05-20)**:
         -   **[核心修复] Windows 进程隔离与进程查杀优化 (Windows Process Segregation)**:
             -   **问题修复**: 解决了在 Windows 平台切换 Antigravity 与 Antigravity IDE 时导致双方进程意外互相误杀的问题。
             -   **严格路径过滤**: 引入了基于可执行文件绝对路径 (`canonicalize()`) 的严格匹配机制。当用户在配置中显式指定路径后，系统将仅管理与该路径匹配的进程，避免由于模糊匹配引发意外查杀。
