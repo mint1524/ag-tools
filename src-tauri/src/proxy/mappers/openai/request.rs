@@ -616,6 +616,7 @@ pub fn transform_openai_request(
                 obj.remove("additionalProperties");
                 obj.remove("type"); // [NEW] Gemini 不支持在 FunctionDeclaration 根层级出现 type: "function"
                 obj.remove("external_web_access"); // [FIX #1278] Remove invalid field injected by OpenAI Codex
+                obj.remove("tools"); // [FIX] 删除 "tools" 字段，解决Codex中400 Unknown name "tools" 错误
             }
 
             if let Some(params) = gemini_func.get_mut("parameters") {
