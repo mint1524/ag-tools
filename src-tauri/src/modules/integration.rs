@@ -34,6 +34,30 @@ impl SystemIntegration for DesktopIntegration {
             account.email, target_ide
         ));
 
+        if target_ide == Some("agy") {
+            write_to_system_keyring(account)?;
+
+            let mut is_running = false;
+            let mut system = sysinfo::System::new();
+            system.refresh_processes(sysinfo::ProcessesToUpdate::All);
+            for (_pid, process) in system.processes() {
+                if process.name().to_string_lossy().to_lowercase() == "agy" {
+                    is_running = true;
+                    break;
+                }
+            }
+
+            let msg = if is_running {
+                format!("Account {} activated. Agy is running, token will be picked up automatically.", account.email)
+            } else {
+                format!("Account {} activated. Token is ready for your next CLI command.", account.email)
+            };
+            self.show_notification("Antigravity CLI", &msg);
+            self.update_tray();
+
+            return Ok(());
+        }
+
         // 1. 先关闭外部正在运行的进程（无论是原生还是IDE，先安全关闭，避免文件或凭据冲突）
         if process::is_antigravity_running(target_ide) {
             process::close_antigravity(20, target_ide)?;
