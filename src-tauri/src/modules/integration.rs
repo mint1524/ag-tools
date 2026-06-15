@@ -37,16 +37,13 @@ impl SystemIntegration for DesktopIntegration {
         if target_ide == Some("agy") {
             write_to_system_keyring(account)?;
 
-            let mut is_running = false;
-            let mut system = sysinfo::System::new();
-            system.refresh_processes(sysinfo::ProcessesToUpdate::All);
-            for (_pid, process) in system.processes() {
-                if process.name().to_string_lossy().to_lowercase() == "agy" {
-                    is_running = true;
-                    break;
+            if let Ok(storage_path) = device::get_storage_path(target_ide) {
+                if let Some(ref profile) = account.device_profile {
+                    let _ = device::write_profile(&storage_path, profile);
                 }
             }
 
+            let is_running = process::is_process_running_by_name("agy");
             let msg = if is_running {
                 format!("Account {} activated. Agy is running, token will be picked up automatically.", account.email)
             } else {
@@ -369,6 +366,13 @@ impl SystemIntegration for HeadlessIntegration {
         account: &crate::models::Account,
         _target_ide: Option<&str>,
     ) -> Result<(), String> {
+        if _target_ide == Some("agy") {
+            return Err(
+                "Switching to the agy CLI is not supported in headless mode (no host keyring access)."
+                    .to_string(),
+            );
+        }
+
         crate::modules::logger::log_info(&format!(
             "[Headless] Account switched in memory: {}",
             account.email
