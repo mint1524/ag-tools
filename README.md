@@ -453,6 +453,9 @@ response = client.chat.completions.create(
             -   **效率提升**: 直接强制采用最新的统一格式 (`antigravityUnifiedStateSync.oauthToken`) 注入到 SQLite 数据库，消除了老旧格式带来的兼容负担。
         -   **[核心修复] 修复了 Gemini 3.1 Pro High/Low 的 400 Invalid Argument 错误 (Gemini Thinking Fix)**:
             -   **问题修复**: 修复了 Claude Code 等上游客户端发送 `thinking` 相关配置对象时，由于 Gemini 3.1 Pro High/Low 尚不支持特定的思维配置被拒绝的问题。系统现已针对这些变体模型正确剥离不支持的 `thinkingConfig` 对象，从而解决了 API 响应 400 的错误 ([Issue #3182](https://github.com/lbjlaq/Antigravity-Manager/issues/3182))。
+        -   **[核心功能] 将 Claude 详细配额组数据暴露给前端 (Claude Quota Expose)**:
+            -   **功能新增**: 在后端和接口层中新增了对模型分组配额（如 weekly 和 5h 窗口）的完整支持，并暴露给前端类型系统，使界面能更精确地显示详细双窗口配额情况 ([PR #3185](https://github.com/lbjlaq/Antigravity-Manager/pull/3185))。
+            -   **问题修复**: 修复了由于缺少依赖 (BoringSSL 构建工具) 导致的本地分发版 Docker 编译报错问题，并添加了缺少的 Tauri 前端资源映射步骤。
     *   **v4.2.2 (2026-06-12)**:
         -   **[安全与稳定] 安全审计与错误修复 (Security & Bug Fixes)**:
             -   **核心修复**: 修复了当代理认证模式设置为 `Off` 时，管理接口存在权限绕过的漏洞 ([PR #3134](https://github.com/lbjlaq/Antigravity-Manager/pull/3134))。

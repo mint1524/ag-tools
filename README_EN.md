@@ -308,6 +308,9 @@ print(response.choices[0].message.content)
             -   **Efficiency Boost**: Forcibly injects the latest unified format (`antigravityUnifiedStateSync.oauthToken`) directly into the SQLite database, eliminating the compatibility burden of legacy formats.
         -   **[Core Fix] Resolve 400 Invalid Argument error for Gemini 3.1 Pro High/Low (Gemini Thinking Fix)**:
             -   **Bug Fix**: Fixed an issue where Gemini 3.1 Pro High/Low models rejected specific thinking configurations sent by upstream clients like Claude Code, resulting in a 400 API error. The system now correctly strips the unsupported `thinkingConfig` object for these variant models ([Issue #3182](https://github.com/lbjlaq/Antigravity-Manager/issues/3182)).
+        -   **[Core Feature] Expose detailed Claude quota group consumption to frontend (Claude Quota Expose)**:
+            -   **Feature Add**: Added comprehensive support for model group quotas (such as weekly and 5h windows) in the backend and API layer, exposing them to the frontend type system for accurate display of dual-window quota details in the UI ([PR #3185](https://github.com/lbjlaq/Antigravity-Manager/pull/3185)).
+            -   **Bug Fix**: Resolved a local distribution Docker build error caused by missing dependencies (BoringSSL build tools) and added the missing Tauri frontend asset mapping step.
     *   **v4.2.2 (2026-06-12)**:
         -   **[Security & Stability] Security Audit and Bug Fixes**:
             -   **Core Fix**: Fixed an admin authentication bypass vulnerability when the proxy auth mode was set to `Off` ([PR #3134](https://github.com/lbjlaq/Antigravity-Manager/pull/3134)).
