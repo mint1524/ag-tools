@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.2.2)
+> Professional AI Account Management & Protocol Proxy System (v4.2.3)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -9,7 +9,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.2.2-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.2.3-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -133,7 +133,7 @@ Automatically detects your OS, architecture, and package manager — one command
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.2.2/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.2.3/install.sh | bash
 ```
 
 **Windows (PowerShell):**
@@ -143,7 +143,7 @@ irm https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.ps
 
 > **Supported formats**: Linux (`.deb` / `.rpm` / `.AppImage`) | macOS (`.dmg`) | Windows (NSIS `.exe`)
 >
-> **Advanced usage**: Install a specific version `curl -fsSL ... | bash -s -- --version 4.2.2`，dry-run mode `curl -fsSL ... | bash -s -- --dry-run`
+> **Advanced usage**: Install a specific version `curl -fsSL ... | bash -s -- --version 4.2.3`，dry-run mode `curl -fsSL ... | bash -s -- --dry-run`
 
 #### macOS - Homebrew
 If you have [Homebrew](https://brew.sh/) installed, you can also install via:
@@ -293,6 +293,21 @@ print(response.choices[0].message.content)
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.2.3 (2026-06-16)**:
+        -   **[UX Enhancement] Optimize Homebrew installation to eliminate "App is damaged" warnings (Brew Cask Quarantine Auto-Clear)**:
+            -   **Bug Fix**: Added a postflight hook to the macOS Homebrew Cask configuration to automatically remove the `com.apple.quarantine` attribute, fully resolving the "App is damaged" security warning upon first launch ([PR #3180](https://github.com/lbjlaq/Antigravity-Manager/pull/3180)).
+            -   **UX Enhancement**: Homebrew users can now enjoy a true out-of-the-box experience without needing to run manual terminal commands to clear the quarantine attribute.
+        -   **[Core Fix] Support HTTP proxy pool configuration hot-reloading (Proxy Pool Hot Reload)**:
+            -   **Bug Fix**: Fixed an issue where changes to HTTP proxy pool configurations (such as proxy URLs, port bindings, credentials) and upstream proxy settings were not applied at runtime and required a full application restart ([PR #3183](https://github.com/lbjlaq/Antigravity-Manager/pull/3183)).
+            -   **UX Enhancement**: Proxy configuration changes are now instantly applied and reloaded at runtime upon saving, eliminating the need for manual restarts.
+        -   **[Core Feature] Seamless Antigravity CLI (agy) Account Switching (CLI Account Switcher)**:
+            -   **One-click Sync**: Added dedicated switching support for the Antigravity CLI tool (`agy`) directly from the account management UI ([PR #3184](https://github.com/lbjlaq/Antigravity-Manager/pull/3184)).
+            -   **Credential Injection**: Upon switching, the target account's OAuth credentials are automatically written to the system keyring and device profile, making them instantly available to the `agy` CLI without secondary authentication.
+        -   **[Core Fix] Remove redundant version detection, optimize IDE account switching (IDE Login Optimization)**:
+            -   **Bug Fix**: Removed unnecessary version detection steps when switching accounts in IDE environments, resolving injection failures and login issues caused by PowerShell parsing errors on Windows.
+            -   **Efficiency Boost**: Forcibly injects the latest unified format (`antigravityUnifiedStateSync.oauthToken`) directly into the SQLite database, eliminating the compatibility burden of legacy formats.
+        -   **[Core Fix] Resolve 400 Invalid Argument error for Gemini 3.1 Pro High/Low (Gemini Thinking Fix)**:
+            -   **Bug Fix**: Fixed an issue where Gemini 3.1 Pro High/Low models rejected specific thinking configurations sent by upstream clients like Claude Code, resulting in a 400 API error. The system now correctly strips the unsupported `thinkingConfig` object for these variant models ([Issue #3182](https://github.com/lbjlaq/Antigravity-Manager/issues/3182)).
     *   **v4.2.2 (2026-06-12)**:
         -   **[Security & Stability] Security Audit and Bug Fixes**:
             -   **Core Fix**: Fixed an admin authentication bypass vulnerability when the proxy auth mode was set to `Off` ([PR #3134](https://github.com/lbjlaq/Antigravity-Manager/pull/3134)).

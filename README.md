@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业级 AI 账号管理与协议代理系统 (v4.2.2)
+> 专业级 AI 账号管理与协议代理系统 (v4.2.3)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.2.2-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.2.3-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -132,7 +132,7 @@ graph TD
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.2.2/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.2.3/install.sh | bash
 ```
 
 **Windows (PowerShell):**
@@ -142,7 +142,7 @@ irm https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.ps
 
 > **支持的格式**: Linux (`.deb` / `.rpm` / `.AppImage`) | macOS (`.dmg`) | Windows (NSIS `.exe`)
 >
-> **高级用法**: 安装指定版本 `curl -fsSL ... | bash -s -- --version 4.2.2`，预览模式 `curl -fsSL ... | bash -s -- --dry-run`
+> **高级用法**: 安装指定版本 `curl -fsSL ... | bash -s -- --version 4.2.3`，预览模式 `curl -fsSL ... | bash -s -- --dry-run`
 
 #### macOS - Homebrew
 如果您已安装 [Homebrew](https://brew.sh/)，也可以通过以下命令安装：
@@ -438,6 +438,21 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
+    *   **v4.2.3 (2026-06-16)**:
+        -   **[体验优化] 优化 Homebrew 安装体验，彻底免除“应用已损坏”弹窗 (Brew Cask Quarantine Auto-Clear)**:
+            -   **问题修复**: 为 macOS 的 Homebrew Cask 安装添加了自动清理 `com.apple.quarantine` 属性的脚本，彻底解决了由于系统安全机制导致初次打开应用时弹出“应用已损坏”拦截的问题 ([PR #3180](https://github.com/lbjlaq/Antigravity-Manager/pull/3180))。
+            -   **体验优化**: Homebrew 用户现在可以真正实现无缝的“开箱即用”体验，无需再手动执行去除隔离属性的终端命令。
+        -   **[核心修复] 支持 HTTP 代理池配置热更新 (Proxy Pool Hot Reload)**:
+            -   **问题修复**: 修复了在应用内修改 HTTP 代理池配置（如代理 URLs、端口绑定、认证凭证等）或上游代理设置后，无法在运行时实时生效、必须重启应用的问题 ([PR #3183](https://github.com/lbjlaq/Antigravity-Manager/pull/3183))。
+            -   **体验优化**: 现在保存代理配置时，系统会立即在后台重新应用并加载最新的代理池状态，无需手动重启。
+        -   **[核心功能] 新增 Antigravity CLI (agy) 账号无缝切换 (CLI Account Switcher)**:
+            -   **一键同步**: 在账号管理界面中新增了针对 Antigravity 命令行工具 (`agy`) 的专属切换支持 ([PR #3184](https://github.com/lbjlaq/Antigravity-Manager/pull/3184))。
+            -   **凭证注入**: 当点击切换时，目标账号的 OAuth 凭证会自动写入系统的凭据管理器 (Keyring) 和设备配置文件中，使得 `agy` 命令行工具无需二次认证即可立即使用最新账号。
+        -   **[核心修复] 移除冗余版本检测逻辑，优化 IDE 账号切换 (IDE Login Optimization)**:
+            -   **问题修复**: 移除了在 IDE 环境下切换账号时多余的版本号检测步骤，解决了因 Windows 环境下执行 PowerShell 解析版本出错导致注入失败、无法登录的问题。
+            -   **效率提升**: 直接强制采用最新的统一格式 (`antigravityUnifiedStateSync.oauthToken`) 注入到 SQLite 数据库，消除了老旧格式带来的兼容负担。
+        -   **[核心修复] 修复了 Gemini 3.1 Pro High/Low 的 400 Invalid Argument 错误 (Gemini Thinking Fix)**:
+            -   **问题修复**: 修复了 Claude Code 等上游客户端发送 `thinking` 相关配置对象时，由于 Gemini 3.1 Pro High/Low 尚不支持特定的思维配置被拒绝的问题。系统现已针对这些变体模型正确剥离不支持的 `thinkingConfig` 对象，从而解决了 API 响应 400 的错误 ([Issue #3182](https://github.com/lbjlaq/Antigravity-Manager/issues/3182))。
     *   **v4.2.2 (2026-06-12)**:
         -   **[安全与稳定] 安全审计与错误修复 (Security & Bug Fixes)**:
             -   **核心修复**: 修复了当代理认证模式设置为 `Off` 时，管理接口存在权限绕过的漏洞 ([PR #3134](https://github.com/lbjlaq/Antigravity-Manager/pull/3134))。
