@@ -438,6 +438,9 @@ In clients that support OpenAI protocol (e.g., Cherry Studio), you can configure
             -   **Tray Menu Localization Follow**: Expanded the Rust tray menu's translation loader to support all client-supported languages (including Simplified/Traditional Chinese, Japanese, Korean, Russian, Arabic, Spanish, Portuguese, Malay, etc.) for real-time synchronization, with unknown locales defaulting to `en`.
             -   **Example Guidelines & Korean Localization**: Translated comments inside API Proxy Python templates to English and added detailed instructions for image size mappings, model suffix utilization, and Base64 output extraction; also updated Korean translation strings (`ko.json`).
             -   *Related PR*: See [PR #3206](https://github.com/lbjlaq/Antigravity-Manager/pull/3206)
+        -   **[Security Fix] Fixed Accidental Account Proxy Bindings Reset on Config Save (Account Proxy Bindings Loss Fix)**:
+            -   **Bug Fix**: Fixed a bug where the frontend `ProxyPoolSettings` component omitted the `account_bindings` field when building the config object during `onChange` updates. This caused custom account-to-proxy mappings on disk to be overwritten and reset to empty whenever other settings were saved. With this fix, bindings are preserved correctly across restarts and saves, preventing potential account bans from multiple accounts using a single IP.
+            -   *Related Issue*: See [Issue #3205](https://github.com/lbjlaq/Antigravity-Manager/issues/3205)
     *   **v4.2.7 (2026-06-24)**:
         -   **[New Feature] Introducing APIKEY.FUN Official Hub Partner**:
             -   **Dedicated Integration Panel**: Brand new built-in APIKEY.FUN hub panel providing reliable and cost-effective access to premium LLM APIs. Supports centralized API key management, auto quota inquiries, and usage tracking.

@@ -445,9 +445,14 @@ response = client.chat.completions.create(
             -   **账号级动态图像模型解析**: 引入账号级动态图像模型自动解析机制（`resolve_dynamic_model_for_account`），避免发送静态图像模型别名导致上游接口报 `404` 错误（每个账号的图像模型 ID 是独立的）。
             -   **高可用轮换与错误可追溯**: 针对图像生成新增 `403` 和 `404` 账号无缝轮换机制。若当前账号无该图像模型权限，自动轮换至其他有权限的账号重试。同时，错误响应头中会带上最后尝试的账号邮箱（`X-Account-Email`），极大提升了排障与流量日志追踪体验。
             -   **精细化同阶梯漂移控制**: 在 TokenManager 中对图像模型加入精细化防降级规则，只允许在同阶梯（`pro-image` ↔ `pro-image`，`flash-image` ↔ `flash-image`）进行版本漂移，不再会将 Pro 图像模型静默降级为 Flash，保证生成质量。
+            -   *相关 PR*: 详见 [PR #3206](https://github.com/lbjlaq/Antigravity-Manager/pull/3206)
         -   **[体验优化] 优化系统托盘菜单多语言跟随与 API 示例代码提示 (Tray i18n & API Examples Improvement)**:
             -   **托盘菜单语言同步**: Rust 侧托盘翻译加载逻辑现全面支持前端所有语言代码（包括繁简体中文、日文、韩文、俄文、葡文、阿文、西班牙文等），使托盘菜单随应用内语言切换即时同步，并将未知语言的默认回退语言改为 `en`。
             -   **API 示例优化**: 更新了前端 API 代理页面的 Python 示例代码，将内部注释全部翻译为英文并增加针对各类 *-image 模型调用、长宽比参数使用及 Base64 提取保存的实用指引；同时完善了韩语 (`ko.json`) 等本地化多语言翻译配置。
+            -   *相关 PR*: 详见 [PR #3206](https://github.com/lbjlaq/Antigravity-Manager/pull/3206)
+        -   **[安全修复] 解决保存设置导致代理绑定关系被意外清空的 Bug (Account Proxy Bindings Loss Fix)**:
+            -   **问题修复**: 修复了前端代理池组件 `ProxyPoolSettings` 在触发 `onChange` 更新配置时遗漏了 `account_bindings` 字段，导致保存其他设置时磁盘上的账号代理绑定关系被覆盖重置为空的 Bug。修复后，重启应用或保存设置时绑定关系均可完美持久化保留，规避多账号同 IP 运行引发封号的风险。
+            -   *相关 Issue*: 详见 [Issue #3205](https://github.com/lbjlaq/Antigravity-Manager/issues/3205)
     *   **v4.2.7 (2026-06-24)**:
         -   **[全新功能] 新增 APIKEY.FUN 官方合作中转站 (APIKEY.FUN Hub Partner)**:
             -   **专属集成面板**: 全新内置 APIKEY.FUN 专属功能页，为用户提供稳定、高性价比的大模型 API 接入服务。支持统一管理 API Key，一键自动查询剩余额度、Token 消耗及历史请求记录。
