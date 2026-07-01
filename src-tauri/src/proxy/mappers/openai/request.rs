@@ -5,6 +5,51 @@ use crate::proxy::token_manager::ProxyToken;
 
 use serde_json::{json, Value};
 
+/// 清洗 system instruction 中的动态内容，确保跨请求的前缀字节一致性
+/// 以便触发 Gemini 隐式前缀缓存（Prefix Cache）。
+///
+/// 清洗规则：
+/// - 时间戳（Current time/date: ..., Today is: ...）
+/// - UUID (8-4-4-4-12 格式)
+/// - 随机 request/session/trace ID (req_xxx, sid_xxx, trace_xxx)
+/// - 多行空行合并为最多两个连续空行
+fn sanitize_system_instruction_for_cache(text: &str) -> String {
+    let mut cleaned = text.to_string();
+
+    // 剥离时间戳（多种常见格式）
+    // 注意：只匹配 system prompt 中注入的元数据行，不匹配代码中的时间字符串
+    let time_patterns = [
+        r"(?im)^Current (date|time)(\s+is)?\s*:.*$",
+        r"(?im)^Today is\s*:.*$",
+        r"(?im)^Date:\s+\d{4}-\d{2}-\d{2}.*$",
+    ];
+    for pat in &time_patterns {
+        if let Ok(re) = regex::Regex::new(pat) {
+            cleaned = re.replace_all(&cleaned, "").into_owned();
+        }
+    }
+
+    // 剥离 UUID (标准 8-4-4-4-12 格式)
+    if let Ok(re) = regex::Regex::new(
+        r"\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b",
+    ) {
+        cleaned = re.replace_all(&cleaned, "{uuid}").into_owned();
+    }
+
+    // 剥离随机 request/session/trace ID (如 req_a1b2c3, sid-xxxxxxxx, trace_xxxxxxxx)
+    if let Ok(re) = regex::Regex::new(r"\b(req|sid|trace)_[a-f0-9]{6,32}\b") {
+        cleaned = re.replace_all(&cleaned, "{id}").into_owned();
+    }
+
+    // 多行空行合并为最多两个连续空行
+    if let Ok(re) = regex::Regex::new(r"\n{3,}") {
+        cleaned = re.replace_all(&cleaned, "\n\n").into_owned();
+    }
+
+    // 去除首尾空白
+    cleaned.trim().to_string()
+}
+
 
 fn qualify_namespace_tool_name(namespace_name: &str, child_name: &str) -> String {
     let child = child_name.trim();
@@ -183,9 +228,16 @@ pub fn transform_openai_request(
         })
         .collect();
 
-    // [NEW] 如果请求中包含 instructions 字段，优先使用它
+    // [CACHE] 清洗 system instructions 中的动态内容（时间戳/UUID/随机ID）
+    // 确保跨请求的前缀字节一致，触发 Gemini 隐式前缀缓存命中
+    system_instructions = system_instructions
+        .into_iter()
+        .map(|s| sanitize_system_instruction_for_cache(&s))
+        .collect();
+
+    // [NEW] 如果请求中包含 instructions 字段，优先使用它，并避免重复
     if let Some(inst) = &request.instructions {
-        if !inst.is_empty() {
+        if !inst.is_empty() && !system_instructions.contains(inst) {
             system_instructions.insert(0, inst.clone());
         }
     }
@@ -809,6 +861,13 @@ pub fn transform_openai_request(
         }
     }
 
+    // [CACHE] 按 function name 稳定排序，确保跨请求的 tool schema 字节一致
+    function_declarations.sort_by(|a, b| {
+        let name_a = a.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        let name_b = b.get("name").and_then(|v| v.as_str()).unwrap_or("");
+        name_a.cmp(name_b)
+    });
+
     // Removed auto-inject since we handle it above now if Codex passes it.
 
     if !function_declarations.is_empty() {
@@ -906,6 +965,29 @@ pub fn transform_openai_request(
         // [CHANGED v4.1.24] Use "agent" for all non-image requests (matches official client)
         "requestType": if config.request_type == "image_gen" { "image_gen" } else { "agent" }
     });
+
+    // [CACHE] 计算并记录稳定前缀的 hash，用于缓存命中追踪
+    // 前缀 = systemInstruction + tools，这两个在多次请求中几乎不变
+    let prefix_hash = {
+        use sha2::{Digest, Sha256};
+        let mut hasher = Sha256::new();
+        if let Some(si) = final_body["request"].get("systemInstruction") {
+            hasher.update(serde_json::to_string(si).unwrap_or_default().as_bytes());
+        }
+        if let Some(tools) = final_body["request"].get("tools") {
+            hasher.update(serde_json::to_string(tools).unwrap_or_default().as_bytes());
+        }
+        let hash = format!("{:x}", hasher.finalize());
+        let short_hash = &hash[..hash.len().min(16)];
+        tracing::info!(
+            "[Cache-Opt] prefix_hash={} model={} sid={} tokens_in_msg={}",
+            short_hash,
+            config.final_model,
+            &session_id[..session_id.len().min(8)],
+            message_count
+        );
+        short_hash.to_string()
+    };
 
     (final_body, session_id, message_count)
 }

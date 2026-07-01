@@ -84,6 +84,27 @@ pub fn merge_history_with_new_input(
     new_input: &[Value],
     tool_call_cache: &HashMap<String, Value>,
 ) -> Vec<Value> {
+    // 检测新输入中是否包含 compaction / compaction_summary，如果包含，说明客户端正在发送压缩后的全新完整历史
+    let has_compaction = new_input.iter().any(|item| {
+        let t = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+        t == "compaction" || t == "compaction_summary"
+    });
+
+    if has_compaction {
+        tracing::info!("[Session] Compaction detected in new input. Overwriting stale history (new items: {})", new_input.len());
+        // 过滤掉 compaction 本身
+        let mut filtered = Vec::new();
+        for item in new_input {
+            let t = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+            if t == "compaction" || t == "compaction_summary" {
+                continue;
+            }
+            filtered.push(item.clone());
+        }
+        repair_tool_calls(&mut filtered, tool_call_cache);
+        return dedupe_input_items(filtered);
+    }
+
     // 追加上一轮 response output（assistant消息、工具调用等）
     for item in response_output {
         history.push(item.clone());
@@ -186,5 +207,3 @@ fn dedupe_input_items(items: Vec<Value>) -> Vec<Value> {
     }
     filtered
 }
-
-

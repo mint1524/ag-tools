@@ -41,12 +41,9 @@ fn extract_usage_metadata(u: &Value) -> Option<super::models::OpenAIUsage> {
         .get("candidatesTokenCount")
         .and_then(|v| v.as_u64())
         .unwrap_or(0) as u32;
-    let total_tokens = u
-        .get("totalTokenCount")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0) as u32;
     let cached_tokens = u
         .get("cachedContentTokenCount")
+        .or_else(|| u.get("cachedTokens"))
         .and_then(|v| v.as_u64())
         .map(|v| v as u32);
 
@@ -58,10 +55,13 @@ fn extract_usage_metadata(u: &Value) -> Option<super::models::OpenAIUsage> {
         }
     }
 
+    // 确保数学公式 total_tokens = prompt_tokens + completion_tokens 成立
+    let final_total_tokens = final_prompt_tokens + completion_tokens;
+
     Some(OpenAIUsage {
         prompt_tokens: final_prompt_tokens,
         completion_tokens,
-        total_tokens,
+        total_tokens: final_total_tokens,
         prompt_tokens_details: cached_tokens.map(|ct| PromptTokensDetails {
             cached_tokens: Some(ct),
         }),
@@ -464,6 +464,7 @@ pub fn create_codex_sse_stream<S, E>(
     _model: String,
     session_id: String,
     message_count: usize,
+    assistant_turn_index: usize,
 ) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>>
 where
     S: Stream<Item = Result<Bytes, E>> + Send + ?Sized + 'static,
@@ -492,6 +493,7 @@ where
 
         let mut emitted_tool_calls = std::collections::HashSet::new();
         let mut accumulated_text = String::new();
+        let mut accumulated_thinking = String::new();
         
         let mut final_outputs_map: std::collections::BTreeMap<u32, serde_json::Value> = std::collections::BTreeMap::new();
         let mut next_output_index: u32 = 0;
@@ -545,6 +547,7 @@ where
                                                                 let mut chunk_to_emit = String::new();
 
                                                                 if is_thought {
+                                                                    accumulated_thinking.push_str(&clean_text);
                                                                     if !in_thought_block {
                                                                         in_thought_block = true;
                                                                         if !emitted_thought_header {
@@ -816,6 +819,15 @@ where
             final_outputs_map.insert(message_output_index, message_item);
         }
 
+        // Cache the reasoning text for next turn
+        if !accumulated_thinking.is_empty() {
+            crate::proxy::SignatureCache::global().cache_session_reasoning(
+                &session_id,
+                accumulated_thinking,
+                assistant_turn_index,
+            );
+        }
+
         let mut final_outputs: Vec<serde_json::Value> = final_outputs_map.into_values().collect();
 
         let mut completed_ev = json!({
@@ -834,6 +846,17 @@ where
                 usage_obj.insert("input_tokens".to_string(), json!(usage.prompt_tokens));
                 usage_obj.insert("output_tokens".to_string(), json!(usage.completion_tokens));
                 usage_obj.insert("total_tokens".to_string(), json!(usage.total_tokens));
+                
+                // Show cached tokens count under usage object
+                if let Some(ref details) = usage.prompt_tokens_details {
+                    if let Some(ct) = details.cached_tokens {
+                        usage_obj.insert("cache_read_input_tokens".to_string(), json!(ct));
+                        
+                        let mut details_obj = serde_json::Map::new();
+                        details_obj.insert("cached_tokens".to_string(), json!(ct));
+                        usage_obj.insert("prompt_tokens_details".to_string(), json!(details_obj));
+                    }
+                }
             } else {
                 usage_obj.insert("input_tokens".to_string(), json!(0));
                 usage_obj.insert("output_tokens".to_string(), json!(0));

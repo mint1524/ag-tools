@@ -887,8 +887,34 @@ mod tests {
 
 pub fn sanitize_system_prompt_for_tokens(text: &str) -> String {
     use regex::Regex;
-    // Compress massive XML tags injected by thick clients to save tokens
     let mut cleaned = text.to_string();
+
+    // [CACHE] Step 1: 剥离动态内容（时间戳、UUID），确保跨请求的前缀一致性
+    // 这对 Gemini 隐式前缀缓存命中至关重要
+    let time_patterns = [
+        r"(?im)^Current (date|time)(\s+is)?\s*:.*$",
+        r"(?im)^Today is\s*:.*$",
+        r"(?im)^Date:\s+\d{4}-\d{2}-\d{2}.*$",
+    ];
+    for pat in &time_patterns {
+        if let Ok(re) = Regex::new(pat) {
+            cleaned = re.replace_all(&cleaned, "").into_owned();
+        }
+    }
+
+    // 剥离 UUID
+    if let Ok(re) = Regex::new(
+        r"\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b",
+    ) {
+        cleaned = re.replace_all(&cleaned, "{uuid}").into_owned();
+    }
+
+    // 剥离随机 request/session/trace ID
+    if let Ok(re) = Regex::new(r"\b(req|sid|trace)_[a-f0-9]{6,32}\b") {
+        cleaned = re.replace_all(&cleaned, "{id}").into_owned();
+    }
+
+    // Step 2: Compress massive XML tags injected by thick clients to save tokens
 
     let tags_to_compress = [
         "skills_instructions",

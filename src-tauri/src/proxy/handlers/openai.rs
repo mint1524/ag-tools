@@ -1392,6 +1392,30 @@ pub async fn handle_completions(
             });
     }
 
+    // [NEW v4.2.0] Context Management & Reasoning Replay
+    let session_id_str = SessionManager::extract_openai_session_id(&openai_req);
+    
+    crate::proxy::mappers::context_manager::ContextManager::restore_openai_reasoning_content(
+        &mut openai_req.messages,
+        &session_id_str,
+    );
+
+    if crate::proxy::mappers::context_manager::ContextManager::trim_openai_tool_messages(
+        &mut openai_req.messages,
+        5,
+    ) {
+        tracing::info!("[Codex-Context] Trimmed old tool messages to keep last 5 rounds");
+    }
+
+    if crate::proxy::mappers::context_manager::ContextManager::purify_openai_history(
+        &mut openai_req.messages,
+        crate::proxy::mappers::context_manager::PurificationStrategy::Soft,
+    ) {
+        tracing::info!("[Codex-Context] Purified older assistant reasoning_content in history");
+    }
+
+    let assistant_turn_index = openai_req.messages.iter().filter(|m| m.role == "assistant").count();
+
     let upstream = state.upstream.clone();
     let token_manager = state.token_manager;
     let pool_size = token_manager.len();
@@ -1468,15 +1492,35 @@ pub async fn handle_completions(
             proxy_token.as_ref(),
         );
 
-        // [New] 打印转换后的报文 (Gemini Body) 供调试 (Codex 路径) ———— 缩减为 simple debug
-        debug!(
-            "[Codex-Request] Transformed Gemini Body ({} parts)",
-            gemini_body
-                .get("contents")
-                .and_then(|c| c.as_array())
-                .map(|a| a.len())
-                .unwrap_or(0)
-        );
+        // [DEBUG v4.2.0] Detailed size analysis of Gemini request body
+        if let Some(contents) = gemini_body.get("contents").and_then(|c| c.as_array()) {
+            let mut sizes = Vec::new();
+            for (idx, msg) in contents.iter().enumerate() {
+                let role = msg.get("role").and_then(|r| r.as_str()).unwrap_or("unknown");
+                let msg_str = serde_json::to_string(msg).unwrap_or_default();
+                sizes.push(format!("msg_{}[{}]: {} chars", idx, role, msg_str.len()));
+            }
+            
+            let system_instruction_len = gemini_body
+                .get("request")
+                .and_then(|r| r.get("systemInstruction"))
+                .map(|s| serde_json::to_string(s).unwrap_or_default().len())
+                .unwrap_or(0);
+                
+            let tools_len = gemini_body
+                .get("request")
+                .and_then(|r| r.get("tools"))
+                .map(|t| serde_json::to_string(t).unwrap_or_default().len())
+                .unwrap_or(0);
+
+            tracing::info!(
+                "[Codex-Token-Analysis] Total parts: {}. SystemInstruction: {} chars, Tools: {} chars. Content sizes: {:?}",
+                contents.len(),
+                system_instruction_len,
+                tools_len,
+                sizes
+            );
+        }
 
         // [AUTO-CONVERSION] For Legacy/Codex as well
         let client_wants_stream = openai_req.stream;
@@ -1538,6 +1582,7 @@ pub async fn handle_completions(
                             openai_req.model.clone(),
                             session_id,
                             message_count,
+                            assistant_turn_index,
                         )
                     } else {
                         use crate::proxy::mappers::openai::streaming::create_legacy_sse_stream;
@@ -1731,11 +1776,32 @@ pub async fn handle_completions(
                                     }
                                 }
                                 
+                                // Calculate usage if available
+                                let mut usage_obj = serde_json::Map::new();
+                                if let Some(ref usage) = chat_resp.usage {
+                                    usage_obj.insert("input_tokens".to_string(), json!(usage.prompt_tokens));
+                                    usage_obj.insert("output_tokens".to_string(), json!(usage.completion_tokens));
+                                    usage_obj.insert("total_tokens".to_string(), json!(usage.total_tokens));
+                                    if let Some(ref details) = usage.prompt_tokens_details {
+                                        if let Some(ct) = details.cached_tokens {
+                                            usage_obj.insert("cache_read_input_tokens".to_string(), json!(ct));
+                                            let mut details_obj = serde_json::Map::new();
+                                            details_obj.insert("cached_tokens".to_string(), json!(ct));
+                                            usage_obj.insert("prompt_tokens_details".to_string(), json!(details_obj));
+                                        }
+                                    }
+                                } else {
+                                    usage_obj.insert("input_tokens".to_string(), json!(0));
+                                    usage_obj.insert("output_tokens".to_string(), json!(0));
+                                    usage_obj.insert("total_tokens".to_string(), json!(0));
+                                }
+
                                 let resp = json!({
                                     "type": "response",
                                     "id": format!("resp_{}", uuid::Uuid::new_v4().simple()),
                                     "status": "completed",
-                                    "output": output
+                                    "output": output,
+                                    "usage": usage_obj
                                 });
                                 
                                 return (
@@ -1840,11 +1906,32 @@ pub async fn handle_completions(
                     }
                 }
                 
+                // Calculate usage if available
+                let mut usage_obj = serde_json::Map::new();
+                if let Some(ref usage) = chat_resp.usage {
+                    usage_obj.insert("input_tokens".to_string(), json!(usage.prompt_tokens));
+                    usage_obj.insert("output_tokens".to_string(), json!(usage.completion_tokens));
+                    usage_obj.insert("total_tokens".to_string(), json!(usage.total_tokens));
+                    if let Some(ref details) = usage.prompt_tokens_details {
+                        if let Some(ct) = details.cached_tokens {
+                            usage_obj.insert("cache_read_input_tokens".to_string(), json!(ct));
+                            let mut details_obj = serde_json::Map::new();
+                            details_obj.insert("cached_tokens".to_string(), json!(ct));
+                            usage_obj.insert("prompt_tokens_details".to_string(), json!(details_obj));
+                        }
+                    }
+                } else {
+                    usage_obj.insert("input_tokens".to_string(), json!(0));
+                    usage_obj.insert("output_tokens".to_string(), json!(0));
+                    usage_obj.insert("total_tokens".to_string(), json!(0));
+                }
+
                 let resp = json!({
                     "type": "response",
                     "id": format!("resp_{}", uuid::Uuid::new_v4().simple()),
                     "status": "completed",
-                    "output": output
+                    "output": output,
+                    "usage": usage_obj
                 });
                 
                 return (
