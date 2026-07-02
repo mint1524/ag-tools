@@ -1043,9 +1043,48 @@ pub fn transform_openai_request(
         ));
     }
 
+    // [CACHE] 重建 inner_request 字段顺序——稳定前缀在前，动态内容在后
+    // 遵循 Google 官方建议："将较大且常见的内容放置在提示的开头"
+    // 前缀顺序: systemInstruction → tools → toolConfig → generationConfig → safetySettings → sessionId → contents
+    //                                                  ↑ 只有 contents 变化，其他全部稳定
+    let mut reordered_request = json!({});
+    // 1. systemInstruction (稳定，~17,500 tokens — 最大的静态块)
+    if let Some(si) = inner_request.get("systemInstruction") {
+        reordered_request["systemInstruction"] = si.clone();
+    }
+    // 2. tools (稳定，已排序)
+    if let Some(tools) = inner_request.get("tools") {
+        reordered_request["tools"] = tools.clone();
+    }
+    // 3. toolConfig (稳定，与 tools 同生)
+    if let Some(tc) = inner_request.get("toolConfig") {
+        reordered_request["toolConfig"] = tc.clone();
+    }
+    // 4. generationConfig (稳定，sanitize 后一致)
+    if let Some(gc) = inner_request.get("generationConfig") {
+        reordered_request["generationConfig"] = gc.clone();
+    }
+    // 5. safetySettings (恒定常量)
+    if let Some(ss) = inner_request.get("safetySettings") {
+        reordered_request["safetySettings"] = ss.clone();
+    }
+    // 6. sessionId (稳定，基于 account_id hash)
+    if let Some(sid) = inner_request.get("sessionId") {
+        reordered_request["sessionId"] = sid.clone();
+    }
+    // 7. contents (动态，~4.3MB — 所有图片和对话历史，每次追加，放在最后!)
+    reordered_request["contents"] = inner_request.get("contents").cloned().unwrap_or(json!([]));
+    // 8. 其他可能存在的字段 (metadata, cachedContent 等)
+    for (k, v) in inner_request.as_object().iter().flat_map(|o| o.iter()) {
+        if !reordered_request.as_object().map(|o| o.contains_key(k)).unwrap_or(false) {
+            reordered_request[k] = v.clone();
+        }
+    }
+
     let mut final_body = json!({
         "project": project_id,
-        "request": inner_request,
+        // [CACHE] 使用重排后的字段顺序，稳定前缀在前
+        "request": reordered_request,
         "model": config.final_model,
         "userAgent": "antigravity",
         // [CHANGED v4.1.24] Use "agent" for all non-image requests (matches official client)

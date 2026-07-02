@@ -634,9 +634,46 @@ pub fn wrap_request(
     // 特别注意：这是 Google 识别“官方客户端”的重要凭证之一。
     let is_agent_request = config.request_type != "image_gen";
 
+    // [CACHE] 重建 inner_request 字段顺序——稳定前缀在前，动态内容在后
+    // 遵循 Google 官方建议："将较大且常见的内容放置在提示的开头"
+    // systemInstruction (~稳定的系统提示词) → tools → toolConfig → generationConfig → contents (动态)
+    let mut reordered_inner = json!({});
+    // 1. systemInstruction (稳定)
+    if let Some(si) = inner_request.get("systemInstruction") {
+        reordered_inner["systemInstruction"] = si.clone();
+    }
+    // 2. tools (稳定)
+    if let Some(tools) = inner_request.get("tools") {
+        reordered_inner["tools"] = tools.clone();
+    }
+    // 3. toolConfig (稳定，与 tools 共生)
+    if let Some(tc) = inner_request.get("toolConfig") {
+        reordered_inner["toolConfig"] = tc.clone();
+    }
+    // 4. generationConfig (稳定)
+    if let Some(gc) = inner_request.get("generationConfig") {
+        reordered_inner["generationConfig"] = gc.clone();
+    }
+    // 5. safetySettings (恒定)
+    if let Some(ss) = inner_request.get("safetySettings") {
+        reordered_inner["safetySettings"] = ss.clone();
+    }
+    // 6. sessionId (稳定，基于 account hash)
+    if let Some(sid) = inner_request.get("sessionId") {
+        reordered_inner["sessionId"] = sid.clone();
+    }
+    // 7. contents (动态 — 对话历史，每次追加，放在最后！)
+    reordered_inner["contents"] = inner_request.get("contents").cloned().unwrap_or(json!([]));
+    // 8. 其他字段 (metadata, cachedContent 等 — 保持原样但覆盖已有)
+    for (k, v) in inner_request.as_object().iter().flat_map(|o| o.iter()) {
+        if !reordered_inner.as_object().map(|o| o.contains_key(k)).unwrap_or(false) {
+            reordered_inner[k] = v.clone();
+        }
+    }
+
     let mut final_request_obj = json!({
         "project": project_id,
-        "request": inner_request,
+        "request": reordered_inner,
         "model": config.final_model,
         "userAgent": official_user_agent,
         "requestType": if is_agent_request { "agent" } else { "image_gen" },
