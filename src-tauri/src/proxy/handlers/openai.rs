@@ -561,10 +561,15 @@ pub async fn handle_chat_completions(
                 if cached > 0 {
                     let cm = crate::proxy::cache_manager::global_cache_manager();
                     cm.record_implicit_hit(&_prefix_hash);
+                    // [CACHE] 分层统计日志
+                    let stats = cm.get_layer_stats();
                     tracing::info!(
-                        "[Cache-Opt] Implicit cache HIT: prefix_hash={} cached_tokens={}",
+                        "[Cache-Opt] Implicit cache HIT: prefix_hash={} cached_tokens={} | L1(SI): {}/{}, L2(Tools): {}/{}, L3(Prefix): {}/{}",
                         &_prefix_hash[.._prefix_hash.len().min(16)],
-                        cached
+                        cached,
+                        stats.si_hits, stats.si_total,
+                        stats.tools_hits, stats.tools_total,
+                        stats.prefix_hits, stats.prefix_total,
                     );
                 }
             }

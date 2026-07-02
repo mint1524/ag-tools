@@ -250,12 +250,34 @@ pub fn transform_openai_request(
         })
         .collect();
 
-    // [CACHE] 清洗 system instructions 中的动态内容（时间戳/UUID/随机ID）
+    // [CACHE:L1] 清洗 system instructions 中的动态内容（时间戳/UUID/随机ID）
     // 确保跨请求的前缀字节一致，触发 Gemini 隐式前缀缓存命中
+    // 多层级缓存: Layer 1 缓存 sanitized 结果，跨 session 复用
+    let cm = crate::proxy::cache_manager::global_cache_manager();
+    let mut si_layer_stats = (0u64, 0u64); // (hits, misses) for logging
     system_instructions = system_instructions
         .into_iter()
-        .map(|s| sanitize_system_instruction_for_cache(&s))
+        .map(|s| {
+            let raw_key = crate::proxy::cache_manager::CacheManager::compute_si_key(&s);
+            if let Some(cached) = cm.lookup_si(&raw_key) {
+                si_layer_stats.0 += 1;
+                cached
+            } else {
+                si_layer_stats.1 += 1;
+                let sanitized = sanitize_system_instruction_for_cache(&s);
+                cm.cache_si(raw_key, sanitized.clone());
+                sanitized
+            }
+        })
         .collect();
+    if si_layer_stats.0 > 0 || si_layer_stats.1 > 0 {
+        tracing::debug!(
+            "[Cache-Opt:L1-SI] hits={} misses={} total={}",
+            si_layer_stats.0,
+            si_layer_stats.1,
+            si_layer_stats.0 + si_layer_stats.1
+        );
+    }
 
     // [NEW] 如果请求中包含 instructions 字段，优先使用它，并避免重复
     if let Some(inst) = &request.instructions {
@@ -762,6 +784,34 @@ pub fn transform_openai_request(
 
     let mut function_declarations: Vec<Value> = Vec::new();
 
+    // [CACHE:L2] 计算原始 tools 的 hash，查 Layer 2 缓存
+    // 命中则跳过所有 tools 处理逻辑，跨 session 复用已处理的 tools
+    let mut tools_layer_hit = false;
+    let tools_raw_hash = if let Some(ref original_tools) = request.tools {
+        let raw_json = serde_json::to_string(original_tools).unwrap_or_default();
+        if !raw_json.is_empty() {
+            let key = crate::proxy::cache_manager::CacheManager::compute_tools_key(&raw_json);
+            let cm = crate::proxy::cache_manager::global_cache_manager();
+            if let Some(cached_json) = cm.lookup_tools(&key) {
+                if let Ok(parsed) = serde_json::from_str::<Vec<Value>>(&cached_json) {
+                    function_declarations = parsed;
+                    tools_layer_hit = true;
+                    tracing::debug!(
+                        "[Cache-Opt:L2-Tools] HIT hash={} declarations={}",
+                        &key[..key.len().min(16)],
+                        function_declarations.len()
+                    );
+                }
+            }
+            Some(key)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    if !tools_layer_hit {
     if let Some(original_tools) = &request.tools {
         let tools = flatten_tools(original_tools);
         for tool in tools.iter() {
@@ -883,6 +933,22 @@ pub fn transform_openai_request(
         }
     }
 
+    // [CACHE:L2] 缓存处理完成的 tools，下次相同 schema 可以直接命中
+    if let Some(ref key) = tools_raw_hash {
+        if !tools_layer_hit {
+            if let Ok(cached_json) = serde_json::to_string(&function_declarations) {
+                let cm = crate::proxy::cache_manager::global_cache_manager();
+                cm.cache_tools(key.clone(), cached_json);
+                tracing::debug!(
+                    "[Cache-Opt:L2-Tools] INSERT hash={} declarations={}",
+                    &key[..key.len().min(16)],
+                    function_declarations.len()
+                );
+            }
+        }
+    }
+    } // end if !tools_layer_hit (includes the sort and insert below)
+
     // [CACHE] 按 function name 稳定排序，确保跨请求的 tool schema 字节一致
     function_declarations.sort_by(|a, b| {
         let name_a = a.get("name").and_then(|v| v.as_str()).unwrap_or("");
@@ -988,22 +1054,24 @@ pub fn transform_openai_request(
         "requestId": format!("agent/antigravity/{}/{}", &session_id[..session_id.len().min(8)], message_count),
     });
 
-    // [CACHE] 计算并记录稳定前缀的 hash，用于缓存命中追踪
-    // 前缀 = systemInstruction + tools，这两个在多次请求中几乎不变
+    // [CACHE:L3] 使用多层级缓存的 compute_prefix_hash 计算组合哈希
+    // Layer 1 + Layer 2 的独立 hash 组合 → Layer 3 key
     let prefix_hash = {
-        use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
-        if let Some(si) = final_body["request"].get("systemInstruction") {
-            hasher.update(serde_json::to_string(si).unwrap_or_default().as_bytes());
-        }
-        if let Some(tools) = final_body["request"].get("tools") {
-            hasher.update(serde_json::to_string(tools).unwrap_or_default().as_bytes());
-        }
-        let hash = format!("{:x}", hasher.finalize());
-        let short_hash = &hash[..hash.len().min(16)];
+        let si_json = final_body["request"]
+            .get("systemInstruction")
+            .map(|v| serde_json::to_string(v).unwrap_or_default())
+            .unwrap_or_default();
+        let tools_json = final_body["request"]
+            .get("tools")
+            .map(|v| serde_json::to_string(v).unwrap_or_default())
+            .unwrap_or_default();
+        let hash = crate::proxy::cache_manager::CacheManager::compute_prefix_hash(
+            &si_json,
+            &tools_json,
+        );
         tracing::info!(
-            "[Cache-Opt] prefix_hash={} model={} sid={} tokens_in_msg={}",
-            short_hash,
+            "[Cache-Opt:L3-Prefix] prefix_hash={} model={} sid={} tokens_in_msg={}",
+            &hash[..hash.len().min(16)],
             config.final_model,
             &session_id[..session_id.len().min(8)],
             message_count
@@ -1011,10 +1079,10 @@ pub fn transform_openai_request(
         hash
     };
 
-    // [CACHE] 尝试利用显式缓存：查询 prefix_hash 对应的 Gemini cache_id
+    // [CACHE:L3] 尝试利用显式缓存：查询 prefix_hash 对应的 Gemini cache_id
     // 若命中，注入 cachedContent 参数，告知 Gemini 服务端复用已缓存的前缀
     let cache_manager = crate::proxy::cache_manager::global_cache_manager();
-    if let Some(cache_name) = cache_manager.lookup(&prefix_hash) {
+    if let Some(cache_name) = cache_manager.lookup_prefix(&prefix_hash) {
         if let Some(req_obj) = final_body["request"].as_object_mut() {
             req_obj.insert("cachedContent".to_string(), json!(cache_name));
             tracing::info!(
@@ -1022,6 +1090,7 @@ pub fn transform_openai_request(
                 &prefix_hash[..prefix_hash.len().min(16)],
                 cache_name
             );
+            cache_manager.record_explicit_hit(&prefix_hash);
         }
     }
 
