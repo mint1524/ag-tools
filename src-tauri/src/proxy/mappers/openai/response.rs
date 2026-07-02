@@ -272,23 +272,42 @@ pub fn transform_openai_response(
     }
 
     // Extract and map usage metadata from Gemini to OpenAI format
+    // Supports both legacy v1internal format (promptTokenCount/candidatesTokenCount/totalTokenCount/cachedContentTokenCount)
+    // and new Interactions API format (total_input_tokens/total_output_tokens/total_thought_tokens/total_cached_tokens)
     let usage = raw.get("usageMetadata").and_then(|u| {
+        // 优先使用新格式字段，fallback 到旧格式
         let prompt_tokens = u
-            .get("promptTokenCount")
+            .get("total_input_tokens")
+            .or_else(|| u.get("promptTokenCount"))
             .and_then(|v| v.as_u64())
             .unwrap_or(0) as u32;
-        let completion_tokens = u
-            .get("candidatesTokenCount")
+        let raw_output_tokens = u
+            .get("total_output_tokens")
+            .or_else(|| u.get("candidatesTokenCount"))
             .and_then(|v| v.as_u64())
             .unwrap_or(0) as u32;
         let total_tokens = u
-            .get("totalTokenCount")
+            .get("total_tokens")
+            .or_else(|| u.get("totalTokenCount"))
             .and_then(|v| v.as_u64())
             .unwrap_or(0) as u32;
         let cached_tokens = u
-            .get("cachedContentTokenCount")
+            .get("total_cached_tokens")
+            .or_else(|| u.get("cachedContentTokenCount"))
             .and_then(|v| v.as_u64())
             .map(|v| v as u32);
+        // [NEW] 从新格式提取 reasoning/thought tokens
+        let reasoning_tokens = u
+            .get("total_thought_tokens")
+            .or_else(|| u.get("totalThoughtTokens"))
+            .or_else(|| u.get("thoughtsTokenCount"))
+            .and_then(|v| v.as_u64())
+            .filter(|&v| v > 0)
+            .map(|v| v as u32);
+
+        // [FIX] 新格式语义: total_output_tokens 不包含 thought tokens
+        // Codex 期望 output_tokens = 文本输出的所有 token（含 thinking + tool + 普通文本）
+        let completion_tokens = raw_output_tokens + reasoning_tokens.unwrap_or(0);
 
         // [FIX] 效仿 Anthropic 的计费逻辑，向客户端返回时扣除已缓存的 tokens，避免客户端钱包暴降
         let mut final_prompt_tokens = prompt_tokens;
@@ -305,7 +324,11 @@ pub fn transform_openai_response(
             prompt_tokens_details: cached_tokens.map(|ct| super::models::PromptTokensDetails {
                 cached_tokens: Some(ct),
             }),
-            completion_tokens_details: None,
+            completion_tokens_details: reasoning_tokens.map(|rt| {
+                super::models::CompletionTokensDetails {
+                    reasoning_tokens: Some(rt),
+                }
+            }),
         })
     });
 

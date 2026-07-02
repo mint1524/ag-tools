@@ -552,10 +552,11 @@ pub async fn handle_chat_completions(
                 .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Parse error: {}", e)))?;
 
             // [CACHE] 从 Gemini 响应中提取缓存信息，关闭反馈循环
-            // 若 cachedContentTokenCount > 0 表示隐式缓存命中
+            // 兼容两种格式: cachedContentTokenCount (旧), total_cached_tokens (新)
             if let Some(usage) = gemini_resp.get("usageMetadata") {
                 let cached = usage
-                    .get("cachedContentTokenCount")
+                    .get("total_cached_tokens")
+                    .or_else(|| usage.get("cachedContentTokenCount"))
                     .and_then(|v| v.as_u64())
                     .unwrap_or(0);
                 if cached > 0 {

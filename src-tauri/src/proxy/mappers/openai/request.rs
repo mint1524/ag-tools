@@ -762,16 +762,17 @@ pub fn transform_openai_request(
         }
     }
 
-    let mut inner_request = json!({
-        "contents": contents,
-        "generationConfig": gen_config,
-        "safetySettings": [
-            { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "OFF" },
-            { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "OFF" },
-            { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "OFF" },
-            { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "OFF" },
-        ]
-    });
+    // [CACHE] inner_request 先创建为空的 Map，后续按稳定顺序填充
+    let mut inner_request = json!({});
+    // 先放 contents（后续会被 reordered_request 覆盖到后面）
+    inner_request["contents"] = json!(contents);
+    inner_request["generationConfig"] = gen_config;
+    inner_request["safetySettings"] = json!([
+        { "category": "HARM_CATEGORY_HARASSMENT", "threshold": "OFF" },
+        { "category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "OFF" },
+        { "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "OFF" },
+        { "category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "OFF" },
+    ]);
 
     // 深度清理 [undefined] 字符串 (Cherry Studio 等客户端常见注入)
     crate::proxy::mappers::common_utils::deep_clean_undefined(&mut inner_request, 0);
