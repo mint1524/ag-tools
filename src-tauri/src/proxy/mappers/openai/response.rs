@@ -306,11 +306,6 @@ pub fn transform_openai_response(
             .or_else(|| u.get("candidatesTokenCount"))
             .and_then(|v| v.as_u64())
             .unwrap_or(0) as u32;
-        let total_tokens = u
-            .get("total_tokens")
-            .or_else(|| u.get("totalTokenCount"))
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as u32;
         let cached_tokens = u
             .get("total_cached_tokens")
             .or_else(|| u.get("cachedContentTokenCount"))
@@ -329,19 +324,12 @@ pub fn transform_openai_response(
         // Codex 期望 output_tokens = 文本输出的所有 token（含 thinking + tool + 普通文本）
         let completion_tokens = raw_output_tokens + reasoning_tokens.unwrap_or(0);
 
-        // [FIX] 效仿 Anthropic 的计费逻辑，向客户端返回时扣除已缓存的 tokens，避免客户端钱包暴降
-        let mut final_prompt_tokens = prompt_tokens;
-        if let Some(ct) = cached_tokens {
-            if final_prompt_tokens >= ct {
-                final_prompt_tokens -= ct;
-            }
-        }
-
-        // 重算 total，保证 prompt + completion = total（扣减后的口径一致）
-        let final_total_tokens = final_prompt_tokens + completion_tokens;
+        // Keep prompt_tokens as Gemini's raw input token count. cached_tokens is a
+        // subset of the prompt, not an amount to subtract from it.
+        let final_total_tokens = prompt_tokens + completion_tokens;
 
         Some(super::models::OpenAIUsage {
-            prompt_tokens: final_prompt_tokens,
+            prompt_tokens,
             completion_tokens,
             total_tokens: final_total_tokens,
             prompt_tokens_details: cached_tokens.map(|ct| super::models::PromptTokensDetails {
@@ -422,11 +410,9 @@ mod tests {
 
         assert!(result.usage.is_some());
         let usage = result.usage.unwrap();
-        // prompt_tokens 扣除 cached_tokens(25) 后为 75
-        assert_eq!(usage.prompt_tokens, 75);
+        assert_eq!(usage.prompt_tokens, 100);
         assert_eq!(usage.completion_tokens, 50);
-        // total_tokens 重算为 prompt(75) + completion(50)
-        assert_eq!(usage.total_tokens, 125);
+        assert_eq!(usage.total_tokens, 150);
         assert!(usage.prompt_tokens_details.is_some());
         assert_eq!(usage.prompt_tokens_details.unwrap().cached_tokens, Some(25));
     }

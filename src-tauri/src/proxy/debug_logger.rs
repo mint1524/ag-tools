@@ -31,7 +31,7 @@ pub async fn write_debug_payload(
     prefix: &str,
     payload: &Value,
 ) {
-    if !cfg.enabled {
+    if !is_enabled(cfg) {
         return;
     }
 
@@ -69,7 +69,7 @@ pub async fn write_exchange_payload(
     prefix: &str,
     payload: &Value,
 ) {
-    if !cfg.enabled {
+    if !is_enabled(cfg) {
         return;
     }
 
@@ -102,7 +102,7 @@ pub async fn write_exchange_payload(
 }
 
 pub fn is_enabled(cfg: &DebugLoggingConfig) -> bool {
-    cfg.enabled
+    cfg.enabled || crate::modules::log_bridge::is_log_bridge_enabled()
 }
 
 /// 解析 SSE 流式数据，提取 thinking 和正文内容

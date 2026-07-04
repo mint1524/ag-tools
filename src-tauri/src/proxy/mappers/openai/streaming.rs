@@ -67,19 +67,12 @@ fn extract_usage_metadata(u: &Value) -> Option<super::models::OpenAIUsage> {
     // 新格式下 output_tokens 不含 thought, 需要加回来
     let completion_tokens = raw_output_tokens + reasoning_tokens.unwrap_or(0);
 
-    // [FIX] 效仿 Anthropic 的计费逻辑，向客户端返回时扣除已缓存的 tokens，避免客户端钱包暴降
-    let mut final_prompt_tokens = prompt_tokens;
-    if let Some(ct) = cached_tokens {
-        if final_prompt_tokens >= ct {
-            final_prompt_tokens -= ct;
-        }
-    }
-
-    // 确保数学公式 total_tokens = prompt_tokens + completion_tokens 成立
-    let final_total_tokens = final_prompt_tokens + completion_tokens;
+    // cached_tokens is a subset of prompt_tokens. Keep prompt_tokens in the same
+    // raw-input-token unit as Gemini usageMetadata so downstream logs can reconcile it.
+    let final_total_tokens = prompt_tokens + completion_tokens;
 
     Some(OpenAIUsage {
-        prompt_tokens: final_prompt_tokens,
+        prompt_tokens,
         completion_tokens,
         total_tokens: final_total_tokens,
         prompt_tokens_details: cached_tokens.map(|ct| PromptTokensDetails {
