@@ -666,7 +666,11 @@ pub fn wrap_request(
     reordered_inner["contents"] = inner_request.get("contents").cloned().unwrap_or(json!([]));
     // 8. 其他字段 (metadata, cachedContent 等 — 保持原样但覆盖已有)
     for (k, v) in inner_request.as_object().iter().flat_map(|o| o.iter()) {
-        if !reordered_inner.as_object().map(|o| o.contains_key(k)).unwrap_or(false) {
+        if !reordered_inner
+            .as_object()
+            .map(|o| o.contains_key(k))
+            .unwrap_or(false)
+        {
             reordered_inner[k] = v.clone();
         }
     }

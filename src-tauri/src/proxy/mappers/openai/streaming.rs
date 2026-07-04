@@ -222,7 +222,7 @@ where
                                                                             "finish_reason": serde_json::Value::Null
                                                                         }]
                                                                     });
-                                                                    
+
                                                                     tool_call_index += 1;
                                                                     let sse_out = format!("data: {}\n\n", serde_json::to_string(&tool_call_chunk).unwrap_or_default());
                                                                     yield Ok::<Bytes, String>(Bytes::from(sse_out));
@@ -468,7 +468,6 @@ where
     Box::pin(stream)
 }
 
-
 fn split_namespace_tool_name(qualified_name: &str) -> (String, Option<String>) {
     let name = qualified_name.trim();
     if name.starts_with("mcp__") {
@@ -519,7 +518,7 @@ where
         let mut emitted_tool_calls = std::collections::HashSet::new();
         let mut accumulated_text = String::new();
         let mut accumulated_thinking = String::new();
-        
+
         let mut final_outputs_map: std::collections::BTreeMap<u32, serde_json::Value> = std::collections::BTreeMap::new();
         let mut next_output_index: u32 = 0;
         let mut message_output_index: u32 = 0;
@@ -543,11 +542,11 @@ where
 
                                     if let Ok(mut json) = serde_json::from_str::<Value>(json_part) {
                                         let actual_data = if let Some(inner) = json.get_mut("response").map(|v| v.take()) { inner } else { json };
-                                        
+
                                         if let Some(u) = actual_data.get("usageMetadata") {
                                             final_usage = extract_usage_metadata(u);
                                         }
-                                        
+
                                         if let Some(candidates) = actual_data.get("candidates").and_then(|c| c.as_array()) {
                                             if candidates.len() > 0 {
                                                 tracing::debug!("[Codex-Stream-Debug] Raw Candidate: {:?}", candidates[0]);
@@ -591,7 +590,7 @@ where
                                                                 }
 
                                                                 accumulated_text.push_str(&chunk_to_emit);
-                                                                
+
                                                                 let delta_ev = json!({
                                                                     "type": "response.output_text.delta",
                                                                     "item_id": &message_item_id,
@@ -609,7 +608,7 @@ where
                                                             let call_key = serde_json::to_string(func_call).unwrap_or_default();
                                                             if !emitted_tool_calls.contains(&call_key) {
                                                                 emitted_tool_calls.insert(call_key.clone());
-                                                                
+
                                                                 let name = func_call.get("name").and_then(|v| v.as_str()).unwrap_or("unknown");
                                                                 let mut args = func_call.get("args").unwrap_or(&json!({})).clone();
 
@@ -627,7 +626,7 @@ where
                                                                 }
 
                                                                 let mut args_str = serde_json::to_string(&args).unwrap_or_default();
-                                                                
+
                                                                 let mut hasher = std::collections::hash_map::DefaultHasher::new();
                                                                 use std::hash::{Hash, Hasher};
                                                                 call_key.hash(&mut hasher);
@@ -833,7 +832,7 @@ where
                     "text": &accumulated_text
                 }]
             });
-            
+
             let output_item_done = json!({
                 "type": "response.output_item.done",
                 "output_index": message_output_index,
@@ -871,7 +870,7 @@ where
                 usage_obj.insert("input_tokens".to_string(), json!(usage.prompt_tokens));
                 usage_obj.insert("output_tokens".to_string(), json!(usage.completion_tokens));
                 usage_obj.insert("total_tokens".to_string(), json!(usage.total_tokens));
-                
+
                 // Show cached tokens count under usage object
                 if let Some(ref details) = usage.prompt_tokens_details {
                     if let Some(ct) = details.cached_tokens {
@@ -994,4 +993,3 @@ mod tests {
         assert!(found_finish, "Finish reason should be strictly 'stop'");
     }
 }
-

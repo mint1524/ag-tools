@@ -181,7 +181,10 @@ impl CacheManager {
                 tracing::debug!(
                     "[CacheManager:L1-SI] HIT hash={} hit_count={}",
                     &raw_hash[..raw_hash.len().min(16)],
-                    self.si_cache.get(raw_hash).map(|e| e.hit_count).unwrap_or(0)
+                    self.si_cache
+                        .get(raw_hash)
+                        .map(|e| e.hit_count)
+                        .unwrap_or(0)
                 );
                 Some(text)
             }
@@ -191,14 +194,20 @@ impl CacheManager {
                 if let Ok(mut stats) = self.si_stats.write() {
                     stats.2 += 1; // misses
                 }
-                tracing::debug!("[CacheManager:L1-SI] EXPIRED hash={}", &raw_hash[..raw_hash.len().min(16)]);
+                tracing::debug!(
+                    "[CacheManager:L1-SI] EXPIRED hash={}",
+                    &raw_hash[..raw_hash.len().min(16)]
+                );
                 None
             }
             None => {
                 if let Ok(mut stats) = self.si_stats.write() {
                     stats.2 += 1; // misses
                 }
-                tracing::debug!("[CacheManager:L1-SI] MISS hash={}", &raw_hash[..raw_hash.len().min(16)]);
+                tracing::debug!(
+                    "[CacheManager:L1-SI] MISS hash={}",
+                    &raw_hash[..raw_hash.len().min(16)]
+                );
                 None
             }
         }
@@ -227,7 +236,9 @@ impl CacheManager {
             if before != after {
                 tracing::debug!(
                     "[CacheManager:L1-SI] LRU cleanup: {} → {} (limit: {})",
-                    before, after, SI_CACHE_LIMIT
+                    before,
+                    after,
+                    SI_CACHE_LIMIT
                 );
             }
         }
@@ -269,14 +280,20 @@ impl CacheManager {
                 if let Ok(mut stats) = self.tools_stats.write() {
                     stats.2 += 1;
                 }
-                tracing::debug!("[CacheManager:L2-Tools] EXPIRED hash={}", &raw_hash[..raw_hash.len().min(16)]);
+                tracing::debug!(
+                    "[CacheManager:L2-Tools] EXPIRED hash={}",
+                    &raw_hash[..raw_hash.len().min(16)]
+                );
                 None
             }
             None => {
                 if let Ok(mut stats) = self.tools_stats.write() {
                     stats.2 += 1;
                 }
-                tracing::debug!("[CacheManager:L2-Tools] MISS hash={}", &raw_hash[..raw_hash.len().min(16)]);
+                tracing::debug!(
+                    "[CacheManager:L2-Tools] MISS hash={}",
+                    &raw_hash[..raw_hash.len().min(16)]
+                );
                 None
             }
         }
@@ -304,7 +321,9 @@ impl CacheManager {
             if before != after {
                 tracing::debug!(
                     "[CacheManager:L2-Tools] LRU cleanup: {} → {} (limit: {})",
-                    before, after, TOOLS_CACHE_LIMIT
+                    before,
+                    after,
+                    TOOLS_CACHE_LIMIT
                 );
             }
         }
@@ -357,14 +376,20 @@ impl CacheManager {
                 if let Ok(mut stats) = self.prefix_stats.write() {
                     stats.2 += 1;
                 }
-                tracing::debug!("[CacheManager:L3-Prefix] EXPIRED hash={}", &hash[..hash.len().min(16)]);
+                tracing::debug!(
+                    "[CacheManager:L3-Prefix] EXPIRED hash={}",
+                    &hash[..hash.len().min(16)]
+                );
                 None
             }
             None => {
                 if let Ok(mut stats) = self.prefix_stats.write() {
                     stats.2 += 1;
                 }
-                tracing::debug!("[CacheManager:L3-Prefix] MISS hash={}", &hash[..hash.len().min(16)]);
+                tracing::debug!(
+                    "[CacheManager:L3-Prefix] MISS hash={}",
+                    &hash[..hash.len().min(16)]
+                );
                 None
             }
         }
@@ -405,13 +430,14 @@ impl CacheManager {
         if self.prefix_tracker.len() > PREFIX_TRACKER_LIMIT {
             let before = self.prefix_tracker.len();
             let now = Instant::now();
-            self.prefix_tracker
-                .retain(|_, v| v.expires_at > now);
+            self.prefix_tracker.retain(|_, v| v.expires_at > now);
             let after = self.prefix_tracker.len();
             if before != after {
                 tracing::debug!(
                     "[CacheManager:L3-Prefix] LRU cleanup: {} → {} (limit: {})",
-                    before, after, PREFIX_TRACKER_LIMIT
+                    before,
+                    after,
+                    PREFIX_TRACKER_LIMIT
                 );
             }
         }
@@ -511,7 +537,10 @@ impl CacheManager {
             + (prefix_before - self.prefix_tracker.len());
 
         if total > 0 {
-            tracing::debug!("[CacheManager] Evicted {} expired entries across all layers", total);
+            tracing::debug!(
+                "[CacheManager] Evicted {} expired entries across all layers",
+                total
+            );
         }
         total
     }
@@ -684,7 +713,10 @@ mod tests {
 
         let hash_a = CacheManager::compute_prefix_hash(si, tools_a);
         let hash_b = CacheManager::compute_prefix_hash(si, tools_b);
-        assert_ne!(hash_a, hash_b, "Different tools must produce different hash");
+        assert_ne!(
+            hash_a, hash_b,
+            "Different tools must produce different hash"
+        );
     }
 
     #[test]
@@ -899,7 +931,14 @@ mod tests {
 
         cm.cache_si("si".to_string(), "text".to_string());
         cm.cache_tools("tools".to_string(), "{}".to_string());
-        cm.insert_prefix("prefix".to_string(), "cache".to_string(), "s".to_string(), "t".to_string(), "m".to_string(), Some(60));
+        cm.insert_prefix(
+            "prefix".to_string(),
+            "cache".to_string(),
+            "s".to_string(),
+            "t".to_string(),
+            "m".to_string(),
+            Some(60),
+        );
 
         cm.clear();
 

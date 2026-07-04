@@ -34,8 +34,14 @@ fn sanitize_system_instruction_for_cache(text: &str) -> String {
     // [CACHE] 清洗 environment_context XML 标签中的动态值
     // Codex 在每个请求的 user/system 消息中注入这些标签，其值随环境变化
     let env_xml_patterns: &[(&str, &str)] = &[
-        (r"<current_date>[^<]*</current_date>", "<current_date>[DATE_FROZEN]</current_date>"),
-        (r"<timezone>[^<]*</timezone>", "<timezone>[TZ_FROZEN]</timezone>"),
+        (
+            r"<current_date>[^<]*</current_date>",
+            "<current_date>[DATE_FROZEN]</current_date>",
+        ),
+        (
+            r"<timezone>[^<]*</timezone>",
+            "<timezone>[TZ_FROZEN]</timezone>",
+        ),
         (r"<cwd>[^<]*</cwd>", "<cwd>[WORKSPACE_FROZEN]</cwd>"),
         (r"<shell>[^<]*</shell>", "<shell>[SHELL_FROZEN]</shell>"),
     ];
@@ -52,9 +58,9 @@ fn sanitize_system_instruction_for_cache(text: &str) -> String {
     }
 
     // 剥离 UUID (标准 8-4-4-4-12 格式)
-    if let Ok(re) = regex::Regex::new(
-        r"\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b",
-    ) {
+    if let Ok(re) =
+        regex::Regex::new(r"\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b")
+    {
         cleaned = re.replace_all(&cleaned, "{uuid}").into_owned();
     }
 
@@ -71,7 +77,6 @@ fn sanitize_system_instruction_for_cache(text: &str) -> String {
     // 去除首尾空白
     cleaned.trim().to_string()
 }
-
 
 fn qualify_namespace_tool_name(namespace_name: &str, child_name: &str) -> String {
     let child = child_name.trim();
@@ -323,18 +328,24 @@ pub fn transform_openai_request(
     if let Some(tools) = &request.tools {
         let flat_tools = flatten_tools(tools);
         for tool in &flat_tools {
-            let name_opt = tool.get("function")
+            let name_opt = tool
+                .get("function")
                 .and_then(|f| f.get("name"))
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string())
                 .or_else(|| {
-                    tool.get("name").and_then(|v| v.as_str()).map(|s| s.to_string())
+                    tool.get("name")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
                 })
                 .or_else(|| {
-                    tool.get("type").and_then(|v| v.as_str()).map(|s| s.to_string())
+                    tool.get("type")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
                 });
-            
-            let params_opt = tool.get("function")
+
+            let params_opt = tool
+                .get("function")
                 .and_then(|f| f.get("parameters"))
                 .or_else(|| tool.get("parameters"));
 
@@ -813,92 +824,95 @@ pub fn transform_openai_request(
     };
 
     if !tools_layer_hit {
-    if let Some(original_tools) = &request.tools {
-        let tools = flatten_tools(original_tools);
-        for tool in tools.iter() {
-            let mut gemini_func = if let Some(func) = tool.get("function") {
-                func.clone()
-            } else {
-                let mut func = tool.clone();
-                // [FIX] 剔除 "type" 前如果不存在 "name"，则提取 "type" 兜底作为名字
-                if func.get("name").is_none() {
-                    let tool_type_opt = func.get("type").and_then(|v| v.as_str()).map(|s| s.to_string());
-                    if let Some(tool_type) = tool_type_opt {
-                        if let Some(obj) = func.as_object_mut() {
-                            obj.insert("name".to_string(), json!(tool_type));
+        if let Some(original_tools) = &request.tools {
+            let tools = flatten_tools(original_tools);
+            for tool in tools.iter() {
+                let mut gemini_func = if let Some(func) = tool.get("function") {
+                    func.clone()
+                } else {
+                    let mut func = tool.clone();
+                    // [FIX] 剔除 "type" 前如果不存在 "name"，则提取 "type" 兜底作为名字
+                    if func.get("name").is_none() {
+                        let tool_type_opt = func
+                            .get("type")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
+                        if let Some(tool_type) = tool_type_opt {
+                            if let Some(obj) = func.as_object_mut() {
+                                obj.insert("name".to_string(), json!(tool_type));
+                            }
                         }
                     }
-                }
-                if let Some(obj) = func.as_object_mut() {
-                    obj.remove("type");
-                    obj.remove("strict");
-                    obj.remove("additionalProperties");
-                }
-                func
-            };
+                    if let Some(obj) = func.as_object_mut() {
+                        obj.remove("type");
+                        obj.remove("strict");
+                        obj.remove("additionalProperties");
+                    }
+                    func
+                };
 
-            let name_opt = gemini_func
-                .get("name")
-                .and_then(|v| v.as_str())
-                .map(|s| s.to_string());
+                let name_opt = gemini_func
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
 
-            if let Some(name) = &name_opt {
-                // 跳过内置联网工具名称，避免重复定义
-                if name == "web_search"
-                    || name == "google_search"
-                    || name == "web_search_20250305"
-                    || name == "builtin_web_search"
-                {
+                if let Some(name) = &name_opt {
+                    // 跳过内置联网工具名称，避免重复定义
+                    if name == "web_search"
+                        || name == "google_search"
+                        || name == "web_search_20250305"
+                        || name == "builtin_web_search"
+                    {
+                        continue;
+                    }
+
+                    if name == "local_shell_call" {
+                        if let Some(obj) = gemini_func.as_object_mut() {
+                            obj.insert("name".to_string(), json!("shell"));
+                        }
+                    }
+                } else {
+                    // [FIX] 如果工具没有名称，视为无效工具直接跳过 (防止 REQUIRED_FIELD_MISSING)
+                    tracing::warn!(
+                        "[OpenAI-Request] Skipping tool without name: {:?}",
+                        gemini_func
+                    );
                     continue;
                 }
 
-                if name == "local_shell_call" {
-                    if let Some(obj) = gemini_func.as_object_mut() {
-                        obj.insert("name".to_string(), json!("shell"));
+                // [NEW CRITICAL FIX] 保留函数定义根层级的合法字段，移除所有非法字段 (如 type, execution, format 等)
+                if let Some(obj) = gemini_func.as_object_mut() {
+                    let mut clean_obj = serde_json::Map::new();
+                    if let Some(name) = obj.get("name") {
+                        clean_obj.insert("name".to_string(), name.clone());
                     }
-                }
-            } else {
-                // [FIX] 如果工具没有名称，视为无效工具直接跳过 (防止 REQUIRED_FIELD_MISSING)
-                tracing::warn!(
-                    "[OpenAI-Request] Skipping tool without name: {:?}",
-                    gemini_func
-                );
-                continue;
-            }
-
-            // [NEW CRITICAL FIX] 保留函数定义根层级的合法字段，移除所有非法字段 (如 type, execution, format 等)
-            if let Some(obj) = gemini_func.as_object_mut() {
-                let mut clean_obj = serde_json::Map::new();
-                if let Some(name) = obj.get("name") {
-                    clean_obj.insert("name".to_string(), name.clone());
-                }
-                if let Some(desc) = obj.get("description") {
-                    clean_obj.insert("description".to_string(), desc.clone());
-                }
-                if let Some(params) = obj.get("parameters") {
-                    clean_obj.insert("parameters".to_string(), params.clone());
-                }
-                *obj = clean_obj;
-            }
-
-            if let Some(params) = gemini_func.get_mut("parameters") {
-                // [DEEP FIX] 统一调用公共库清洗：展开 $ref 并剔除所有层级的 format/definitions
-                crate::proxy::common::json_schema::clean_json_schema(params);
-
-                // Gemini v1internal 要求：
-                // 1. type 必须是大写 (OBJECT, STRING 等)
-                // 2. 根对象必须有 "type": "OBJECT"
-                if let Some(params_obj) = params.as_object_mut() {
-                    if !params_obj.contains_key("type") {
-                        params_obj.insert("type".to_string(), json!("OBJECT"));
+                    if let Some(desc) = obj.get("description") {
+                        clean_obj.insert("description".to_string(), desc.clone());
                     }
+                    if let Some(params) = obj.get("parameters") {
+                        clean_obj.insert("parameters".to_string(), params.clone());
+                    }
+                    *obj = clean_obj;
                 }
 
-                // 递归转换 type 为大写 (符合 Protobuf 定义)
-                enforce_uppercase_types(params);
-            } else {
-                if gemini_func.get("name").and_then(|v| v.as_str()) == Some("apply_patch") {
-                    gemini_func.as_object_mut().unwrap().insert(
+                if let Some(params) = gemini_func.get_mut("parameters") {
+                    // [DEEP FIX] 统一调用公共库清洗：展开 $ref 并剔除所有层级的 format/definitions
+                    crate::proxy::common::json_schema::clean_json_schema(params);
+
+                    // Gemini v1internal 要求：
+                    // 1. type 必须是大写 (OBJECT, STRING 等)
+                    // 2. 根对象必须有 "type": "OBJECT"
+                    if let Some(params_obj) = params.as_object_mut() {
+                        if !params_obj.contains_key("type") {
+                            params_obj.insert("type".to_string(), json!("OBJECT"));
+                        }
+                    }
+
+                    // 递归转换 type 为大写 (符合 Protobuf 定义)
+                    enforce_uppercase_types(params);
+                } else {
+                    if gemini_func.get("name").and_then(|v| v.as_str()) == Some("apply_patch") {
+                        gemini_func.as_object_mut().unwrap().insert(
                         "parameters".to_string(),
                         json!({
                             "type": "OBJECT",
@@ -914,40 +928,40 @@ pub fn transform_openai_request(
                             "required": ["command"]
                         }),
                     );
-                } else {
-                    gemini_func.as_object_mut().unwrap().insert(
-                        "parameters".to_string(),
-                        json!({
-                            "type": "OBJECT",
-                            "properties": {
-                                "content": {
-                                    "type": "STRING",
-                                    "description": "The raw content or patch to be applied"
-                                }
-                            },
-                            "required": ["content"]
-                        }),
+                    } else {
+                        gemini_func.as_object_mut().unwrap().insert(
+                            "parameters".to_string(),
+                            json!({
+                                "type": "OBJECT",
+                                "properties": {
+                                    "content": {
+                                        "type": "STRING",
+                                        "description": "The raw content or patch to be applied"
+                                    }
+                                },
+                                "required": ["content"]
+                            }),
+                        );
+                    }
+                }
+                function_declarations.push(gemini_func);
+            }
+        }
+
+        // [CACHE:L2] 缓存处理完成的 tools，下次相同 schema 可以直接命中
+        if let Some(ref key) = tools_raw_hash {
+            if !tools_layer_hit {
+                if let Ok(cached_json) = serde_json::to_string(&function_declarations) {
+                    let cm = crate::proxy::cache_manager::global_cache_manager();
+                    cm.cache_tools(key.clone(), cached_json);
+                    tracing::debug!(
+                        "[Cache-Opt:L2-Tools] INSERT hash={} declarations={}",
+                        &key[..key.len().min(16)],
+                        function_declarations.len()
                     );
                 }
             }
-            function_declarations.push(gemini_func);
         }
-    }
-
-    // [CACHE:L2] 缓存处理完成的 tools，下次相同 schema 可以直接命中
-    if let Some(ref key) = tools_raw_hash {
-        if !tools_layer_hit {
-            if let Ok(cached_json) = serde_json::to_string(&function_declarations) {
-                let cm = crate::proxy::cache_manager::global_cache_manager();
-                cm.cache_tools(key.clone(), cached_json);
-                tracing::debug!(
-                    "[Cache-Opt:L2-Tools] INSERT hash={} declarations={}",
-                    &key[..key.len().min(16)],
-                    function_declarations.len()
-                );
-            }
-        }
-    }
     } // end if !tools_layer_hit (includes the sort and insert below)
 
     // [CACHE] 按 function name 稳定排序，确保跨请求的 tool schema 字节一致
@@ -961,7 +975,7 @@ pub fn transform_openai_request(
 
     if !function_declarations.is_empty() {
         inner_request["tools"] = json!([{ "functionDeclarations": function_declarations }]);
-        
+
         let mut mode = "VALIDATED";
         if let Some(tool_choice) = &request.tool_choice {
             if let Some(s) = tool_choice.as_str() {
@@ -1077,7 +1091,11 @@ pub fn transform_openai_request(
     reordered_request["contents"] = inner_request.get("contents").cloned().unwrap_or(json!([]));
     // 8. 其他可能存在的字段 (metadata, cachedContent 等)
     for (k, v) in inner_request.as_object().iter().flat_map(|o| o.iter()) {
-        if !reordered_request.as_object().map(|o| o.contains_key(k)).unwrap_or(false) {
+        if !reordered_request
+            .as_object()
+            .map(|o| o.contains_key(k))
+            .unwrap_or(false)
+        {
             reordered_request[k] = v.clone();
         }
     }
@@ -1105,10 +1123,8 @@ pub fn transform_openai_request(
             .get("tools")
             .map(|v| serde_json::to_string(v).unwrap_or_default())
             .unwrap_or_default();
-        let hash = crate::proxy::cache_manager::CacheManager::compute_prefix_hash(
-            &si_json,
-            &tools_json,
-        );
+        let hash =
+            crate::proxy::cache_manager::CacheManager::compute_prefix_hash(&si_json, &tools_json);
         tracing::info!(
             "[Cache-Opt:L3-Prefix] prefix_hash={} model={} sid={} tokens_in_msg={}",
             &hash[..hash.len().min(16)],
@@ -1655,4 +1671,3 @@ mod tests {
         );
     }
 }
-
