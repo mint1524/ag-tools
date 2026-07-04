@@ -306,6 +306,11 @@ pub fn transform_openai_response(
             .or_else(|| u.get("candidatesTokenCount"))
             .and_then(|v| v.as_u64())
             .unwrap_or(0) as u32;
+        let raw_total_tokens = u
+            .get("total_tokens")
+            .or_else(|| u.get("totalTokenCount"))
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u32);
         let cached_tokens = u
             .get("total_cached_tokens")
             .or_else(|| u.get("cachedContentTokenCount"))
@@ -317,16 +322,21 @@ pub fn transform_openai_response(
             .or_else(|| u.get("totalThoughtTokens"))
             .or_else(|| u.get("thoughtsTokenCount"))
             .and_then(|v| v.as_u64())
-            .filter(|&v| v > 0)
             .map(|v| v as u32);
+        let tool_use_tokens = u
+            .get("total_tool_use_tokens")
+            .and_then(|v| v.as_u64())
+            .map(|v| v as u32);
+        let input_tokens_by_modality = u.get("input_tokens_by_modality").cloned();
 
-        // [FIX] 新格式语义: total_output_tokens 不包含 thought tokens
-        // Codex 期望 output_tokens = 文本输出的所有 token（含 thinking + tool + 普通文本）
-        let completion_tokens = raw_output_tokens + reasoning_tokens.unwrap_or(0);
+        // New Interactions usage keeps thought/tool-use tokens separate from
+        // total_output_tokens. Codex counts those as output-side tokens.
+        let completion_tokens =
+            raw_output_tokens + reasoning_tokens.unwrap_or(0) + tool_use_tokens.unwrap_or(0);
 
         // Keep prompt_tokens as Gemini's raw input token count. cached_tokens is a
         // subset of the prompt, not an amount to subtract from it.
-        let final_total_tokens = prompt_tokens + completion_tokens;
+        let final_total_tokens = raw_total_tokens.unwrap_or(prompt_tokens + completion_tokens);
 
         Some(super::models::OpenAIUsage {
             prompt_tokens,
@@ -340,6 +350,11 @@ pub fn transform_openai_response(
                     reasoning_tokens: Some(rt),
                 }
             }),
+            input_tokens_by_modality,
+            raw_output_tokens: Some(raw_output_tokens),
+            total_thought_tokens: reasoning_tokens,
+            total_tool_use_tokens: tool_use_tokens,
+            gemini_total_tokens: raw_total_tokens,
         })
     });
 
@@ -415,6 +430,57 @@ mod tests {
         assert_eq!(usage.total_tokens, 150);
         assert!(usage.prompt_tokens_details.is_some());
         assert_eq!(usage.prompt_tokens_details.unwrap().cached_tokens, Some(25));
+    }
+
+    #[test]
+    fn test_interactions_usage_metadata_mapping() {
+        let gemini_resp = json!({
+            "candidates": [{
+                "content": {"parts": [{"text": "Hello!"}]},
+                "finishReason": "STOP"
+            }],
+            "usageMetadata": {
+                "input_tokens_by_modality": [
+                    {
+                        "modality": "text",
+                        "tokens": 7
+                    }
+                ],
+                "total_cached_tokens": 0,
+                "total_input_tokens": 7,
+                "total_output_tokens": 20,
+                "total_thought_tokens": 22,
+                "total_tokens": 49,
+                "total_tool_use_tokens": 0
+            },
+            "modelVersion": "gemini-3-flash-preview",
+            "responseId": "resp_123"
+        });
+
+        let result = transform_openai_response(&gemini_resp, Some("session-123"), 1);
+        let usage = result.usage.unwrap();
+
+        assert_eq!(usage.prompt_tokens, 7);
+        assert_eq!(usage.completion_tokens, 42);
+        assert_eq!(usage.total_tokens, 49);
+        assert_eq!(
+            usage
+                .completion_tokens_details
+                .as_ref()
+                .unwrap()
+                .reasoning_tokens,
+            Some(22)
+        );
+
+        let responses_usage = usage.to_responses_usage_value();
+        assert_eq!(responses_usage["input_tokens"], 7);
+        assert_eq!(responses_usage["input_tokens_details"]["cached_tokens"], 0);
+        assert_eq!(responses_usage["output_tokens"], 42);
+        assert_eq!(
+            responses_usage["output_tokens_details"]["reasoning_tokens"],
+            22
+        );
+        assert_eq!(responses_usage["total_tokens"], 49);
     }
 
     #[test]

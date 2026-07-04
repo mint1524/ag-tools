@@ -43,8 +43,66 @@ fn extract_cached_tokens(usage: &Value) -> Option<u32> {
                 .get("prompt_tokens_details")
                 .and_then(|details| details.get("cached_tokens"))
         })
+        .or_else(|| {
+            usage
+                .get("input_tokens_details")
+                .and_then(|details| details.get("cached_tokens"))
+        })
         .and_then(|v| v.as_u64())
         .map(|v| v as u32)
+}
+
+fn value_as_u32(value: Option<&Value>) -> Option<u32> {
+    value.and_then(|v| v.as_u64()).map(|v| v as u32)
+}
+
+fn extract_input_tokens(usage: &Value) -> Option<u32> {
+    value_as_u32(
+        usage
+            .get("prompt_tokens")
+            .or_else(|| usage.get("input_tokens"))
+            .or_else(|| usage.get("total_input_tokens"))
+            .or_else(|| usage.get("promptTokenCount")),
+    )
+}
+
+fn extract_reasoning_tokens(usage: &Value) -> Option<u32> {
+    value_as_u32(
+        usage
+            .get("reasoning_tokens")
+            .or_else(|| {
+                usage
+                    .get("output_tokens_details")
+                    .and_then(|details| details.get("reasoning_tokens"))
+            })
+            .or_else(|| {
+                usage
+                    .get("completion_tokens_details")
+                    .and_then(|details| details.get("reasoning_tokens"))
+            })
+            .or_else(|| usage.get("total_thought_tokens"))
+            .or_else(|| usage.get("totalThoughtTokens"))
+            .or_else(|| usage.get("thoughtsTokenCount")),
+    )
+}
+
+fn extract_output_tokens(usage: &Value) -> Option<u32> {
+    if let Some(tokens) = value_as_u32(
+        usage
+            .get("completion_tokens")
+            .or_else(|| usage.get("output_tokens")),
+    ) {
+        return Some(tokens);
+    }
+
+    let base = value_as_u32(
+        usage
+            .get("total_output_tokens")
+            .or_else(|| usage.get("candidatesTokenCount")),
+    )?;
+    let reasoning = extract_reasoning_tokens(usage).unwrap_or(0);
+    let tool_use = value_as_u32(usage.get("total_tool_use_tokens")).unwrap_or(0);
+    Some(base + reasoning + tool_use)
 }
 
 pub async fn monitor_middleware(
@@ -191,6 +249,7 @@ pub async fn monitor_middleware(
         response_body: None,
         input_tokens: None,
         output_tokens: None,
+        cached_tokens: None,
         protocol,
         username,
     };
@@ -229,6 +288,7 @@ pub async fn monitor_middleware(
                 let mut thinking_signature = String::new();
                 let mut tool_calls: Vec<Value> = Vec::new();
                 let mut cached_tokens: Option<u32> = None;
+                let mut reasoning_tokens: Option<u32> = None;
 
                 for line in full_response.lines() {
                     if !line.starts_with("data: ") {
@@ -451,21 +511,12 @@ pub async fn monitor_middleware(
                             .or(json.get("response").and_then(|r| r.get("usage")))
                             .or(json.get("response").and_then(|r| r.get("usageMetadata")))
                         {
-                            log.input_tokens = usage
-                                .get("prompt_tokens")
-                                .or(usage.get("input_tokens"))
-                                .or(usage.get("total_input_tokens"))
-                                .or(usage.get("promptTokenCount"))
-                                .and_then(|v| v.as_u64())
-                                .map(|v| v as u32);
-                            log.output_tokens = usage
-                                .get("completion_tokens")
-                                .or(usage.get("output_tokens"))
-                                .or(usage.get("total_output_tokens"))
-                                .or(usage.get("candidatesTokenCount"))
-                                .and_then(|v| v.as_u64())
-                                .map(|v| v as u32);
+                            log.input_tokens = extract_input_tokens(usage);
+                            log.output_tokens = extract_output_tokens(usage);
                             cached_tokens = cached_tokens.or_else(|| extract_cached_tokens(usage));
+                            log.cached_tokens = log.cached_tokens.or(cached_tokens);
+                            reasoning_tokens =
+                                reasoning_tokens.or_else(|| extract_reasoning_tokens(usage));
 
                             if log.input_tokens.is_none() && log.output_tokens.is_none() {
                                 log.output_tokens = usage
@@ -509,27 +560,59 @@ pub async fn monitor_middleware(
                     let mut usage_obj = serde_json::Map::new();
                     let input_toks = log.input_tokens.unwrap_or(0);
                     let output_toks = log.output_tokens.unwrap_or(0);
-                    usage_obj.insert(
-                        "prompt_tokens".to_string(),
-                        Value::Number(input_toks.into()),
-                    );
-                    usage_obj.insert(
-                        "completion_tokens".to_string(),
-                        Value::Number(output_toks.into()),
-                    );
-                    usage_obj.insert(
-                        "total_tokens".to_string(),
-                        Value::Number((input_toks + output_toks).into()),
-                    );
-                    if let Some(ct) = cached_tokens {
+                    let cached_toks = cached_tokens.unwrap_or(0);
+                    let reasoning_toks = reasoning_tokens.unwrap_or(0);
+                    let is_responses_api =
+                        log.url.contains("/responses") || log.url.contains("/interactions");
+
+                    if is_responses_api {
+                        usage_obj
+                            .insert("input_tokens".to_string(), Value::Number(input_toks.into()));
                         usage_obj.insert(
-                            "cache_read_input_tokens".to_string(),
-                            Value::Number(ct.into()),
+                            "input_tokens_details".to_string(),
+                            serde_json::json!({ "cached_tokens": cached_toks }),
                         );
                         usage_obj.insert(
-                            "prompt_tokens_details".to_string(),
-                            serde_json::json!({ "cached_tokens": ct }),
+                            "output_tokens".to_string(),
+                            Value::Number(output_toks.into()),
                         );
+                        usage_obj.insert(
+                            "output_tokens_details".to_string(),
+                            serde_json::json!({ "reasoning_tokens": reasoning_toks }),
+                        );
+                        usage_obj.insert(
+                            "total_tokens".to_string(),
+                            Value::Number((input_toks + output_toks).into()),
+                        );
+                    } else {
+                        usage_obj.insert(
+                            "prompt_tokens".to_string(),
+                            Value::Number(input_toks.into()),
+                        );
+                        usage_obj.insert(
+                            "completion_tokens".to_string(),
+                            Value::Number(output_toks.into()),
+                        );
+                        usage_obj.insert(
+                            "total_tokens".to_string(),
+                            Value::Number((input_toks + output_toks).into()),
+                        );
+                        if cached_tokens.is_some() {
+                            usage_obj.insert(
+                                "cache_read_input_tokens".to_string(),
+                                Value::Number(cached_toks.into()),
+                            );
+                            usage_obj.insert(
+                                "prompt_tokens_details".to_string(),
+                                serde_json::json!({ "cached_tokens": cached_toks }),
+                            );
+                        }
+                        if reasoning_tokens.is_some() {
+                            usage_obj.insert(
+                                "completion_tokens_details".to_string(),
+                                serde_json::json!({ "reasoning_tokens": reasoning_toks }),
+                            );
+                        }
                     }
                     consolidated.insert("usage".to_string(), Value::Object(usage_obj));
                 }
@@ -565,20 +648,10 @@ pub async fn monitor_middleware(
                                     .or(json.get("response").and_then(|r| r.get("usage")))
                                     .or(json.get("response").and_then(|r| r.get("usageMetadata")))
                                 {
-                                    log.input_tokens = usage
-                                        .get("prompt_tokens")
-                                        .or(usage.get("input_tokens"))
-                                        .or(usage.get("total_input_tokens"))
-                                        .or(usage.get("promptTokenCount"))
-                                        .and_then(|v| v.as_u64())
-                                        .map(|v| v as u32);
-                                    log.output_tokens = usage
-                                        .get("completion_tokens")
-                                        .or(usage.get("output_tokens"))
-                                        .or(usage.get("total_output_tokens"))
-                                        .or(usage.get("candidatesTokenCount"))
-                                        .and_then(|v| v.as_u64())
-                                        .map(|v| v as u32);
+                                    log.input_tokens = extract_input_tokens(usage);
+                                    log.output_tokens = extract_output_tokens(usage);
+                                    log.cached_tokens =
+                                        log.cached_tokens.or_else(|| extract_cached_tokens(usage));
                                     break;
                                 }
                             }
@@ -614,20 +687,10 @@ pub async fn monitor_middleware(
                             .or(json.get("response").and_then(|r| r.get("usage")))
                             .or(json.get("response").and_then(|r| r.get("usageMetadata")))
                         {
-                            log.input_tokens = usage
-                                .get("prompt_tokens")
-                                .or(usage.get("input_tokens"))
-                                .or(usage.get("total_input_tokens"))
-                                .or(usage.get("promptTokenCount"))
-                                .and_then(|v| v.as_u64())
-                                .map(|v| v as u32);
-                            log.output_tokens = usage
-                                .get("completion_tokens")
-                                .or(usage.get("output_tokens"))
-                                .or(usage.get("total_output_tokens"))
-                                .or(usage.get("candidatesTokenCount"))
-                                .and_then(|v| v.as_u64())
-                                .map(|v| v as u32);
+                            log.input_tokens = extract_input_tokens(usage);
+                            log.output_tokens = extract_output_tokens(usage);
+                            log.cached_tokens =
+                                log.cached_tokens.or_else(|| extract_cached_tokens(usage));
 
                             if log.input_tokens.is_none() && log.output_tokens.is_none() {
                                 log.output_tokens = usage

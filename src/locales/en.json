@@ -1120,6 +1120,8 @@
     "page_title": "API Monitor Dashboard",
     "page_subtitle": "Real-time request logging and analysis",
     "open_monitor": "Open Monitor",
+    "input": "Input",
+    "output": "Output",
     "logging_status": {
       "active": "Recording",
       "paused": "Paused"
@@ -1251,6 +1253,8 @@
     "requests": "Requests",
     "input": "Input",
     "output": "Output",
+    "cached": "Cache",
+    "cached_token": "Cached token",
     "total": "Total",
     "percentage": "Share",
     "no_data": "No data available"

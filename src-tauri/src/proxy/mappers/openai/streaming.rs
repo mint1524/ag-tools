@@ -50,6 +50,11 @@ fn extract_usage_metadata(u: &Value) -> Option<super::models::OpenAIUsage> {
         .or_else(|| u.get("candidatesTokenCount"))
         .and_then(|v| v.as_u64())
         .unwrap_or(0) as u32;
+    let raw_total_tokens = u
+        .get("total_tokens")
+        .or_else(|| u.get("totalTokenCount"))
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
     let cached_tokens = u
         .get("total_cached_tokens")
         .or_else(|| u.get("cachedContentTokenCount"))
@@ -61,15 +66,20 @@ fn extract_usage_metadata(u: &Value) -> Option<super::models::OpenAIUsage> {
         .or_else(|| u.get("totalThoughtTokens"))
         .or_else(|| u.get("thoughtsTokenCount"))
         .and_then(|v| v.as_u64())
-        .filter(|&v| v > 0)
         .map(|v| v as u32);
+    let tool_use_tokens = u
+        .get("total_tool_use_tokens")
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
+    let input_tokens_by_modality = u.get("input_tokens_by_modality").cloned();
 
-    // 新格式下 output_tokens 不含 thought, 需要加回来
-    let completion_tokens = raw_output_tokens + reasoning_tokens.unwrap_or(0);
+    // 新格式下 output_tokens 不含 thought/tool-use, 需要加回来
+    let completion_tokens =
+        raw_output_tokens + reasoning_tokens.unwrap_or(0) + tool_use_tokens.unwrap_or(0);
 
     // cached_tokens is a subset of prompt_tokens. Keep prompt_tokens in the same
     // raw-input-token unit as Gemini usageMetadata so downstream logs can reconcile it.
-    let final_total_tokens = prompt_tokens + completion_tokens;
+    let final_total_tokens = raw_total_tokens.unwrap_or(prompt_tokens + completion_tokens);
 
     Some(OpenAIUsage {
         prompt_tokens,
@@ -81,6 +91,11 @@ fn extract_usage_metadata(u: &Value) -> Option<super::models::OpenAIUsage> {
         completion_tokens_details: reasoning_tokens.map(|rt| CompletionTokensDetails {
             reasoning_tokens: Some(rt),
         }),
+        input_tokens_by_modality,
+        raw_output_tokens: Some(raw_output_tokens),
+        total_thought_tokens: reasoning_tokens,
+        total_tool_use_tokens: tool_use_tokens,
+        gemini_total_tokens: raw_total_tokens,
     })
 }
 
@@ -858,33 +873,24 @@ where
         });
 
         if let Some(resp_obj) = completed_ev.get_mut("response").and_then(|r| r.as_object_mut()) {
-            let mut usage_obj = serde_json::Map::new();
             if let Some(ref usage) = final_usage {
-                usage_obj.insert("input_tokens".to_string(), json!(usage.prompt_tokens));
-                usage_obj.insert("output_tokens".to_string(), json!(usage.completion_tokens));
-                usage_obj.insert("total_tokens".to_string(), json!(usage.total_tokens));
-
-                // Show cached tokens count under usage object
-                if let Some(ref details) = usage.prompt_tokens_details {
-                    if let Some(ct) = details.cached_tokens {
-                        usage_obj.insert("cache_read_input_tokens".to_string(), json!(ct));
-
-                        let mut details_obj = serde_json::Map::new();
-                        details_obj.insert("cached_tokens".to_string(), json!(ct));
-                        usage_obj.insert("prompt_tokens_details".to_string(), json!(details_obj));
-                    }
-                }
-                if let Some(ref details) = usage.completion_tokens_details {
-                    if let Some(rt) = details.reasoning_tokens {
-                        usage_obj.insert("reasoning_tokens".to_string(), json!(rt));
-                    }
-                }
+                resp_obj.insert("usage".to_string(), usage.to_responses_usage_value());
             } else {
-                usage_obj.insert("input_tokens".to_string(), json!(0));
-                usage_obj.insert("output_tokens".to_string(), json!(0));
-                usage_obj.insert("total_tokens".to_string(), json!(0));
+                resp_obj.insert(
+                    "usage".to_string(),
+                    json!({
+                        "input_tokens": 0,
+                        "input_tokens_details": {
+                            "cached_tokens": 0
+                        },
+                        "output_tokens": 0,
+                        "output_tokens_details": {
+                            "reasoning_tokens": 0
+                        },
+                        "total_tokens": 0
+                    }),
+                );
             }
-            resp_obj.insert("usage".to_string(), json!(usage_obj));
         }
 
         yield Ok::<Bytes, String>(Bytes::from(format!("data: {}\n\n", serde_json::to_string(&completed_ev).unwrap())));

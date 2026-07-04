@@ -2010,47 +2010,28 @@ pub async fn handle_completions(
                                 }
 
                                 // Calculate usage if available
-                                let mut usage_obj = serde_json::Map::new();
-                                if let Some(ref usage) = chat_resp.usage {
-                                    usage_obj.insert(
-                                        "input_tokens".to_string(),
-                                        json!(usage.prompt_tokens),
-                                    );
-                                    usage_obj.insert(
-                                        "output_tokens".to_string(),
-                                        json!(usage.completion_tokens),
-                                    );
-                                    usage_obj.insert(
-                                        "total_tokens".to_string(),
-                                        json!(usage.total_tokens),
-                                    );
-                                    if let Some(ref details) = usage.prompt_tokens_details {
-                                        if let Some(ct) = details.cached_tokens {
-                                            usage_obj.insert(
-                                                "cache_read_input_tokens".to_string(),
-                                                json!(ct),
-                                            );
-                                            let mut details_obj = serde_json::Map::new();
-                                            details_obj
-                                                .insert("cached_tokens".to_string(), json!(ct));
-                                            usage_obj.insert(
-                                                "prompt_tokens_details".to_string(),
-                                                json!(details_obj),
-                                            );
-                                        }
-                                    }
+                                let usage_value = if let Some(ref usage) = chat_resp.usage {
+                                    usage.to_responses_usage_value()
                                 } else {
-                                    usage_obj.insert("input_tokens".to_string(), json!(0));
-                                    usage_obj.insert("output_tokens".to_string(), json!(0));
-                                    usage_obj.insert("total_tokens".to_string(), json!(0));
-                                }
+                                    json!({
+                                        "input_tokens": 0,
+                                        "input_tokens_details": {
+                                            "cached_tokens": 0
+                                        },
+                                        "output_tokens": 0,
+                                        "output_tokens_details": {
+                                            "reasoning_tokens": 0
+                                        },
+                                        "total_tokens": 0
+                                    })
+                                };
 
                                 let resp = json!({
                                     "type": "response",
                                     "id": format!("resp_{}", uuid::Uuid::new_v4().simple()),
                                     "status": "completed",
                                     "output": output,
-                                    "usage": usage_obj
+                                    "usage": usage_value
                                 });
                                 if debug_logger::is_enabled(&debug_cfg) {
                                     let payload = json!({
@@ -2201,32 +2182,28 @@ pub async fn handle_completions(
                 }
 
                 // Calculate usage if available
-                let mut usage_obj = serde_json::Map::new();
-                if let Some(ref usage) = chat_resp.usage {
-                    usage_obj.insert("input_tokens".to_string(), json!(usage.prompt_tokens));
-                    usage_obj.insert("output_tokens".to_string(), json!(usage.completion_tokens));
-                    usage_obj.insert("total_tokens".to_string(), json!(usage.total_tokens));
-                    if let Some(ref details) = usage.prompt_tokens_details {
-                        if let Some(ct) = details.cached_tokens {
-                            usage_obj.insert("cache_read_input_tokens".to_string(), json!(ct));
-                            let mut details_obj = serde_json::Map::new();
-                            details_obj.insert("cached_tokens".to_string(), json!(ct));
-                            usage_obj
-                                .insert("prompt_tokens_details".to_string(), json!(details_obj));
-                        }
-                    }
+                let usage_value = if let Some(ref usage) = chat_resp.usage {
+                    usage.to_responses_usage_value()
                 } else {
-                    usage_obj.insert("input_tokens".to_string(), json!(0));
-                    usage_obj.insert("output_tokens".to_string(), json!(0));
-                    usage_obj.insert("total_tokens".to_string(), json!(0));
-                }
+                    json!({
+                        "input_tokens": 0,
+                        "input_tokens_details": {
+                            "cached_tokens": 0
+                        },
+                        "output_tokens": 0,
+                        "output_tokens_details": {
+                            "reasoning_tokens": 0
+                        },
+                        "total_tokens": 0
+                    })
+                };
 
                 let resp = json!({
                     "type": "response",
                     "id": format!("resp_{}", uuid::Uuid::new_v4().simple()),
                     "status": "completed",
                     "output": output,
-                    "usage": usage_obj
+                    "usage": usage_value
                 });
                 if debug_logger::is_enabled(&debug_cfg) {
                     let payload = json!({
@@ -3661,7 +3638,13 @@ fn handle_prewarm_locally(payload: &Value, state: &mut WebsocketSessionState) ->
             "output": [],
             "usage": {
                 "input_tokens": 0,
+                "input_tokens_details": {
+                    "cached_tokens": 0
+                },
                 "output_tokens": 0,
+                "output_tokens_details": {
+                    "reasoning_tokens": 0
+                },
                 "total_tokens": 0
             },
             "model": model,
