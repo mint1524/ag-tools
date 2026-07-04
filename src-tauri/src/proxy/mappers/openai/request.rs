@@ -30,9 +30,9 @@ fn sanitize_system_instruction_for_cache(text: &str) -> String {
     }
 
     // 剥离 UUID (标准 8-4-4-4-12 格式)
-    if let Ok(re) = regex::Regex::new(
-        r"\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b",
-    ) {
+    if let Ok(re) =
+        regex::Regex::new(r"\b[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\b")
+    {
         cleaned = re.replace_all(&cleaned, "{uuid}").into_owned();
     }
 
@@ -49,7 +49,6 @@ fn sanitize_system_instruction_for_cache(text: &str) -> String {
     // 去除首尾空白
     cleaned.trim().to_string()
 }
-
 
 fn qualify_namespace_tool_name(namespace_name: &str, child_name: &str) -> String {
     let child = child_name.trim();
@@ -279,18 +278,24 @@ pub fn transform_openai_request(
     if let Some(tools) = &request.tools {
         let flat_tools = flatten_tools(tools);
         for tool in &flat_tools {
-            let name_opt = tool.get("function")
+            let name_opt = tool
+                .get("function")
                 .and_then(|f| f.get("name"))
                 .and_then(|v| v.as_str())
                 .map(|s| s.to_string())
                 .or_else(|| {
-                    tool.get("name").and_then(|v| v.as_str()).map(|s| s.to_string())
+                    tool.get("name")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
                 })
                 .or_else(|| {
-                    tool.get("type").and_then(|v| v.as_str()).map(|s| s.to_string())
+                    tool.get("type")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
                 });
-            
-            let params_opt = tool.get("function")
+
+            let params_opt = tool
+                .get("function")
                 .and_then(|f| f.get("parameters"))
                 .or_else(|| tool.get("parameters"));
 
@@ -445,7 +450,7 @@ pub fn transform_openai_request(
 
                     let mut args_str = String::new();
                     let mut func_name = String::new();
-                    
+
                     if let Some(func) = &tc.function {
                         args_str = func.arguments.clone();
                         func_name = func.name.clone();
@@ -749,7 +754,10 @@ pub fn transform_openai_request(
                 let mut func = tool.clone();
                 // [FIX] 剔除 "type" 前如果不存在 "name"，则提取 "type" 兜底作为名字
                 if func.get("name").is_none() {
-                    let tool_type_opt = func.get("type").and_then(|v| v.as_str()).map(|s| s.to_string());
+                    let tool_type_opt = func
+                        .get("type")
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string());
                     if let Some(tool_type) = tool_type_opt {
                         if let Some(obj) = func.as_object_mut() {
                             obj.insert("name".to_string(), json!(tool_type));
@@ -872,7 +880,7 @@ pub fn transform_openai_request(
 
     if !function_declarations.is_empty() {
         inner_request["tools"] = json!([{ "functionDeclarations": function_declarations }]);
-        
+
         let mut mode = "VALIDATED";
         if let Some(tool_choice) = &request.tool_choice {
             if let Some(s) = tool_choice.as_str() {
@@ -1526,7 +1534,9 @@ mod tests {
         let has_functions = tools
             .iter()
             .any(|t: &serde_json::Value| t.get("functionDeclarations").is_some());
-        let has_google_search = tools.iter().any(|t: &serde_json::Value| t.get("googleSearch").is_some());
+        let has_google_search = tools
+            .iter()
+            .any(|t: &serde_json::Value| t.get("googleSearch").is_some());
 
         assert!(has_functions, "Should contain functionDeclarations");
         assert!(
@@ -1535,4 +1545,3 @@ mod tests {
         );
     }
 }
-
