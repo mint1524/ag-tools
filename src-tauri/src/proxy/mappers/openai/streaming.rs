@@ -149,9 +149,12 @@ where
                                                             let is_thought_part = part.get("thought").and_then(|v| v.as_bool()).unwrap_or(false);
                                                             if let Some(text) = part.get("text").and_then(|t| t.as_str()) {
                                                                 let clean_text = text.replace("<think>\n", "").replace("<think>", "").replace("\n</think>", "").replace("</think>", "");
-                                                                if is_thought_part { 
-                                                                    thought_out.push_str(&clean_text); 
-                                                                    content_out.push_str(&clean_text); // fallback for UI without reasoning support
+                                                                if is_thought_part {
+                                                                    // thought 内容写入 thought_out（给支持 reasoning_content 的客户端）
+                                                                    // 同时单独写入 content_out（作 fallback，给不支持 reasoning_content 的客户端）
+                                                                    // 两者是独立 chunk，不会在同一 chunk 里混入正文
+                                                                    thought_out.push_str(&clean_text);
+                                                                    content_out.push_str(&clean_text);
                                                                 }
                                                                 else { content_out.push_str(&clean_text); }
                                                             }
@@ -873,10 +876,15 @@ where
                 if let Some(ref details) = usage.prompt_tokens_details {
                     if let Some(ct) = details.cached_tokens {
                         usage_obj.insert("cache_read_input_tokens".to_string(), json!(ct));
-                        
+
                         let mut details_obj = serde_json::Map::new();
                         details_obj.insert("cached_tokens".to_string(), json!(ct));
                         usage_obj.insert("prompt_tokens_details".to_string(), json!(details_obj));
+                    }
+                }
+                if let Some(ref details) = usage.completion_tokens_details {
+                    if let Some(rt) = details.reasoning_tokens {
+                        usage_obj.insert("reasoning_tokens".to_string(), json!(rt));
                     }
                 }
             } else {

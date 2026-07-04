@@ -317,10 +317,13 @@ pub fn transform_openai_response(
             }
         }
 
+        // 重算 total，保证 prompt + completion = total（扣减后的口径一致）
+        let final_total_tokens = final_prompt_tokens + completion_tokens;
+
         Some(super::models::OpenAIUsage {
             prompt_tokens: final_prompt_tokens,
             completion_tokens,
-            total_tokens,
+            total_tokens: final_total_tokens,
             prompt_tokens_details: cached_tokens.map(|ct| super::models::PromptTokensDetails {
                 cached_tokens: Some(ct),
             }),
@@ -399,9 +402,11 @@ mod tests {
 
         assert!(result.usage.is_some());
         let usage = result.usage.unwrap();
-        assert_eq!(usage.prompt_tokens, 100);
+        // prompt_tokens 扣除 cached_tokens(25) 后为 75
+        assert_eq!(usage.prompt_tokens, 75);
         assert_eq!(usage.completion_tokens, 50);
-        assert_eq!(usage.total_tokens, 150);
+        // total_tokens 重算为 prompt(75) + completion(50)
+        assert_eq!(usage.total_tokens, 125);
         assert!(usage.prompt_tokens_details.is_some());
         assert_eq!(usage.prompt_tokens_details.unwrap().cached_tokens, Some(25));
     }
