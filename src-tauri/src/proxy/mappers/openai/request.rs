@@ -139,6 +139,11 @@ pub fn transform_openai_request(
     mapped_model: &str,
     token: Option<&ProxyToken>,
 ) -> (Value, String, usize, String) {
+    let original_request_value = serde_json::to_value(request).ok();
+    crate::proxy::adapters::apply_patch_preflight::remember_cwd_from_request(
+        original_request_value.as_ref(),
+    );
+
     let session_id =
         crate::proxy::session_manager::SessionManager::extract_openai_session_id(request);
     let message_count = request.messages.len();
@@ -500,7 +505,7 @@ pub fn transform_openai_request(
 
                     let mut args_str = String::new();
                     let mut func_name = String::new();
-                    
+
                     if let Some(func) = &tc.function {
                         args_str = func.arguments.clone();
                         func_name = func.name.clone();
@@ -802,7 +807,9 @@ pub fn transform_openai_request(
     let tools_raw_hash = if let Some(ref original_tools) = request.tools {
         let raw_json = serde_json::to_string(original_tools).unwrap_or_default();
         if !raw_json.is_empty() {
-            let key = crate::proxy::cache_manager::CacheManager::compute_tools_key(&raw_json);
+            let key = crate::proxy::cache_manager::CacheManager::compute_tools_key(&format!(
+                "apply_patch_input_schema_v2:{raw_json}"
+            ));
             let cm = crate::proxy::cache_manager::global_cache_manager();
             if let Some(cached_json) = cm.lookup_tools(&key) {
                 if let Ok(parsed) = serde_json::from_str::<Vec<Value>>(&cached_json) {
@@ -895,7 +902,21 @@ pub fn transform_openai_request(
                     *obj = clean_obj;
                 }
 
-                if let Some(params) = gemini_func.get_mut("parameters") {
+                if gemini_func.get("name").and_then(|v| v.as_str()) == Some("apply_patch") {
+                    gemini_func.as_object_mut().unwrap().insert(
+                        "parameters".to_string(),
+                        json!({
+                            "type": "OBJECT",
+                            "properties": {
+                                "input": {
+                                    "type": "STRING",
+                                    "description": "The exact freeform V4A patch text to pass to Codex apply_patch. It must start with *** Begin Patch and end with *** End Patch. Do not wrap it in a shell command or command array."
+                                }
+                            },
+                            "required": ["input"]
+                        }),
+                    );
+                } else if let Some(params) = gemini_func.get_mut("parameters") {
                     // [DEEP FIX] 统一调用公共库清洗：展开 $ref 并剔除所有层级的 format/definitions
                     crate::proxy::common::json_schema::clean_json_schema(params);
 
@@ -911,38 +932,19 @@ pub fn transform_openai_request(
                     // 递归转换 type 为大写 (符合 Protobuf 定义)
                     enforce_uppercase_types(params);
                 } else {
-                    if gemini_func.get("name").and_then(|v| v.as_str()) == Some("apply_patch") {
-                        gemini_func.as_object_mut().unwrap().insert(
+                    gemini_func.as_object_mut().unwrap().insert(
                         "parameters".to_string(),
                         json!({
                             "type": "OBJECT",
                             "properties": {
-                                "command": {
-                                    "type": "ARRAY",
-                                    "items": {
-                                        "type": "STRING"
-                                    },
-                                    "description": "The command array. First element MUST be 'apply_patch', second element MUST be the exact freeform patch string starting with *** Begin Patch"
+                                "content": {
+                                    "type": "STRING",
+                                    "description": "The raw content or patch to be applied"
                                 }
                             },
-                            "required": ["command"]
+                            "required": ["content"]
                         }),
                     );
-                    } else {
-                        gemini_func.as_object_mut().unwrap().insert(
-                            "parameters".to_string(),
-                            json!({
-                                "type": "OBJECT",
-                                "properties": {
-                                    "content": {
-                                        "type": "STRING",
-                                        "description": "The raw content or patch to be applied"
-                                    }
-                                },
-                                "required": ["content"]
-                            }),
-                        );
-                    }
                 }
                 function_declarations.push(gemini_func);
             }

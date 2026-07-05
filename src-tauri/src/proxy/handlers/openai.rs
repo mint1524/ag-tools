@@ -25,6 +25,32 @@ use crate::proxy::session_manager::SessionManager;
 use axum::http::HeaderMap;
 use tokio::time::Duration;
 
+fn compact_apply_patch_failure_output(
+    output: String,
+    seen: &mut std::collections::HashSet<String>,
+    distinct_count: &mut usize,
+) -> String {
+    if !output.contains("apply_patch verification failed")
+        && !output.contains("Failed to find expected lines")
+        && !output.contains("Failed to find context")
+        && !output.contains("Expected update hunk")
+    {
+        return output;
+    }
+
+    let fingerprint = output.lines().take(8).collect::<Vec<_>>().join("\n");
+    if !seen.insert(fingerprint) {
+        return "[Repeated apply_patch failure omitted: the same error was already provided earlier in this request.]".to_string();
+    }
+
+    *distinct_count += 1;
+    if *distinct_count > 6 {
+        return "[Additional apply_patch failure omitted to avoid a retry loop. Produce a fresh V4A patch from current file contents instead of repeating previous failed patches.]".to_string();
+    }
+
+    output
+}
+
 pub async fn handle_chat_completions(
     State(state): State<AppState>,
     headers: HeaderMap, // [CHANGED] Extract headers
@@ -1095,13 +1121,27 @@ pub async fn handle_completions(
         }
 
         let mut call_id_to_name = std::collections::HashMap::new();
+        let mut skipped_incomplete_custom_call_ids = std::collections::HashSet::new();
 
         // Pass 1: Build Call ID to Name Map
         if let Some(items) = input_items {
             for item in items {
                 let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                if item_type == "custom_tool_call"
+                    && item.get("status").and_then(|v| v.as_str()) == Some("incomplete")
+                {
+                    if let Some(call_id) = item
+                        .get("call_id")
+                        .and_then(|v| v.as_str())
+                        .or_else(|| item.get("id").and_then(|v| v.as_str()))
+                    {
+                        skipped_incomplete_custom_call_ids.insert(call_id.to_string());
+                    }
+                    continue;
+                }
                 match item_type {
-                    "function_call" | "local_shell_call" | "web_search_call" => {
+                    "function_call" | "custom_tool_call" | "local_shell_call"
+                    | "web_search_call" => {
                         let call_id = item
                             .get("call_id")
                             .and_then(|v| v.as_str())
@@ -1126,10 +1166,18 @@ pub async fn handle_completions(
             }
         }
 
+        let mut seen_apply_patch_failures = std::collections::HashSet::new();
+        let mut apply_patch_failure_distinct_count = 0usize;
+
         // Pass 2: Map Input Items to Messages
         if let Some(items) = input_items {
             for item in items {
                 let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                if item_type == "custom_tool_call"
+                    && item.get("status").and_then(|v| v.as_str()) == Some("incomplete")
+                {
+                    continue;
+                }
                 match item_type {
                     "message" => {
                         let role = item.get("role").and_then(|v| v.as_str()).unwrap_or("user");
@@ -1192,7 +1240,8 @@ pub async fn handle_completions(
                             }));
                         }
                     }
-                    "function_call" | "local_shell_call" | "web_search_call" => {
+                    "function_call" | "custom_tool_call" | "local_shell_call"
+                    | "web_search_call" => {
                         let mut name = item
                             .get("name")
                             .and_then(|v| v.as_str())
@@ -1209,7 +1258,12 @@ pub async fn handle_completions(
                             .unwrap_or("unknown");
 
                         // Handle native shell calls
-                        if item_type == "local_shell_call" {
+                        if item_type == "custom_tool_call" {
+                            if let Some(input) = item.get("input").and_then(|v| v.as_str()) {
+                                args_str = serde_json::to_string(&json!({ "input": input }))
+                                    .unwrap_or_else(|_| "{}".to_string());
+                            }
+                        } else if item_type == "local_shell_call" {
                             name = "shell";
                             if let Some(action) = item.get("action") {
                                 if let Some(exec) = action.get("exec") {
@@ -1266,8 +1320,17 @@ pub async fn handle_completions(
                             .get("call_id")
                             .and_then(|v| v.as_str())
                             .unwrap_or("unknown");
+                        if item_type == "custom_tool_call_output"
+                            && skipped_incomplete_custom_call_ids.contains(call_id)
+                        {
+                            tracing::warn!(
+                                "Skipping output for incomplete custom tool call {}",
+                                call_id
+                            );
+                            continue;
+                        }
                         let output = item.get("output");
-                        let output_str = if let Some(o) = output {
+                        let mut output_str = if let Some(o) = output {
                             if o.is_string() {
                                 o.as_str().unwrap().to_string()
                             } else if let Some(content) = o.get("content").and_then(|v| v.as_str())
@@ -1280,14 +1343,29 @@ pub async fn handle_completions(
                             "".to_string()
                         };
 
-                        let name = call_id_to_name.get(call_id).cloned().unwrap_or_else(|| {
-                            // Fallback: if unknown and we see function_call_output, it's likely "shell" in this context
+                        let name = if let Some(name) = call_id_to_name.get(call_id).cloned() {
+                            name
+                        } else if item_type == "custom_tool_call_output" {
                             tracing::warn!(
-                                "Unknown tool name for call_id {}, defaulting to 'shell'",
+                                "Skipping orphan custom_tool_call_output for unknown call_id {}",
+                                call_id
+                            );
+                            continue;
+                        } else {
+                            tracing::warn!(
+                                "Unknown function_call_output tool name for call_id {}, defaulting to 'shell'",
                                 call_id
                             );
                             "shell".to_string()
-                        });
+                        };
+
+                        if name == "apply_patch" {
+                            output_str = compact_apply_patch_failure_output(
+                                output_str,
+                                &mut seen_apply_patch_failures,
+                                &mut apply_patch_failure_distinct_count,
+                            );
+                        }
 
                         messages.push(json!({
                             "role": "tool",
@@ -1392,10 +1470,21 @@ pub async fn handle_completions(
                                             .unwrap_or("");
                                         let name =
                                             obj.get("name").and_then(|v| v.as_str()).unwrap_or("");
-                                        let arguments = obj
+                                        let mut arguments = obj
                                             .get("arguments")
                                             .and_then(|v| v.as_str())
-                                            .unwrap_or("");
+                                            .unwrap_or("")
+                                            .to_string();
+                                        if item_type == "custom_tool_call" {
+                                            if let Some(input) =
+                                                obj.get("input").and_then(|v| v.as_str())
+                                            {
+                                                arguments = serde_json::to_string(
+                                                    &json!({ "input": input }),
+                                                )
+                                                .unwrap_or_else(|_| "{}".to_string());
+                                            }
+                                        }
                                         messages.push(json!({
                                             "role": "assistant",
                                             "content": "",
@@ -3964,12 +4053,25 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
     }
 
     let mut call_id_to_name = std::collections::HashMap::new();
+    let mut skipped_incomplete_custom_call_ids = std::collections::HashSet::new();
 
     if let Some(items) = input_items {
         for item in items {
             let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+            if item_type == "custom_tool_call"
+                && item.get("status").and_then(|v| v.as_str()) == Some("incomplete")
+            {
+                if let Some(call_id) = item
+                    .get("call_id")
+                    .and_then(|v| v.as_str())
+                    .or_else(|| item.get("id").and_then(|v| v.as_str()))
+                {
+                    skipped_incomplete_custom_call_ids.insert(call_id.to_string());
+                }
+                continue;
+            }
             match item_type {
-                "function_call" | "local_shell_call" | "web_search_call" => {
+                "function_call" | "custom_tool_call" | "local_shell_call" | "web_search_call" => {
                     let call_id = item
                         .get("call_id")
                         .and_then(|v| v.as_str())
@@ -3993,8 +4095,15 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
     }
 
     if let Some(items) = input_items {
+        let mut seen_apply_patch_failures = std::collections::HashSet::new();
+        let mut apply_patch_failure_distinct_count = 0usize;
         for item in items {
             let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+            if item_type == "custom_tool_call"
+                && item.get("status").and_then(|v| v.as_str()) == Some("incomplete")
+            {
+                continue;
+            }
             match item_type {
                 "message" => {
                     let role = item.get("role").and_then(|v| v.as_str()).unwrap_or("user");
@@ -4036,7 +4145,7 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
                         messages.push(json!({ "role": role, "content": content_blocks }));
                     }
                 }
-                "function_call" | "local_shell_call" | "web_search_call" => {
+                "function_call" | "custom_tool_call" | "local_shell_call" | "web_search_call" => {
                     let mut name = item
                         .get("name")
                         .and_then(|v| v.as_str())
@@ -4052,7 +4161,12 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
                         .or_else(|| item.get("id").and_then(|v| v.as_str()))
                         .unwrap_or("unknown");
 
-                    if item_type == "local_shell_call" || name == "local_shell_call" {
+                    if item_type == "custom_tool_call" {
+                        if let Some(input) = item.get("input").and_then(|v| v.as_str()) {
+                            args_str = serde_json::to_string(&json!({ "input": input }))
+                                .unwrap_or_else(|_| "{}".to_string());
+                        }
+                    } else if item_type == "local_shell_call" || name == "local_shell_call" {
                         name = "shell";
                         if let Some(action) = item.get("action") {
                             if let Some(exec) = action.get("exec") {
@@ -4100,8 +4214,17 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
                         .get("call_id")
                         .and_then(|v| v.as_str())
                         .unwrap_or("unknown");
+                    if item_type == "custom_tool_call_output"
+                        && skipped_incomplete_custom_call_ids.contains(call_id)
+                    {
+                        tracing::warn!(
+                            "Skipping output for incomplete custom tool call {}",
+                            call_id
+                        );
+                        continue;
+                    }
                     let output = item.get("output");
-                    let output_str = if let Some(o) = output {
+                    let mut output_str = if let Some(o) = output {
                         if o.is_string() {
                             o.as_str().unwrap().to_string()
                         } else if let Some(content) = o.get("content").and_then(|v| v.as_str()) {
@@ -4113,17 +4236,31 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
                         "".to_string()
                     };
 
-                    let name = call_id_to_name
-                        .get(call_id)
-                        .cloned()
-                        .or_else(|| {
-                            get_cached_tool_call(call_id).and_then(|v| {
-                                v.get("name")
-                                    .and_then(|n| n.as_str())
-                                    .map(|s| s.to_string())
-                            })
+                    let name = match call_id_to_name.get(call_id).cloned().or_else(|| {
+                        get_cached_tool_call(call_id).and_then(|v| {
+                            v.get("name")
+                                .and_then(|n| n.as_str())
+                                .map(|s| s.to_string())
                         })
-                        .unwrap_or_else(|| "shell".to_string());
+                    }) {
+                        Some(name) => name,
+                        None if item_type == "custom_tool_call_output" => {
+                            tracing::warn!(
+                                "Skipping orphan custom_tool_call_output for unknown call_id {}",
+                                call_id
+                            );
+                            continue;
+                        }
+                        None => "shell".to_string(),
+                    };
+
+                    if name == "apply_patch" {
+                        output_str = compact_apply_patch_failure_output(
+                            output_str,
+                            &mut seen_apply_patch_failures,
+                            &mut apply_patch_failure_distinct_count,
+                        );
+                    }
 
                     messages.push(json!({
                         "role": "tool",

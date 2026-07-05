@@ -2,6 +2,38 @@
 use super::models::*;
 use serde_json::Value;
 
+fn extract_apply_patch_input(args: &Value) -> String {
+    if let Some(obj) = args.as_object() {
+        if let Some(input) = obj.get("input").and_then(|v| v.as_str()) {
+            return input.to_string();
+        }
+        if let Some(arr) = obj.get("command").and_then(|v| v.as_array()) {
+            if arr.len() > 1 {
+                if let Some(patch) = arr[1].as_str() {
+                    return patch.to_string();
+                }
+            }
+        }
+        if let Some(cmd_str) = obj.get("command").and_then(|v| v.as_str()) {
+            if let Some(patch) = cmd_str.strip_prefix("apply_patch\n") {
+                return patch.to_string();
+            }
+            if let Some(patch) = cmd_str.strip_prefix("apply_patch ") {
+                return patch.to_string();
+            }
+            return cmd_str.to_string();
+        }
+        for key in ["patch_text", "patch", "diff", "content"] {
+            if let Some(patch) = obj.get(key).and_then(|v| v.as_str()) {
+                return patch.to_string();
+            }
+        }
+    }
+    args.as_str()
+        .map(str::to_string)
+        .unwrap_or_else(|| serde_json::to_string(args).unwrap_or_default())
+}
+
 pub fn transform_openai_response(
     gemini_response: &Value,
     session_id: Option<&str>,
@@ -79,19 +111,14 @@ pub fn transform_openai_response(
 
                         // [FIX] Codex CLI apply_patch freeform raw string
                         if name == "apply_patch" {
-                            if let Some(obj) = args_json.as_object() {
-                                if let Some(arr) = obj.get("command").and_then(|v| v.as_array()) {
-                                    if arr.len() > 1 {
-                                        if let Some(patch) = arr[1].as_str() {
-                                            arguments_str = patch.to_string();
-                                        }
-                                    }
-                                } else if let Some(patch) =
-                                    obj.get("patch_text").and_then(|v| v.as_str())
-                                {
-                                    arguments_str = patch.to_string();
-                                }
-                            }
+                            let extracted_patch = extract_apply_patch_input(&args_json);
+                            let (optimized_patch, _) =
+                                crate::proxy::adapters::apply_patch_preflight::optimize_patch(
+                                    &extracted_patch,
+                                    None,
+                                    true,
+                                );
+                            arguments_str = optimized_patch;
                         }
 
                         let final_name =
