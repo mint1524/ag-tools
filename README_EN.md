@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> Professional AI Account Management & Protocol Proxy System (v4.3.2)
+> Professional AI Account Management & Protocol Proxy System (v4.3.3)
 
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
@@ -9,7 +9,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.3.2-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.3.3-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -134,7 +134,7 @@ Automatically detects your OS, architecture, and package manager — one command
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.3.2/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.3.3/install.sh | bash
 ```
 
 **Windows (PowerShell):**
@@ -144,7 +144,7 @@ irm https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.ps
 
 > **Supported formats**: Linux (`.deb` / `.rpm` / `.AppImage`) | macOS (`.dmg`) | Windows (NSIS `.exe`)
 >
-> **Advanced usage**: Install a specific version `curl -fsSL ... | bash -s -- --version 4.3.2`，dry-run mode `curl -fsSL ... | bash -s -- --dry-run`
+> **Advanced usage**: Install a specific version `curl -fsSL ... | bash -s -- --version 4.3.3`，dry-run mode `curl -fsSL ... | bash -s -- --dry-run`
 
 #### macOS - Homebrew
 If you have [Homebrew](https://brew.sh/) installed, you can also install via:
@@ -427,6 +427,16 @@ In clients that support OpenAI protocol (e.g., Cherry Studio), you can configure
 ## 📝 Developer & Community
 
 *   **Changelog**:
+    *   **v4.3.3 (2026-07-06)**:
+        -   **[Core Feature] Multi-Protocol Adaptive Context Pressure Capping & XML Summarization (L1~L3 Levels)**:
+            -   **Interface Entry**: Easily configured under the **Experimental Settings (Experimental)** panel in the configuration page. Users can select the compression level (Low / Medium / High) and drag sliders to customize L1/L2/L3 thresholds.
+            -   **Three Protocols Aligned**: Fully supports and aligns Claude protocol, OpenAI protocol, and Gemini native protocol, preventing `400` context-overflow errors globally.
+            -   **Compression Levels Defined**:
+                - `Low (Log Dedup)`: deduplicates and purges terminal output logs.
+                - `Medium (Log + Language)`: adds Caveman style natural language purification to trim conversational noise.
+                - `High (Dynamic Resets)`: unlocks the multi-phase water-level capping mechanism (L1 tool message trimming, L2 reasoning token compression, L3 background XML summary compilation + session Fork resets).
+            -   **Robust Signature Restoration**: Intercepts and caches the latest reasoning signature via `SignatureCache` during compression, satisfying Google upstream verification.
+            -   **Tests & Compatibility**: Added synchronous adapter facades to keep static cleanup compatible, resolving parallel test racing via Mutex isolation.
     *   **v4.3.2 (2026-07-05)**:
         -   **[Core Fix] Resolve Tool Call Failures Caused by Hardcoded local_shell_call Mapping (Dynamic Shell Tool Resolution)**:
             -   **Dynamic Resolution**: Removed the hardcoded logic that unconditionally rewrote all shell-related tool names (`shell`, `bash`, `local_shell`) to `local_shell_call` in both streaming and non-streaming responses. The proxy now dynamically matches and maps the tool name based on the client's declared tools (e.g., `bash` or `shell`).
@@ -2555,6 +2565,7 @@ This project has referenced or learned from the ideas or code of the following e
 *   [learn-claude-code](https://github.com/shareAI-lab/learn-claude-code)
 *   [Practical-Guide-to-Context-Engineering](https://github.com/WakeUp-Jin/Practical-Guide-to-Context-Engineering)
 *   [CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI)
+*   [OmniRoute](https://github.com/diegosouzapw/OmniRoute)
 *   [antigravity-claude-proxy](https://github.com/badrisnarayanan/antigravity-claude-proxy)
 *   [aistudio-gemini-proxy](https://github.com/zhongruichen/aistudio-gemini-proxy)
 *   [gcli2api](https://github.com/su-kaka/gcli2api)

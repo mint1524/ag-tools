@@ -8,7 +8,7 @@ use serde_json::{json, Value};
 use tracing::{debug, error, info}; // Import Engine trait for encode method
 
 use crate::proxy::mappers::openai::{
-    transform_openai_request, transform_openai_response, OpenAIRequest,
+    transform_openai_request, transform_openai_response, OpenAIRequest, OpenAIMessage,
 };
 // use crate::proxy::upstream::client::UpstreamClient; // 通过 state 获取
 use crate::proxy::debug_logger;
@@ -1463,18 +1463,166 @@ pub async fn handle_completions(
         &session_id_str,
     );
 
-    if crate::proxy::mappers::context_manager::ContextManager::trim_openai_tool_messages(
-        &mut openai_req.messages,
-        5,
-    ) {
-        tracing::info!("[Codex-Context] Trimmed old tool messages to keep last 5 rounds");
-    }
+    let experimental_cfg = state.experimental.read().await;
+    let compression_level = if experimental_cfg.compression_level == "disabled" {
+        if experimental_cfg.enable_usage_scaling {
+            "high".to_string()
+        } else {
+            "disabled".to_string()
+        }
+    } else {
+        experimental_cfg.compression_level.clone()
+    };
 
-    if crate::proxy::mappers::context_manager::ContextManager::purify_openai_history(
-        &mut openai_req.messages,
-        crate::proxy::mappers::context_manager::PurificationStrategy::Soft,
-    ) {
-        tracing::info!("[Codex-Context] Purified older assistant reasoning_content in history");
+    let mapped_model = crate::proxy::common::model_mapping::resolve_model_route(
+        &openai_req.model,
+        &*state.custom_mapping.read().await,
+    );
+    let trace_id = format!("req_{}", chrono::Utc::now().timestamp_subsec_millis());
+    let token_manager = state.token_manager.clone();
+
+    let mut compression_applied = false;
+    let mut is_purified = false;
+
+    if compression_level == "high" {
+        let context_limit = if mapped_model.contains("flash") {
+            1_000_000
+        } else {
+            2_000_000
+        };
+
+        let raw_estimated = crate::proxy::mappers::context_manager::ContextManager::estimate_openai_token_usage(&openai_req);
+        let calibrator = crate::proxy::mappers::estimation_calibrator::get_calibrator();
+        let mut estimated_usage = calibrator.calibrate(raw_estimated);
+        let mut usage_ratio = estimated_usage as f32 / context_limit as f32;
+
+        let threshold_l1 = experimental_cfg.context_compression_threshold_l1;
+        let threshold_l2 = experimental_cfg.context_compression_threshold_l2;
+        let threshold_l3 = experimental_cfg.context_compression_threshold_l3;
+
+        tracing::info!(
+            "[{}] [ContextManager] [OpenAI] Context pressure: {:.1}% (raw: {}, calibrated: {} / {}), Calibration factor: {:.2}",
+            trace_id, usage_ratio * 100.0, raw_estimated, estimated_usage, context_limit, calibrator.get_factor()
+        );
+
+        // ===== Layer 1: Tool Message Trimming =====
+        if usage_ratio > threshold_l1 && !compression_applied {
+            if crate::proxy::mappers::context_manager::ContextManager::trim_openai_tool_messages(&mut openai_req.messages, 5) {
+                tracing::info!(
+                    "[{}] [Layer-1] [OpenAI] Tool trimming triggered (usage: {:.1}%, threshold: {:.1}%)",
+                    trace_id, usage_ratio * 100.0, threshold_l1 * 100.0
+                );
+                compression_applied = true;
+
+                let new_raw = crate::proxy::mappers::context_manager::ContextManager::estimate_openai_token_usage(&openai_req);
+                let new_usage = calibrator.calibrate(new_raw);
+                let new_ratio = new_usage as f32 / context_limit as f32;
+
+                tracing::info!(
+                    "[{}] [Layer-1] [OpenAI] Compression result: {:.1}% → {:.1}% (saved {} tokens)",
+                    trace_id, usage_ratio * 100.0, new_ratio * 100.0, estimated_usage - new_usage
+                );
+
+                if new_ratio < 0.7 {
+                    estimated_usage = new_usage;
+                    usage_ratio = new_ratio;
+                } else {
+                    usage_ratio = new_ratio;
+                    compression_applied = false;
+                }
+            }
+        }
+
+        // ===== Layer 2: Thinking Content Compression =====
+        if usage_ratio > threshold_l2 && !compression_applied {
+            tracing::info!(
+                "[{}] [Layer-2] [OpenAI] Thinking compression triggered (usage: {:.1}%, threshold: {:.1}%)",
+                trace_id, usage_ratio * 100.0, threshold_l2 * 100.0
+            );
+
+            if crate::proxy::mappers::context_manager::ContextManager::compress_openai_thinking_preserve_signature(
+                &mut openai_req.messages,
+                4,
+            ) {
+                is_purified = true;
+                compression_applied = true;
+
+                let new_raw = crate::proxy::mappers::context_manager::ContextManager::estimate_openai_token_usage(&openai_req);
+                let new_usage = calibrator.calibrate(new_raw);
+                let new_ratio = new_usage as f32 / context_limit as f32;
+
+                tracing::info!(
+                    "[{}] [Layer-2] [OpenAI] Compression result: {:.1}% → {:.1}% (saved {} tokens)",
+                    trace_id, usage_ratio * 100.0, new_ratio * 100.0, estimated_usage - new_usage
+                );
+
+                usage_ratio = new_ratio;
+            }
+        }
+
+        // ===== Layer 3: Fork Conversation + XML Summary =====
+        if usage_ratio > threshold_l3 && !compression_applied {
+            tracing::info!(
+                "[{}] [Layer-3] [OpenAI] Context pressure ({:.1}%) exceeded threshold ({:.1}%), attempting Fork+Summary",
+                trace_id, usage_ratio * 100.0, threshold_l3 * 100.0
+            );
+
+            let token_manager_clone = token_manager.clone();
+
+            match try_compress_openai_with_summary(
+                &openai_req,
+                &trace_id,
+                &token_manager_clone,
+                &session_id_str,
+            )
+            .await
+            {
+                Ok(forked_req) => {
+                    tracing::info!(
+                        "[{}] [Layer-3] [OpenAI] Fork successful: {} → {} messages",
+                        trace_id, openai_req.messages.len(), forked_req.messages.len()
+                    );
+
+                    openai_req = forked_req;
+                    is_purified = false;
+
+                    let new_raw = crate::proxy::mappers::context_manager::ContextManager::estimate_openai_token_usage(&openai_req);
+                    let new_usage = calibrator.calibrate(new_raw);
+                    let new_ratio = new_usage as f32 / context_limit as f32;
+
+                    tracing::info!(
+                        "[{}] [Layer-3] [OpenAI] Compression result: {:.1}% → {:.1}% (saved {} tokens)",
+                        trace_id, usage_ratio * 100.0, new_ratio * 100.0, estimated_usage - new_usage
+                    );
+                }
+                Err(e) => {
+                    tracing::error!(
+                        "[{}] [Layer-3] [OpenAI] Fork+Summary failed: {}, falling back to error response",
+                        trace_id, e
+                    );
+                    return (
+                        StatusCode::BAD_REQUEST,
+                        format!("Context too long and automatic compression failed: {}", e)
+                    ).into_response();
+                }
+            }
+        }
+    } else if compression_level != "disabled" {
+        if crate::proxy::mappers::context_manager::ContextManager::trim_openai_tool_messages(
+            &mut openai_req.messages,
+            5,
+        ) {
+            tracing::info!("[Codex-Context] Trimmed old tool messages to keep last 5 rounds");
+        }
+
+        if compression_level == "medium" {
+            if crate::proxy::mappers::context_manager::ContextManager::purify_openai_history(
+                &mut openai_req.messages,
+                crate::proxy::mappers::context_manager::PurificationStrategy::Soft,
+            ) {
+                tracing::info!("[Codex-Context] Purified older assistant reasoning_content and natural language history");
+            }
+        }
     }
 
     let assistant_turn_index = openai_req
@@ -1484,20 +1632,12 @@ pub async fn handle_completions(
         .count();
 
     let upstream = state.upstream.clone();
-    let token_manager = state.token_manager;
     let pool_size = token_manager.len();
     // [FIX] Ensure max_attempts is at least 2 to allow for internal retries
     let max_attempts = MAX_RETRY_ATTEMPTS.min(pool_size.saturating_add(1)).max(2);
 
     let mut last_error = String::new();
     let mut last_email: Option<String> = None;
-
-    // 2. 模型路由解析 (移到循环外以支持在所有路径返回 X-Mapped-Model)
-    let mapped_model = crate::proxy::common::model_mapping::resolve_model_route(
-        &openai_req.model,
-        &*state.custom_mapping.read().await,
-    );
-    let trace_id = format!("req_{}", chrono::Utc::now().timestamp_subsec_millis());
 
     let mut force_rotate = false;
 
@@ -4193,4 +4333,230 @@ fn split_namespace_tool_name(qualified_name: &str) -> (String, Option<String>) {
         }
     }
     (name.to_string(), None)
+}
+
+const INTERNAL_BACKGROUND_TASK: &str = "gemini-2.5-flash-lite";
+const CONTEXT_SUMMARY_PROMPT: &str = r#"You are a context compression specialist. Your task is to create a structured XML snapshot of the conversation history.
+
+This snapshot will become the Agent's ONLY memory of the past. All key details, plans, errors, and user instructions MUST be preserved.
+
+First, think through the entire history in a private <scratchpad>. Review the user's overall goal, the agent's actions, tool outputs, file modifications, and any unresolved issues. Identify every piece of information critical for future actions.
+
+After reasoning, generate the final <state_snapshot> XML object. Information must be extremely dense. Omit any irrelevant conversational filler.
+
+The structure MUST be as follows:
+
+<state_snapshot>
+  <overall_goal>
+    <!-- Describe the user's high-level goal in one concise sentence -->
+  </overall_goal>
+
+  <technical_context>
+    <!-- Tech stack: frameworks, languages, toolchain, dependency versions -->
+  </technical_context>
+
+  <file_system_state>
+    <!-- List files that were created, read, modified, or deleted. Note their status -->
+  </file_system_state>
+
+  <code_changes>
+    <!-- Key code snippets (preserve function signatures and important logic) -->
+  </code_changes>
+
+  <debugging_history>
+    <!-- List all errors encountered, with stack traces, and how they were fixed -->
+  </debugging_history>
+
+  <current_plan>
+    <!-- Step-by-step plan. Mark completed steps -->
+  </current_plan>
+
+  <user_preferences>
+    <!-- User's work preferences for this project (test commands, code style, etc.) -->
+  </user_preferences>
+
+  <key_decisions>
+    <!-- Critical architectural decisions and design choices -->
+  </key_decisions>
+
+  <latest_thinking_signature>
+    <!-- [CRITICAL] Preserve the last valid thinking signature -->
+    <!-- Format: base64-encoded signature string -->
+    <!-- This MUST be copied exactly as-is, no modifications -->
+  </latest_thinking_signature>
+</state_snapshot>
+
+**IMPORTANT**:
+1. Code snippets must be complete, including function signatures and key logic
+2. Error messages must be preserved verbatim, including line numbers and stacks
+3. File paths must use absolute paths
+4. The thinking signature must be copied exactly, no modifications
+"#;
+
+async fn call_openai_gemini_sync(
+    model: &str,
+    request: &OpenAIRequest,
+    token_manager: &std::sync::Arc<crate::proxy::TokenManager>,
+    trace_id: &str,
+) -> Result<String, String> {
+    let (access_token, project_id, _, account_id, _wait_ms) = token_manager
+        .get_token("gemini", false, None, model)
+        .await
+        .map_err(|e| format!("Failed to get account: {}", e))?;
+
+    let token_obj = token_manager.get_token_by_id(&account_id);
+    let session_id = format!("bg_sid_{}", chrono::Utc::now().timestamp_subsec_millis());
+    let (gemini_body, _, _, _) = transform_openai_request(
+        request,
+        &project_id,
+        &session_id,
+        token_obj.as_ref(),
+    );
+
+    let upstream_url = format!(
+        "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent",
+        model
+    );
+
+    debug!("[{}] [OpenAI-BG] Calling Gemini API: {}", trace_id, model);
+
+    let response = reqwest::Client::new()
+        .post(&upstream_url)
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("Content-Type", "application/json")
+        .json(&gemini_body)
+        .send()
+        .await
+        .map_err(|e| format!("API call failed: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!(
+            "API returned {}: {}",
+            response.status(),
+            response.text().await.unwrap_or_default()
+        ));
+    }
+
+    let gemini_response: Value = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+    gemini_response
+        .get("candidates")
+        .and_then(|c| c.get(0))
+        .and_then(|c| c.get("content"))
+        .and_then(|c| c.get("parts"))
+        .and_then(|p| p.get(0))
+        .and_then(|p| p.get("text"))
+        .and_then(|t| t.as_str())
+        .map(|s| s.to_string())
+        .ok_or_else(|| "Failed to extract text from response".to_string())
+}
+
+async fn try_compress_openai_with_summary(
+    original_request: &OpenAIRequest,
+    trace_id: &str,
+    token_manager: &std::sync::Arc<crate::proxy::TokenManager>,
+    session_id_str: &str,
+) -> Result<OpenAIRequest, String> {
+    info!(
+        "[{}] [Layer-3] [OpenAI] Starting context compression with XML summary",
+        trace_id
+    );
+
+    let last_signature = crate::proxy::mappers::context_manager::ContextManager::extract_last_openai_valid_signature(session_id_str);
+
+    if let Some(ref sig) = last_signature {
+        debug!(
+            "[{}] [Layer-3] [OpenAI] Extracted signature (len: {})",
+            trace_id,
+            sig.len()
+        );
+    }
+
+    let mut summary_messages = original_request.messages.clone();
+
+    let signature_instruction = if let Some(ref sig) = last_signature {
+        format!("\n\n**CRITICAL**: The last thinking signature is:\n```\n{}\n```\nYou MUST include this EXACTLY in the <latest_thinking_signature> section.", sig)
+    } else {
+        "\n\n**Note**: No thinking signature found in history. Leave <latest_thinking_signature> empty.".to_string()
+    };
+
+    summary_messages.push(OpenAIMessage {
+        role: "user".to_string(),
+        content: Some(crate::proxy::mappers::openai::models::OpenAIContent::String(format!(
+            "{}{}",
+            CONTEXT_SUMMARY_PROMPT, signature_instruction
+        ))),
+        refusal: None,
+        reasoning_content: None,
+        tool_calls: None,
+        tool_call_id: None,
+        name: None,
+    });
+
+    let mut summary_request = original_request.clone();
+    summary_request.messages = summary_messages;
+    summary_request.model = INTERNAL_BACKGROUND_TASK.to_string();
+    summary_request.stream = false;
+    summary_request.max_tokens = Some(8000);
+    summary_request.temperature = Some(0.3);
+
+    debug!(
+        "[{}] [Layer-3] [OpenAI] Calling {} for summary generation",
+        trace_id, INTERNAL_BACKGROUND_TASK
+    );
+
+    let xml_summary = call_openai_gemini_sync(
+        INTERNAL_BACKGROUND_TASK,
+        &summary_request,
+        token_manager,
+        trace_id,
+    )
+    .await?;
+
+    info!(
+        "[{}] [Layer-3] [OpenAI] Generated XML summary (len: {} chars)",
+        trace_id,
+        xml_summary.len()
+    );
+
+    let mut forked_messages = vec![
+        OpenAIMessage {
+            role: "user".to_string(),
+            content: Some(crate::proxy::mappers::openai::models::OpenAIContent::String(format!(
+                "Context has been compressed. Here is the structured summary of our conversation history:\n\n{}",
+                xml_summary
+            ))),
+            refusal: None,
+            reasoning_content: None,
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+        },
+        OpenAIMessage {
+            role: "assistant".to_string(),
+            content: Some(crate::proxy::mappers::openai::models::OpenAIContent::String(
+                "I have reviewed the compressed context summary. I understand the current state and will continue from here.".to_string()
+            )),
+            refusal: None,
+            reasoning_content: None,
+            tool_calls: None,
+            tool_call_id: None,
+            name: None,
+        },
+    ];
+
+    if let Some(last_msg) = original_request.messages.last() {
+        if last_msg.role == "user" {
+            if !matches!(&last_msg.content, Some(crate::proxy::mappers::openai::models::OpenAIContent::String(s)) if s.contains(CONTEXT_SUMMARY_PROMPT)) {
+                forked_messages.push(last_msg.clone());
+            }
+        }
+    }
+
+    let mut forked_request = original_request.clone();
+    forked_request.messages = forked_messages;
+    Ok(forked_request)
 }
