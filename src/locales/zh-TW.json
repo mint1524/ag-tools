@@ -982,6 +982,8 @@
     "page_title": "API 監控看板",
     "page_subtitle": "即時請求紀錄與分析",
     "open_monitor": "開啟監控",
+    "input": "輸入",
+    "output": "輸出",
     "logging_status": {
       "active": "正在錄製",
       "paused": "已暫停"
@@ -1082,6 +1084,8 @@
     "requests": "請求數",
     "input": "輸入",
     "output": "輸出",
+    "cached": "快取",
+    "cached_token": "快取命中",
     "total": "合計",
     "percentage": "佔比",
     "no_data": "暫無資料"

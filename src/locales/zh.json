@@ -1120,6 +1120,8 @@
     "page_title": "API 监控看板",
     "page_subtitle": "实时请求日志与分析",
     "open_monitor": "打开监控",
+    "input": "输入",
+    "output": "输出",
     "logging_status": {
       "active": "正在录制",
       "paused": "已暂停"
@@ -1220,6 +1222,8 @@
     "requests": "请求数",
     "input": "输入",
     "output": "输出",
+    "cached": "缓存",
+    "cached_token": "缓存命中",
     "total": "合计",
     "percentage": "占比",
     "no_data": "暂无数据"

@@ -25,6 +25,32 @@ use crate::proxy::session_manager::SessionManager;
 use axum::http::HeaderMap;
 use tokio::time::Duration;
 
+fn compact_apply_patch_failure_output(
+    output: String,
+    seen: &mut std::collections::HashSet<String>,
+    distinct_count: &mut usize,
+) -> String {
+    if !output.contains("apply_patch verification failed")
+        && !output.contains("Failed to find expected lines")
+        && !output.contains("Failed to find context")
+        && !output.contains("Expected update hunk")
+    {
+        return output;
+    }
+
+    let fingerprint = output.lines().take(8).collect::<Vec<_>>().join("\n");
+    if !seen.insert(fingerprint) {
+        return "[Repeated apply_patch failure omitted: the same error was already provided earlier in this request.]".to_string();
+    }
+
+    *distinct_count += 1;
+    if *distinct_count > 6 {
+        return "[Additional apply_patch failure omitted to avoid a retry loop. Produce a fresh V4A patch from current file contents instead of repeating previous failed patches.]".to_string();
+    }
+
+    output
+}
+
 pub async fn handle_chat_completions(
     State(state): State<AppState>,
     headers: HeaderMap, // [CHANGED] Extract headers
@@ -150,7 +176,7 @@ pub async fn handle_chat_completions(
             "original_model": openai_req.model,
             "request": original_body,  // 使用原始请求体，不是结构体序列化
         });
-        debug_logger::write_debug_payload(
+        debug_logger::write_exchange_payload(
             &debug_cfg,
             Some(&trace_id),
             "original_request",
@@ -245,6 +271,7 @@ pub async fn handle_chat_completions(
             &mapped_model,
             proxy_token.as_ref(),
         );
+        let gemini_body_for_debug = gemini_body.clone();
 
         if debug_logger::is_enabled(&debug_cfg) {
             let payload = json!({
@@ -257,7 +284,7 @@ pub async fn handle_chat_completions(
                 "attempt": attempt,
                 "v1internal_request": gemini_body.clone(),
             });
-            debug_logger::write_debug_payload(
+            debug_logger::write_exchange_payload(
                 &debug_cfg,
                 Some(&trace_id),
                 "v1internal_request",
@@ -484,6 +511,24 @@ pub async fn handle_chat_completions(
                         }
                     }
                 };
+                let converted_meta = json!({
+                    "protocol": "openai",
+                    "trace_id": trace_id,
+                    "stage": "converted_codex_response",
+                    "original_model": openai_req.model,
+                    "mapped_model": mapped_model,
+                    "request_type": config.request_type,
+                    "attempt": attempt,
+                    "status": status.as_u16(),
+                    "upstream_url": upstream_url,
+                });
+                let combined_stream = debug_logger::wrap_stream_with_debug(
+                    Box::pin(combined_stream),
+                    debug_cfg.clone(),
+                    trace_id.clone(),
+                    "converted_codex_response",
+                    converted_meta,
+                );
 
                 if client_wants_stream {
                     // [MULTI-TURN] 保存本次对话的 messages 到 session store（/v1/chat/completions）
@@ -531,9 +576,31 @@ pub async fn handle_chat_completions(
                     // 收集流数据并聚合为 JSON
                     use crate::proxy::mappers::openai::collector::collect_stream_to_json;
 
-                    match collect_stream_to_json(Box::pin(combined_stream)).await {
+                    match collect_stream_to_json(combined_stream).await {
                         Ok(full_response) => {
                             info!("[{}] ✓ Stream collected and converted to JSON", trace_id);
+                            if debug_logger::is_enabled(&debug_cfg) {
+                                let converted_response = serde_json::to_value(&full_response)
+                                    .unwrap_or_else(
+                                        |e| json!({ "serialization_error": e.to_string() }),
+                                    );
+                                let payload = json!({
+                                    "kind": "exchange_summary",
+                                    "protocol": "openai",
+                                    "trace_id": trace_id,
+                                    "original_codex_request": original_body,
+                                    "gemini_request": gemini_body_for_debug,
+                                    "converted_codex_response": converted_response,
+                                    "gemini_raw_response_ref": "see upstream_response file with the same trace_id",
+                                });
+                                debug_logger::write_exchange_payload(
+                                    &debug_cfg,
+                                    Some(&trace_id),
+                                    "exchange_summary",
+                                    &payload,
+                                )
+                                .await;
+                            }
                             return Ok((
                                 StatusCode::OK,
                                 [
@@ -562,25 +629,51 @@ pub async fn handle_chat_completions(
                 .map_err(|e| (StatusCode::BAD_GATEWAY, format!("Parse error: {}", e)))?;
 
             // [CACHE] 从 Gemini 响应中提取缓存信息，关闭反馈循环
-            // 若 cachedContentTokenCount > 0 表示隐式缓存命中
+            // 兼容两种格式: cachedContentTokenCount (旧), total_cached_tokens (新)
             if let Some(usage) = gemini_resp.get("usageMetadata") {
                 let cached = usage
-                    .get("cachedContentTokenCount")
+                    .get("total_cached_tokens")
+                    .or_else(|| usage.get("cachedContentTokenCount"))
                     .and_then(|v| v.as_u64())
                     .unwrap_or(0);
                 if cached > 0 {
                     let cm = crate::proxy::cache_manager::global_cache_manager();
                     cm.record_implicit_hit(&_prefix_hash);
+                    // [CACHE] 分层统计日志
+                    let stats = cm.get_layer_stats();
                     tracing::info!(
-                        "[Cache-Opt] Implicit cache HIT: prefix_hash={} cached_tokens={}",
+                        "[Cache-Opt] Implicit cache HIT: prefix_hash={} cached_tokens={} | L1(SI): {}/{}, L2(Tools): {}/{}, L3(Prefix): {}/{}",
                         &_prefix_hash[.._prefix_hash.len().min(16)],
-                        cached
+                        cached,
+                        stats.si_hits, stats.si_total,
+                        stats.tools_hits, stats.tools_total,
+                        stats.prefix_hits, stats.prefix_total,
                     );
                 }
             }
 
             let openai_response =
                 transform_openai_response(&gemini_resp, Some(&session_id), message_count, Some(&client_tool_names));
+            if debug_logger::is_enabled(&debug_cfg) {
+                let converted_response = serde_json::to_value(&openai_response)
+                    .unwrap_or_else(|e| json!({ "serialization_error": e.to_string() }));
+                let payload = json!({
+                    "kind": "exchange_summary",
+                    "protocol": "openai",
+                    "trace_id": trace_id,
+                    "original_codex_request": original_body,
+                    "gemini_request": gemini_body_for_debug,
+                    "gemini_raw_response": gemini_resp,
+                    "converted_codex_response": converted_response,
+                });
+                debug_logger::write_exchange_payload(
+                    &debug_cfg,
+                    Some(&trace_id),
+                    "exchange_summary",
+                    &payload,
+                )
+                .await;
+            }
             return Ok((
                 StatusCode::OK,
                 [
@@ -966,6 +1059,8 @@ pub async fn handle_completions(
         "Received /v1/completions or /v1/responses payload: {:?}",
         body
     );
+    let original_body = body.clone();
+    let debug_cfg = state.debug_logging.read().await.clone();
 
     // [MULTI-TURN] 支持 previous_response_id 链式历史恢复
     // 当客户端通过 HTTP POST /v1/responses 传入 previous_response_id 时，
@@ -1029,13 +1124,27 @@ pub async fn handle_completions(
         }
 
         let mut call_id_to_name = std::collections::HashMap::new();
+        let mut skipped_incomplete_custom_call_ids = std::collections::HashSet::new();
 
         // Pass 1: Build Call ID to Name Map
         if let Some(items) = input_items {
             for item in items {
                 let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                if item_type == "custom_tool_call"
+                    && item.get("status").and_then(|v| v.as_str()) == Some("incomplete")
+                {
+                    if let Some(call_id) = item
+                        .get("call_id")
+                        .and_then(|v| v.as_str())
+                        .or_else(|| item.get("id").and_then(|v| v.as_str()))
+                    {
+                        skipped_incomplete_custom_call_ids.insert(call_id.to_string());
+                    }
+                    continue;
+                }
                 match item_type {
-                    "function_call" | "local_shell_call" | "web_search_call" => {
+                    "function_call" | "custom_tool_call" | "local_shell_call"
+                    | "web_search_call" => {
                         let call_id = item
                             .get("call_id")
                             .and_then(|v| v.as_str())
@@ -1060,10 +1169,18 @@ pub async fn handle_completions(
             }
         }
 
+        let mut seen_apply_patch_failures = std::collections::HashSet::new();
+        let mut apply_patch_failure_distinct_count = 0usize;
+
         // Pass 2: Map Input Items to Messages
         if let Some(items) = input_items {
             for item in items {
                 let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+                if item_type == "custom_tool_call"
+                    && item.get("status").and_then(|v| v.as_str()) == Some("incomplete")
+                {
+                    continue;
+                }
                 match item_type {
                     "message" => {
                         let role = item.get("role").and_then(|v| v.as_str()).unwrap_or("user");
@@ -1126,7 +1243,8 @@ pub async fn handle_completions(
                             }));
                         }
                     }
-                    "function_call" | "local_shell_call" | "web_search_call" => {
+                    "function_call" | "custom_tool_call" | "local_shell_call"
+                    | "web_search_call" => {
                         let mut name = item
                             .get("name")
                             .and_then(|v| v.as_str())
@@ -1143,7 +1261,12 @@ pub async fn handle_completions(
                             .unwrap_or("unknown");
 
                         // Handle native shell calls
-                        if item_type == "local_shell_call" {
+                        if item_type == "custom_tool_call" {
+                            if let Some(input) = item.get("input").and_then(|v| v.as_str()) {
+                                args_str = serde_json::to_string(&json!({ "input": input }))
+                                    .unwrap_or_else(|_| "{}".to_string());
+                            }
+                        } else if item_type == "local_shell_call" {
                             name = "shell";
                             if let Some(action) = item.get("action") {
                                 if let Some(exec) = action.get("exec") {
@@ -1200,8 +1323,17 @@ pub async fn handle_completions(
                             .get("call_id")
                             .and_then(|v| v.as_str())
                             .unwrap_or("unknown");
+                        if item_type == "custom_tool_call_output"
+                            && skipped_incomplete_custom_call_ids.contains(call_id)
+                        {
+                            tracing::warn!(
+                                "Skipping output for incomplete custom tool call {}",
+                                call_id
+                            );
+                            continue;
+                        }
                         let output = item.get("output");
-                        let output_str = if let Some(o) = output {
+                        let mut output_str = if let Some(o) = output {
                             if o.is_string() {
                                 o.as_str().unwrap().to_string()
                             } else if let Some(content) = o.get("content").and_then(|v| v.as_str())
@@ -1214,14 +1346,29 @@ pub async fn handle_completions(
                             "".to_string()
                         };
 
-                        let name = call_id_to_name.get(call_id).cloned().unwrap_or_else(|| {
-                            // Fallback: if unknown and we see function_call_output, it's likely "shell" in this context
+                        let name = if let Some(name) = call_id_to_name.get(call_id).cloned() {
+                            name
+                        } else if item_type == "custom_tool_call_output" {
                             tracing::warn!(
-                                "Unknown tool name for call_id {}, defaulting to 'shell'",
+                                "Skipping orphan custom_tool_call_output for unknown call_id {}",
+                                call_id
+                            );
+                            continue;
+                        } else {
+                            tracing::warn!(
+                                "Unknown function_call_output tool name for call_id {}, defaulting to 'shell'",
                                 call_id
                             );
                             "shell".to_string()
-                        });
+                        };
+
+                        if name == "apply_patch" {
+                            output_str = compact_apply_patch_failure_output(
+                                output_str,
+                                &mut seen_apply_patch_failures,
+                                &mut apply_patch_failure_distinct_count,
+                            );
+                        }
 
                         messages.push(json!({
                             "role": "tool",
@@ -1326,10 +1473,21 @@ pub async fn handle_completions(
                                             .unwrap_or("");
                                         let name =
                                             obj.get("name").and_then(|v| v.as_str()).unwrap_or("");
-                                        let arguments = obj
+                                        let mut arguments = obj
                                             .get("arguments")
                                             .and_then(|v| v.as_str())
-                                            .unwrap_or("");
+                                            .unwrap_or("")
+                                            .to_string();
+                                        if item_type == "custom_tool_call" {
+                                            if let Some(input) =
+                                                obj.get("input").and_then(|v| v.as_str())
+                                            {
+                                                arguments = serde_json::to_string(
+                                                    &json!({ "input": input }),
+                                                )
+                                                .unwrap_or_else(|_| "{}".to_string());
+                                            }
+                                        }
                                         messages.push(json!({
                                             "role": "assistant",
                                             "content": "",
@@ -1639,6 +1797,23 @@ pub async fn handle_completions(
     let mut last_error = String::new();
     let mut last_email: Option<String> = None;
 
+    if debug_logger::is_enabled(&debug_cfg) {
+        let payload = json!({
+            "kind": "original_request",
+            "protocol": "openai",
+            "trace_id": trace_id,
+            "request_path": uri.path(),
+            "request": original_body,
+        });
+        debug_logger::write_exchange_payload(
+            &debug_cfg,
+            Some(&trace_id),
+            "original_request",
+            &payload,
+        )
+        .await;
+    }
+
     let mut force_rotate = false;
 
     for attempt in 0..max_attempts {
@@ -1698,6 +1873,27 @@ pub async fn handle_completions(
             &mapped_model,
             proxy_token.as_ref(),
         );
+        let gemini_body_for_debug = gemini_body.clone();
+        if debug_logger::is_enabled(&debug_cfg) {
+            let payload = json!({
+                "kind": "v1internal_request",
+                "protocol": "openai",
+                "trace_id": trace_id,
+                "request_path": uri.path(),
+                "original_model": openai_req.model,
+                "mapped_model": mapped_model,
+                "request_type": config.request_type,
+                "attempt": attempt,
+                "v1internal_request": gemini_body_for_debug.clone(),
+            });
+            debug_logger::write_exchange_payload(
+                &debug_cfg,
+                Some(&trace_id),
+                "v1internal_request",
+                &payload,
+            )
+            .await;
+        }
 
         // [DEBUG v4.2.0] Detailed size analysis of Gemini request body
         if let Some(contents) = gemini_body.get("contents").and_then(|c| c.as_array()) {
@@ -1767,6 +1963,7 @@ pub async fn handle_completions(
         };
 
         let response = call_result.response;
+        let upstream_url = response.url().to_string();
         let status = response.status();
         if status.is_success() {
             // [智能限流] 请求成功，重置该账号的连续失败计数
@@ -1777,7 +1974,24 @@ pub async fn handle_completions(
                 use axum::response::Response;
                 use futures::StreamExt;
 
-                let gemini_stream = response.bytes_stream();
+                let upstream_meta = json!({
+                    "protocol": "openai",
+                    "trace_id": trace_id,
+                    "request_path": uri.path(),
+                    "original_model": openai_req.model,
+                    "mapped_model": mapped_model,
+                    "request_type": config.request_type,
+                    "attempt": attempt,
+                    "status": status.as_u16(),
+                    "upstream_url": upstream_url,
+                });
+                let gemini_stream = debug_logger::wrap_stream_with_debug(
+                    Box::pin(response.bytes_stream()),
+                    debug_cfg.clone(),
+                    trace_id.clone(),
+                    "upstream_response",
+                    upstream_meta,
+                );
 
                 // DECISION: Which stream to create?
                 // If client wants stream: give them what they asked (Legacy/Codex SSE).
@@ -1788,7 +2002,7 @@ pub async fn handle_completions(
                     let mut openai_stream = if is_codex_style {
                         use crate::proxy::mappers::openai::streaming::create_codex_sse_stream;
                         create_codex_sse_stream(
-                            Box::pin(gemini_stream),
+                            gemini_stream,
                             openai_req.model.clone(),
                             session_id,
                             message_count,
@@ -1797,7 +2011,7 @@ pub async fn handle_completions(
                     } else {
                         use crate::proxy::mappers::openai::streaming::create_legacy_sse_stream;
                         create_legacy_sse_stream(
-                            Box::pin(gemini_stream),
+                            gemini_stream,
                             openai_req.model.clone(),
                             session_id,
                             message_count,
@@ -1859,6 +2073,25 @@ pub async fn handle_completions(
                         Ok::<Bytes, String>(first_data_chunk.unwrap())
                     })
                     .chain(openai_stream);
+                    let converted_meta = json!({
+                        "protocol": "openai",
+                        "trace_id": trace_id,
+                        "stage": "converted_codex_response",
+                        "request_path": uri.path(),
+                        "original_model": openai_req.model,
+                        "mapped_model": mapped_model,
+                        "request_type": config.request_type,
+                        "attempt": attempt,
+                        "status": status.as_u16(),
+                        "upstream_url": upstream_url,
+                    });
+                    let combined_stream = debug_logger::wrap_stream_with_debug(
+                        Box::pin(combined_stream),
+                        debug_cfg.clone(),
+                        trace_id.clone(),
+                        "converted_codex_response",
+                        converted_meta,
+                    );
 
                     // [MULTI-TURN][FIX] 保存本次完整 input_items 到 session store
                     // 使用从 body 中提取的原始 input（含文本/工具调用/工具结果全量历史），
@@ -1894,7 +2127,7 @@ pub async fn handle_completions(
                     // Note: We use create_openai_sse_stream regardless of is_codex_style here,
                     // because we just want the content aggregation which chat stream does well.
                     let mut openai_stream = create_openai_sse_stream(
-                        Box::pin(gemini_stream),
+                        gemini_stream,
                         openai_req.model.clone(),
                         session_id,
                         message_count,
@@ -1954,10 +2187,29 @@ pub async fn handle_completions(
                         Ok::<Bytes, String>(first_data_chunk.unwrap())
                     })
                     .chain(openai_stream);
+                    let converted_meta = json!({
+                        "protocol": "openai",
+                        "trace_id": trace_id,
+                        "stage": "converted_codex_response",
+                        "request_path": uri.path(),
+                        "original_model": openai_req.model,
+                        "mapped_model": mapped_model,
+                        "request_type": config.request_type,
+                        "attempt": attempt,
+                        "status": status.as_u16(),
+                        "upstream_url": upstream_url,
+                    });
+                    let combined_stream = debug_logger::wrap_stream_with_debug(
+                        Box::pin(combined_stream),
+                        debug_cfg.clone(),
+                        trace_id.clone(),
+                        "converted_codex_response",
+                        converted_meta,
+                    );
 
                     // Collect
                     use crate::proxy::mappers::openai::collector::collect_stream_to_json;
-                    match collect_stream_to_json(Box::pin(combined_stream)).await {
+                    match collect_stream_to_json(combined_stream).await {
                         Ok(chat_resp) => {
                             let is_responses_api = uri.path() == "/v1/responses";
 
@@ -1994,48 +2246,48 @@ pub async fn handle_completions(
                                 }
 
                                 // Calculate usage if available
-                                let mut usage_obj = serde_json::Map::new();
-                                if let Some(ref usage) = chat_resp.usage {
-                                    usage_obj.insert(
-                                        "input_tokens".to_string(),
-                                        json!(usage.prompt_tokens),
-                                    );
-                                    usage_obj.insert(
-                                        "output_tokens".to_string(),
-                                        json!(usage.completion_tokens),
-                                    );
-                                    usage_obj.insert(
-                                        "total_tokens".to_string(),
-                                        json!(usage.total_tokens),
-                                    );
-                                    if let Some(ref details) = usage.prompt_tokens_details {
-                                        if let Some(ct) = details.cached_tokens {
-                                            usage_obj.insert(
-                                                "cache_read_input_tokens".to_string(),
-                                                json!(ct),
-                                            );
-                                            let mut details_obj = serde_json::Map::new();
-                                            details_obj
-                                                .insert("cached_tokens".to_string(), json!(ct));
-                                            usage_obj.insert(
-                                                "prompt_tokens_details".to_string(),
-                                                json!(details_obj),
-                                            );
-                                        }
-                                    }
+                                let usage_value = if let Some(ref usage) = chat_resp.usage {
+                                    usage.to_responses_usage_value()
                                 } else {
-                                    usage_obj.insert("input_tokens".to_string(), json!(0));
-                                    usage_obj.insert("output_tokens".to_string(), json!(0));
-                                    usage_obj.insert("total_tokens".to_string(), json!(0));
-                                }
+                                    json!({
+                                        "input_tokens": 0,
+                                        "input_tokens_details": {
+                                            "cached_tokens": 0
+                                        },
+                                        "output_tokens": 0,
+                                        "output_tokens_details": {
+                                            "reasoning_tokens": 0
+                                        },
+                                        "total_tokens": 0
+                                    })
+                                };
 
                                 let resp = json!({
                                     "type": "response",
                                     "id": format!("resp_{}", uuid::Uuid::new_v4().simple()),
                                     "status": "completed",
                                     "output": output,
-                                    "usage": usage_obj
+                                    "usage": usage_value
                                 });
+                                if debug_logger::is_enabled(&debug_cfg) {
+                                    let payload = json!({
+                                        "kind": "exchange_summary",
+                                        "protocol": "openai",
+                                        "trace_id": trace_id,
+                                        "request_path": uri.path(),
+                                        "original_codex_request": original_body.clone(),
+                                        "gemini_request": gemini_body_for_debug.clone(),
+                                        "converted_codex_response": resp.clone(),
+                                        "gemini_raw_response_ref": "see upstream_response file with the same trace_id",
+                                    });
+                                    debug_logger::write_exchange_payload(
+                                        &debug_cfg,
+                                        Some(&trace_id),
+                                        "exchange_summary",
+                                        &payload,
+                                    )
+                                    .await;
+                                }
 
                                 return (
                                     StatusCode::OK,
@@ -2081,6 +2333,25 @@ pub async fn handle_completions(
                                 "choices": choices,
                                 "usage": chat_resp.usage
                             });
+                            if debug_logger::is_enabled(&debug_cfg) {
+                                let payload = json!({
+                                    "kind": "exchange_summary",
+                                    "protocol": "openai",
+                                    "trace_id": trace_id,
+                                    "request_path": uri.path(),
+                                    "original_codex_request": original_body.clone(),
+                                    "gemini_request": gemini_body_for_debug.clone(),
+                                    "converted_codex_response": legacy_resp.clone(),
+                                    "gemini_raw_response_ref": "see upstream_response file with the same trace_id",
+                                });
+                                debug_logger::write_exchange_payload(
+                                    &debug_cfg,
+                                    Some(&trace_id),
+                                    "exchange_summary",
+                                    &payload,
+                                )
+                                .await;
+                            }
 
                             return (
                                 StatusCode::OK,
@@ -2147,33 +2418,48 @@ pub async fn handle_completions(
                 }
 
                 // Calculate usage if available
-                let mut usage_obj = serde_json::Map::new();
-                if let Some(ref usage) = chat_resp.usage {
-                    usage_obj.insert("input_tokens".to_string(), json!(usage.prompt_tokens));
-                    usage_obj.insert("output_tokens".to_string(), json!(usage.completion_tokens));
-                    usage_obj.insert("total_tokens".to_string(), json!(usage.total_tokens));
-                    if let Some(ref details) = usage.prompt_tokens_details {
-                        if let Some(ct) = details.cached_tokens {
-                            usage_obj.insert("cache_read_input_tokens".to_string(), json!(ct));
-                            let mut details_obj = serde_json::Map::new();
-                            details_obj.insert("cached_tokens".to_string(), json!(ct));
-                            usage_obj
-                                .insert("prompt_tokens_details".to_string(), json!(details_obj));
-                        }
-                    }
+                let usage_value = if let Some(ref usage) = chat_resp.usage {
+                    usage.to_responses_usage_value()
                 } else {
-                    usage_obj.insert("input_tokens".to_string(), json!(0));
-                    usage_obj.insert("output_tokens".to_string(), json!(0));
-                    usage_obj.insert("total_tokens".to_string(), json!(0));
-                }
+                    json!({
+                        "input_tokens": 0,
+                        "input_tokens_details": {
+                            "cached_tokens": 0
+                        },
+                        "output_tokens": 0,
+                        "output_tokens_details": {
+                            "reasoning_tokens": 0
+                        },
+                        "total_tokens": 0
+                    })
+                };
 
                 let resp = json!({
                     "type": "response",
                     "id": format!("resp_{}", uuid::Uuid::new_v4().simple()),
                     "status": "completed",
                     "output": output,
-                    "usage": usage_obj
+                    "usage": usage_value
                 });
+                if debug_logger::is_enabled(&debug_cfg) {
+                    let payload = json!({
+                        "kind": "exchange_summary",
+                        "protocol": "openai",
+                        "trace_id": trace_id,
+                        "request_path": uri.path(),
+                        "original_codex_request": original_body.clone(),
+                        "gemini_request": gemini_body_for_debug.clone(),
+                        "gemini_raw_response": gemini_resp.clone(),
+                        "converted_codex_response": resp.clone(),
+                    });
+                    debug_logger::write_exchange_payload(
+                        &debug_cfg,
+                        Some(&trace_id),
+                        "exchange_summary",
+                        &payload,
+                    )
+                    .await;
+                }
 
                 return (
                     StatusCode::OK,
@@ -2207,6 +2493,25 @@ pub async fn handle_completions(
                 "choices": choices,
                 "usage": chat_resp.usage
             });
+            if debug_logger::is_enabled(&debug_cfg) {
+                let payload = json!({
+                    "kind": "exchange_summary",
+                    "protocol": "openai",
+                    "trace_id": trace_id,
+                    "request_path": uri.path(),
+                    "original_codex_request": original_body.clone(),
+                    "gemini_request": gemini_body_for_debug.clone(),
+                    "gemini_raw_response": gemini_resp.clone(),
+                    "converted_codex_response": legacy_resp.clone(),
+                });
+                debug_logger::write_exchange_payload(
+                    &debug_cfg,
+                    Some(&trace_id),
+                    "exchange_summary",
+                    &payload,
+                )
+                .await;
+            }
 
             return (
                 StatusCode::OK,
@@ -3316,11 +3621,44 @@ async fn handle_websocket_session(mut socket: WebSocket, headers: HeaderMap, sta
                 continue;
             }
         };
+        let ws_trace_id = format!("ws_{}", chrono::Utc::now().timestamp_subsec_millis());
+        let debug_cfg = state.debug_logging.read().await.clone();
+        if debug_logger::is_enabled(&debug_cfg) {
+            let payload_log = json!({
+                "kind": "codex_websocket_raw_request",
+                "protocol": "codex_websocket",
+                "trace_id": ws_trace_id,
+                "raw_text": text.clone(),
+                "payload": payload.clone(),
+            });
+            debug_logger::write_exchange_payload(
+                &debug_cfg,
+                Some(&ws_trace_id),
+                "codex_websocket_raw_request",
+                &payload_log,
+            )
+            .await;
+        }
 
         if should_handle_prewarm_locally(&payload, &session_state) {
             let (created, completed) = handle_prewarm_locally(&payload, &mut session_state);
             let _ = socket.send(Message::Text(created.to_string())).await;
             let _ = socket.send(Message::Text(completed.to_string())).await;
+            if debug_logger::is_enabled(&debug_cfg) {
+                let payload_log = json!({
+                    "kind": "codex_websocket_local_response",
+                    "protocol": "codex_websocket",
+                    "trace_id": ws_trace_id,
+                    "events": [created, completed],
+                });
+                debug_logger::write_exchange_payload(
+                    &debug_cfg,
+                    Some(&ws_trace_id),
+                    "codex_websocket_local_response",
+                    &payload_log,
+                )
+                .await;
+            }
             continue;
         }
 
@@ -3393,7 +3731,8 @@ async fn handle_websocket_session(mut socket: WebSocket, headers: HeaderMap, sta
                 "output": []
             }
         });
-        let _ = socket.send(Message::Text(created_ev.to_string())).await;
+        let mut outgoing_ws_events = Vec::new();
+        send_ws_event(&mut socket, &mut outgoing_ws_events, &created_ev).await;
 
         let mut buffer = bytes::BytesMut::new();
         while let Some(chunk_res) = stream.next().await {
@@ -3421,6 +3760,7 @@ async fn handle_websocket_session(mut socket: WebSocket, headers: HeaderMap, sta
                             &chunk_json,
                             &mut translation_state,
                             &mut socket,
+                            &mut outgoing_ws_events,
                         )
                         .await;
                     }
@@ -3439,6 +3779,7 @@ async fn handle_websocket_session(mut socket: WebSocket, headers: HeaderMap, sta
                                 &chunk_json,
                                 &mut translation_state,
                                 &mut socket,
+                                &mut outgoing_ws_events,
                             )
                             .await;
                         }
@@ -3447,8 +3788,29 @@ async fn handle_websocket_session(mut socket: WebSocket, headers: HeaderMap, sta
             }
         }
 
-        let completed_output =
-            finalize_ws_events(&mut translation_state, &mut socket, &mut session_state).await;
+        let completed_output = finalize_ws_events(
+            &mut translation_state,
+            &mut socket,
+            &mut session_state,
+            &mut outgoing_ws_events,
+        )
+        .await;
+        if debug_logger::is_enabled(&debug_cfg) {
+            let payload_log = json!({
+                "kind": "codex_websocket_converted_response",
+                "protocol": "codex_websocket",
+                "trace_id": ws_trace_id,
+                "events": outgoing_ws_events,
+                "completed_output": completed_output.clone(),
+            });
+            debug_logger::write_exchange_payload(
+                &debug_cfg,
+                Some(&ws_trace_id),
+                "codex_websocket_converted_response",
+                &payload_log,
+            )
+            .await;
+        }
 
         session_state.last_response_output = completed_output;
         session_state.last_response_id = translation_state.response_id.clone();
@@ -3512,7 +3874,13 @@ fn handle_prewarm_locally(payload: &Value, state: &mut WebsocketSessionState) ->
             "output": [],
             "usage": {
                 "input_tokens": 0,
+                "input_tokens_details": {
+                    "cached_tokens": 0
+                },
                 "output_tokens": 0,
+                "output_tokens_details": {
+                    "reasoning_tokens": 0
+                },
                 "total_tokens": 0
             },
             "model": model,
@@ -3832,12 +4200,25 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
     }
 
     let mut call_id_to_name = std::collections::HashMap::new();
+    let mut skipped_incomplete_custom_call_ids = std::collections::HashSet::new();
 
     if let Some(items) = input_items {
         for item in items {
             let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+            if item_type == "custom_tool_call"
+                && item.get("status").and_then(|v| v.as_str()) == Some("incomplete")
+            {
+                if let Some(call_id) = item
+                    .get("call_id")
+                    .and_then(|v| v.as_str())
+                    .or_else(|| item.get("id").and_then(|v| v.as_str()))
+                {
+                    skipped_incomplete_custom_call_ids.insert(call_id.to_string());
+                }
+                continue;
+            }
             match item_type {
-                "function_call" | "local_shell_call" | "web_search_call" => {
+                "function_call" | "custom_tool_call" | "local_shell_call" | "web_search_call" => {
                     let call_id = item
                         .get("call_id")
                         .and_then(|v| v.as_str())
@@ -3861,8 +4242,15 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
     }
 
     if let Some(items) = input_items {
+        let mut seen_apply_patch_failures = std::collections::HashSet::new();
+        let mut apply_patch_failure_distinct_count = 0usize;
         for item in items {
             let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
+            if item_type == "custom_tool_call"
+                && item.get("status").and_then(|v| v.as_str()) == Some("incomplete")
+            {
+                continue;
+            }
             match item_type {
                 "message" => {
                     let role = item.get("role").and_then(|v| v.as_str()).unwrap_or("user");
@@ -3904,7 +4292,7 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
                         messages.push(json!({ "role": role, "content": content_blocks }));
                     }
                 }
-                "function_call" | "local_shell_call" | "web_search_call" => {
+                "function_call" | "custom_tool_call" | "local_shell_call" | "web_search_call" => {
                     let mut name = item
                         .get("name")
                         .and_then(|v| v.as_str())
@@ -3920,7 +4308,12 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
                         .or_else(|| item.get("id").and_then(|v| v.as_str()))
                         .unwrap_or("unknown");
 
-                    if item_type == "local_shell_call" || name == "local_shell_call" {
+                    if item_type == "custom_tool_call" {
+                        if let Some(input) = item.get("input").and_then(|v| v.as_str()) {
+                            args_str = serde_json::to_string(&json!({ "input": input }))
+                                .unwrap_or_else(|_| "{}".to_string());
+                        }
+                    } else if item_type == "local_shell_call" || name == "local_shell_call" {
                         name = "shell";
                         if let Some(action) = item.get("action") {
                             if let Some(exec) = action.get("exec") {
@@ -3968,8 +4361,17 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
                         .get("call_id")
                         .and_then(|v| v.as_str())
                         .unwrap_or("unknown");
+                    if item_type == "custom_tool_call_output"
+                        && skipped_incomplete_custom_call_ids.contains(call_id)
+                    {
+                        tracing::warn!(
+                            "Skipping output for incomplete custom tool call {}",
+                            call_id
+                        );
+                        continue;
+                    }
                     let output = item.get("output");
-                    let output_str = if let Some(o) = output {
+                    let mut output_str = if let Some(o) = output {
                         if o.is_string() {
                             o.as_str().unwrap().to_string()
                         } else if let Some(content) = o.get("content").and_then(|v| v.as_str()) {
@@ -3981,17 +4383,31 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
                         "".to_string()
                     };
 
-                    let name = call_id_to_name
-                        .get(call_id)
-                        .cloned()
-                        .or_else(|| {
-                            get_cached_tool_call(call_id).and_then(|v| {
-                                v.get("name")
-                                    .and_then(|n| n.as_str())
-                                    .map(|s| s.to_string())
-                            })
+                    let name = match call_id_to_name.get(call_id).cloned().or_else(|| {
+                        get_cached_tool_call(call_id).and_then(|v| {
+                            v.get("name")
+                                .and_then(|n| n.as_str())
+                                .map(|s| s.to_string())
                         })
-                        .unwrap_or_else(|| "shell".to_string());
+                    }) {
+                        Some(name) => name,
+                        None if item_type == "custom_tool_call_output" => {
+                            tracing::warn!(
+                                "Skipping orphan custom_tool_call_output for unknown call_id {}",
+                                call_id
+                            );
+                            continue;
+                        }
+                        None => "shell".to_string(),
+                    };
+
+                    if name == "apply_patch" {
+                        output_str = compact_apply_patch_failure_output(
+                            output_str,
+                            &mut seen_apply_patch_failures,
+                            &mut apply_patch_failure_distinct_count,
+                        );
+                    }
 
                     messages.push(json!({
                         "role": "tool",
@@ -4021,10 +4437,16 @@ struct TranslationState {
     tool_calls_added: std::collections::HashSet<u32>,
 }
 
+async fn send_ws_event(socket: &mut WebSocket, ws_events: &mut Vec<Value>, event: &Value) {
+    ws_events.push(event.clone());
+    let _ = socket.send(Message::Text(event.to_string())).await;
+}
+
 async fn translate_openai_chunk_to_ws(
     chunk: &Value,
     state: &mut TranslationState,
     socket: &mut WebSocket,
+    ws_events: &mut Vec<Value>,
 ) {
     if let Some(choices) = chunk.get("choices").and_then(|c| c.as_array()) {
         for choice in choices {
@@ -4039,7 +4461,7 @@ async fn translate_openai_chunk_to_ws(
                             "summary_index": 0,
                             "delta": reasoning
                         });
-                        let _ = socket.send(Message::Text(reasoning_ev.to_string())).await;
+                        send_ws_event(socket, ws_events, &reasoning_ev).await;
 
                         if !state.message_item_added {
                             let item_added = json!({
@@ -4053,7 +4475,7 @@ async fn translate_openai_chunk_to_ws(
                                     "content": []
                                 }
                             });
-                            let _ = socket.send(Message::Text(item_added.to_string())).await;
+                            send_ws_event(socket, ws_events, &item_added).await;
 
                             let part_added = json!({
                                 "type": "response.content_part.added",
@@ -4065,7 +4487,7 @@ async fn translate_openai_chunk_to_ws(
                                     "text": ""
                                 }
                             });
-                            let _ = socket.send(Message::Text(part_added.to_string())).await;
+                            send_ws_event(socket, ws_events, &part_added).await;
                             state.message_item_added = true;
                             state.content_part_added = true;
                         }
@@ -4077,7 +4499,7 @@ async fn translate_openai_chunk_to_ws(
                             "content_index": 0,
                             "delta": reasoning
                         });
-                        let _ = socket.send(Message::Text(delta_ev.to_string())).await;
+                        send_ws_event(socket, ws_events, &delta_ev).await;
                         state.accumulated_text.push_str(reasoning);
                     }
                 }
@@ -4096,7 +4518,7 @@ async fn translate_openai_chunk_to_ws(
                                     "content": []
                                 }
                             });
-                            let _ = socket.send(Message::Text(item_added.to_string())).await;
+                            send_ws_event(socket, ws_events, &item_added).await;
 
                             let part_added = json!({
                                 "type": "response.content_part.added",
@@ -4108,7 +4530,7 @@ async fn translate_openai_chunk_to_ws(
                                     "text": ""
                                 }
                             });
-                            let _ = socket.send(Message::Text(part_added.to_string())).await;
+                            send_ws_event(socket, ws_events, &part_added).await;
                             state.message_item_added = true;
                             state.content_part_added = true;
                         }
@@ -4120,7 +4542,7 @@ async fn translate_openai_chunk_to_ws(
                             "content_index": 0,
                             "delta": content
                         });
-                        let _ = socket.send(Message::Text(delta_ev.to_string())).await;
+                        send_ws_event(socket, ws_events, &delta_ev).await;
                         state.accumulated_text.push_str(content);
                     }
                 }
@@ -4186,7 +4608,7 @@ async fn translate_openai_chunk_to_ws(
                                     "output_index": 0,
                                     "item": item_obj
                                 });
-                                let _ = socket.send(Message::Text(tool_added.to_string())).await;
+                                send_ws_event(socket, ws_events, &tool_added).await;
                                 state.tool_calls_added.insert(tc_idx);
                             }
 
@@ -4197,7 +4619,7 @@ async fn translate_openai_chunk_to_ws(
                                     "output_index": 0,
                                     "delta": tc_args
                                 });
-                                let _ = socket.send(Message::Text(args_delta.to_string())).await;
+                                send_ws_event(socket, ws_events, &args_delta).await;
                             }
                         }
                     }
@@ -4211,6 +4633,7 @@ async fn finalize_ws_events(
     state: &mut TranslationState,
     socket: &mut WebSocket,
     session_state: &mut WebsocketSessionState,
+    ws_events: &mut Vec<Value>,
 ) -> Value {
     let mut output_items = Vec::new();
     let mut tool_keys: Vec<u32> = state.tool_calls.keys().cloned().collect();
@@ -4224,7 +4647,7 @@ async fn finalize_ws_events(
                 "output_index": 0,
                 "arguments": args
             });
-            let _ = socket.send(Message::Text(args_done.to_string())).await;
+            send_ws_event(socket, ws_events, &args_done).await;
 
             let (actual_name, namespace) = split_namespace_tool_name(name);
             let mut item_obj = serde_json::json!({
@@ -4244,7 +4667,7 @@ async fn finalize_ws_events(
                 "output_index": 0,
                 "item": item_obj
             });
-            let _ = socket.send(Message::Text(tool_done.to_string())).await;
+            send_ws_event(socket, ws_events, &tool_done).await;
 
             let tc_val = item_obj.clone();
 
@@ -4264,7 +4687,7 @@ async fn finalize_ws_events(
             "content_index": 0,
             "text": &state.accumulated_text
         });
-        let _ = socket.send(Message::Text(text_done.to_string())).await;
+        send_ws_event(socket, ws_events, &text_done).await;
 
         let part_done = json!({
             "type": "response.content_part.done",
@@ -4276,7 +4699,7 @@ async fn finalize_ws_events(
                 "text": &state.accumulated_text
             }
         });
-        let _ = socket.send(Message::Text(part_done.to_string())).await;
+        send_ws_event(socket, ws_events, &part_done).await;
 
         let message_done = json!({
             "type": "response.output_item.done",
@@ -4292,7 +4715,7 @@ async fn finalize_ws_events(
                 }]
             }
         });
-        let _ = socket.send(Message::Text(message_done.to_string())).await;
+        send_ws_event(socket, ws_events, &message_done).await;
 
         output_items.push(json!({
             "id": &state.item_id,
@@ -4315,7 +4738,7 @@ async fn finalize_ws_events(
             "output": output_items
         }
     });
-    let _ = socket.send(Message::Text(completed_ev.to_string())).await;
+    send_ws_event(socket, ws_events, &completed_ev).await;
 
     json!(output_items)
 }
