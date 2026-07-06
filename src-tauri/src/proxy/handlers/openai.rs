@@ -132,6 +132,10 @@ pub async fn handle_chat_completions(
                 messages.push(user_msg);
             }
         }
+
+        if let Some(obj) = body.as_object_mut() {
+            obj.remove("instructions");
+        }
     }
 
     let mut openai_req: OpenAIRequest = serde_json::from_value(body)
@@ -1586,6 +1590,10 @@ pub async fn handle_completions(
         .and_then(|v| v.as_str())
         .unwrap_or("")
         .to_string();
+
+    if let Some(obj) = body.as_object_mut() {
+        obj.remove("instructions");
+    }
 
     let mut openai_req: OpenAIRequest = match serde_json::from_value(body.clone()) {
         Ok(req) => req,
@@ -4423,6 +4431,7 @@ fn convert_codex_to_openai_request(mut body: Value) -> Value {
 
     if let Some(obj) = body.as_object_mut() {
         obj.insert("messages".to_string(), json!(messages));
+        obj.remove("instructions");
     }
     body
 }
