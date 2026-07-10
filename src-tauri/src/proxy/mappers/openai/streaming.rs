@@ -643,39 +643,47 @@ where
                                                     for part in parts {
                                                         let is_thought = part.get("thought").and_then(|v| v.as_bool()).unwrap_or(false);
 
-                                                        // 切换到正文或工具时，若思考区开着，则先闭合思考区
+                                                        // Codex Desktop renders `reasoning` as compact/ephemeral status
+                                                        // text. The durable, large transcript block in the "Working"
+                                                        // section is an assistant `message` with phase=commentary.
+                                                        // Close that synthetic thought message before opening normal text
+                                                        // or a tool item so output item lifecycles never overlap.
                                                         let is_text_or_tool = part.get("text").is_some() || part.get("functionCall").is_some() || part.get("inlineData").is_some();
                                                         if is_text_or_tool && !is_thought && reasoning_open {
                                                             let text_done = json!({
-                                                                "type": "response.reasoning_summary_text.done",
+                                                                "type": "response.output_text.done",
                                                                 "item_id": &active_reasoning_item_id,
                                                                 "output_index": reasoning_output_index,
-                                                                "summary_index": 0,
+                                                                "content_index": 0,
                                                                 "text": &accumulated_thinking
                                                             });
                                                             let text_done = inject_seq(text_done, &mut sequence_number);
                                                             yield Ok::<Bytes, String>(codex_sse_frame(&text_done));
 
-                                                            let part_done = json!({
-                                                                "type": "response.reasoning_summary_part.done",
+                                                            let content_part_done = json!({
+                                                                "type": "response.content_part.done",
                                                                 "item_id": &active_reasoning_item_id,
                                                                 "output_index": reasoning_output_index,
-                                                                "summary_index": 0,
+                                                                "content_index": 0,
                                                                 "part": {
-                                                                    "type": "summary_text",
-                                                                    "text": &accumulated_thinking
+                                                                    "type": "output_text",
+                                                                    "text": &accumulated_thinking,
+                                                                    "annotations": []
                                                                 }
                                                             });
-                                                            let part_done = inject_seq(part_done, &mut sequence_number);
-                                                            yield Ok::<Bytes, String>(codex_sse_frame(&part_done));
+                                                            let content_part_done = inject_seq(content_part_done, &mut sequence_number);
+                                                            yield Ok::<Bytes, String>(codex_sse_frame(&content_part_done));
 
                                                             let reasoning_item = json!({
-                                                                "type": "reasoning",
-                                                                "status": "completed",
                                                                 "id": &active_reasoning_item_id,
-                                                                "summary": [{
-                                                                    "type": "summary_text",
-                                                                    "text": &accumulated_thinking
+                                                                "type": "message",
+                                                                "role": "assistant",
+                                                                "phase": "commentary",
+                                                                "status": "completed",
+                                                                "content": [{
+                                                                    "type": "output_text",
+                                                                    "text": &accumulated_thinking,
+                                                                    "annotations": []
                                                                 }]
                                                             });
 
@@ -699,15 +707,15 @@ where
                                                                     if !reasoning_open {
                                                                         reasoning_output_index = next_output_index;
                                                                         next_output_index += 1;
-                                                                        active_reasoning_item_id = format!("rs_{}_{}", &random_str[..16], reasoning_item_seq);
+                                                                        active_reasoning_item_id = format!("msg_thought_{}_{}", &random_str[..16], reasoning_item_seq);
                                                                         reasoning_item_seq += 1;
                                                                         accumulated_thinking.clear();
 
-                                                                        let output_item_added = json!({"type": "response.output_item.added", "output_index": reasoning_output_index, "item": {"id": &active_reasoning_item_id, "type": "reasoning", "status": "in_progress", "summary": []}});
+                                                                        let output_item_added = json!({"type": "response.output_item.added", "output_index": reasoning_output_index, "item": {"id": &active_reasoning_item_id, "type": "message", "role": "assistant", "phase": "commentary", "status": "in_progress", "content": []}});
                                                                         let output_item_added = inject_seq(output_item_added, &mut sequence_number);
                                                                         yield Ok::<Bytes, String>(codex_sse_frame(&output_item_added));
 
-                                                                        let part_added = json!({"type": "response.reasoning_summary_part.added", "item_id": &active_reasoning_item_id, "output_index": reasoning_output_index, "summary_index": 0, "part": {"type": "summary_text", "text": ""}});
+                                                                        let part_added = json!({"type": "response.content_part.added", "item_id": &active_reasoning_item_id, "output_index": reasoning_output_index, "content_index": 0, "part": {"type": "output_text", "text": "", "annotations": []}});
                                                                         let part_added = inject_seq(part_added, &mut sequence_number);
                                                                         yield Ok::<Bytes, String>(codex_sse_frame(&part_added));
 
@@ -716,10 +724,10 @@ where
                                                                         let prefix = "**Thinking**\n\n";
                                                                         accumulated_thinking.push_str(prefix);
                                                                         let prefix_ev = json!({
-                                                                            "type": "response.reasoning_summary_text.delta",
+                                                                            "type": "response.output_text.delta",
                                                                             "item_id": &active_reasoning_item_id,
                                                                             "output_index": reasoning_output_index,
-                                                                            "summary_index": 0,
+                                                                            "content_index": 0,
                                                                             "delta": prefix
                                                                         });
                                                                         let prefix_ev = inject_seq(prefix_ev, &mut sequence_number);
@@ -728,10 +736,10 @@ where
 
                                                                     accumulated_thinking.push_str(&clean_text);
                                                                     let delta_ev = json!({
-                                                                        "type": "response.reasoning_summary_text.delta",
+                                                                        "type": "response.output_text.delta",
                                                                         "item_id": &active_reasoning_item_id,
                                                                         "output_index": reasoning_output_index,
-                                                                        "summary_index": 0,
+                                                                        "content_index": 0,
                                                                         "delta": clean_text
                                                                     });
                                                                     let delta_ev = inject_seq(delta_ev, &mut sequence_number);
@@ -1005,38 +1013,42 @@ where
             }
         }
 
-        // 最终收尾时，若思考区还开着，则先闭合思考区
+        // 最终收尾时，若可见思考 commentary 还开着，则先物化为完整 message。
         if reasoning_open {
             let text_done = json!({
-                "type": "response.reasoning_summary_text.done",
+                "type": "response.output_text.done",
                 "item_id": &active_reasoning_item_id,
                 "output_index": reasoning_output_index,
-                "summary_index": 0,
+                "content_index": 0,
                 "text": &accumulated_thinking
             });
             let text_done = inject_seq(text_done, &mut sequence_number);
             yield Ok::<Bytes, String>(codex_sse_frame(&text_done));
 
-            let part_done = json!({
-                "type": "response.reasoning_summary_part.done",
+            let content_part_done = json!({
+                "type": "response.content_part.done",
                 "item_id": &active_reasoning_item_id,
                 "output_index": reasoning_output_index,
-                "summary_index": 0,
+                "content_index": 0,
                 "part": {
-                    "type": "summary_text",
-                    "text": &accumulated_thinking
+                    "type": "output_text",
+                    "text": &accumulated_thinking,
+                    "annotations": []
                 }
             });
-            let part_done = inject_seq(part_done, &mut sequence_number);
-            yield Ok::<Bytes, String>(codex_sse_frame(&part_done));
+            let content_part_done = inject_seq(content_part_done, &mut sequence_number);
+            yield Ok::<Bytes, String>(codex_sse_frame(&content_part_done));
 
             let reasoning_item = json!({
-                "type": "reasoning",
-                "status": "completed",
                 "id": &active_reasoning_item_id,
-                "summary": [{
-                    "type": "summary_text",
-                    "text": &accumulated_thinking
+                "type": "message",
+                "role": "assistant",
+                "phase": "commentary",
+                "status": "completed",
+                "content": [{
+                    "type": "output_text",
+                    "text": &accumulated_thinking,
+                    "annotations": []
                 }]
             });
 
@@ -1255,7 +1267,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_codex_reasoning_and_tool_are_distinct_named_output_items() {
+    async fn test_codex_visible_thought_commentary_and_tool_are_distinct_output_items() {
         let (raw, events) = collect_codex_stream(vec![
             json!({
                 "response": {
@@ -1291,7 +1303,8 @@ mod tests {
             .collect();
         assert_eq!(names[0], "response.created");
         assert_eq!(names[1], "response.in_progress");
-        assert!(names.contains(&"response.reasoning_summary_text.delta"));
+        assert!(names.contains(&"response.output_text.delta"));
+        assert!(!names.contains(&"response.reasoning_summary_text.delta"));
         assert!(names.contains(&"response.function_call_arguments.delta"));
         assert_eq!(names.last().copied(), Some("response.completed"));
 
@@ -1300,18 +1313,19 @@ mod tests {
         }
         assert!(events
             .iter()
-            .filter(|event| event["type"] == "response.reasoning_summary_text.delta")
-            .all(|event| event["summary_index"] == 0));
+            .filter(|event| event["type"] == "response.output_text.delta")
+            .all(|event| event["content_index"] == 0));
 
         let added: Vec<&Value> = events
             .iter()
             .filter(|event| event["type"] == "response.output_item.added")
             .collect();
         assert_eq!(added.len(), 2);
-        assert_eq!(added[0]["item"]["type"], "reasoning");
+        assert_eq!(added[0]["item"]["type"], "message");
+        assert_eq!(added[0]["item"]["phase"], "commentary");
         assert!(added[0]["item"]["id"]
             .as_str()
-            .is_some_and(|id| id.starts_with("rs_")));
+            .is_some_and(|id| id.starts_with("msg_thought_")));
         assert_eq!(added[0]["output_index"], 0);
         assert_eq!(added[1]["item"]["type"], "function_call");
         assert_eq!(added[1]["output_index"], 1);
@@ -1321,7 +1335,11 @@ mod tests {
             .as_array()
             .expect("completed output");
         assert_eq!(output.len(), 2);
-        assert_eq!(output[0]["type"], "reasoning");
+        assert_eq!(output[0]["type"], "message");
+        assert_eq!(output[0]["phase"], "commentary");
+        assert!(output[0]["content"][0]["text"]
+            .as_str()
+            .is_some_and(|text| text.contains("Inspecting the workspace.")));
         assert_eq!(output[1]["type"], "function_call");
     }
 

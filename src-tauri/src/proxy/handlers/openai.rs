@@ -16,6 +16,7 @@ use crate::proxy::server::AppState;
 use crate::proxy::upstream::client::mask_email;
 
 const MAX_RETRY_ATTEMPTS: usize = 3;
+const CODEX_VISIBLE_THOUGHT_MESSAGE_PREFIX: &str = "msg_thought_";
 use super::common::{
     apply_retry_strategy, determine_retry_strategy, should_rotate_account, RetryStrategy,
 };
@@ -47,9 +48,62 @@ fn stream_chunk_has_error_event(bytes: &[u8]) -> bool {
     })
 }
 
+/// Synthetic commentary messages mirror Gemini `thought=true` parts into the
+/// Codex transcript. They are merged back into the following assistant/tool
+/// item as `reasoning_content` on the next request so the upstream model does
+/// not receive the same thought twice as ordinary assistant prose.
+fn is_codex_visible_thought_message(item: &Value) -> bool {
+    item.get("type").and_then(Value::as_str) == Some("message")
+        && item.get("role").and_then(Value::as_str) == Some("assistant")
+        && item.get("phase").and_then(Value::as_str) == Some("commentary")
+        && item
+            .get("id")
+            .and_then(Value::as_str)
+            .is_some_and(|id| id.starts_with(CODEX_VISIBLE_THOUGHT_MESSAGE_PREFIX))
+}
+
+fn append_pending_reasoning(pending: &mut String, text: &str) {
+    if text.trim().is_empty() {
+        return;
+    }
+    if !pending.is_empty() && !pending.ends_with('\n') {
+        pending.push('\n');
+    }
+    pending.push_str(text);
+}
+
+fn take_pending_reasoning(pending: &mut String) -> Option<String> {
+    if pending.trim().is_empty() {
+        pending.clear();
+        None
+    } else {
+        Some(std::mem::take(pending))
+    }
+}
+
+fn attach_pending_reasoning_content(message: &mut Value, pending: &mut String) {
+    if let Some(reasoning_content) = take_pending_reasoning(pending) {
+        message["reasoning_content"] = json!(reasoning_content);
+    }
+}
+
+fn flush_pending_reasoning_message(messages: &mut Vec<Value>, pending: &mut String) {
+    if let Some(reasoning_content) = take_pending_reasoning(pending) {
+        messages.push(json!({
+            "role": "assistant",
+            "content": "",
+            "reasoning_content": reasoning_content,
+        }));
+    }
+}
+
 #[cfg(test)]
 mod stream_peek_tests {
+    use super::append_pending_reasoning;
+    use super::attach_pending_reasoning_content;
+    use super::is_codex_visible_thought_message;
     use super::stream_chunk_has_error_event;
+    use serde_json::json;
 
     #[test]
     fn responses_created_with_null_error_is_not_an_error_event() {
@@ -83,6 +137,47 @@ data: {"type":"response.failed","response":{"status":"failed","error":{"code":"u
 
 "#;
         assert!(!stream_chunk_has_error_event(chunk));
+    }
+
+    #[test]
+    fn identifies_only_synthetic_visible_thought_commentary() {
+        let thought = json!({
+            "type": "message",
+            "id": "msg_thought_abc_0",
+            "role": "assistant",
+            "phase": "commentary",
+            "content": [{"type": "output_text", "text": "thinking"}],
+        });
+        let normal_commentary = json!({
+            "type": "message",
+            "id": "msg_abc",
+            "role": "assistant",
+            "phase": "commentary",
+            "content": [{"type": "output_text", "text": "progress"}],
+        });
+
+        assert!(is_codex_visible_thought_message(&thought));
+        assert!(!is_codex_visible_thought_message(&normal_commentary));
+    }
+
+    #[test]
+    fn visible_thought_is_reattached_as_reasoning_content() {
+        let mut pending = String::new();
+        append_pending_reasoning(&mut pending, "first thought");
+        append_pending_reasoning(&mut pending, "second thought");
+        let mut assistant_tool_call = json!({
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [{"id": "call_1"}],
+        });
+
+        attach_pending_reasoning_content(&mut assistant_tool_call, &mut pending);
+
+        assert_eq!(
+            assistant_tool_call["reasoning_content"],
+            "first thought\nsecond thought"
+        );
+        assert!(pending.is_empty());
     }
 }
 
@@ -1314,7 +1409,11 @@ pub async fn handle_completions(
         let mut seen_apply_patch_failures = std::collections::HashSet::new();
         let mut apply_patch_failure_distinct_count = 0usize;
 
-        // Pass 2: Map Input Items to Messages
+        // Pass 2: Map Input Items to Messages. Synthetic `msg_thought_*`
+        // commentary items are visible transcript mirrors, not independent
+        // assistant turns. Fold them into the next assistant/tool item as
+        // reasoning_content to preserve both Codex replay and Gemini history.
+        let mut pending_synthetic_reasoning = String::new();
         if let Some(items) = input_items {
             for item in items {
                 let item_type = item.get("type").and_then(|v| v.as_str()).unwrap_or("");
@@ -1365,18 +1464,39 @@ pub async fn handle_completions(
                             }
                         }
 
+                        let joined_text = text_parts.join("\n");
+                        if is_codex_visible_thought_message(item) {
+                            append_pending_reasoning(
+                                &mut pending_synthetic_reasoning,
+                                &joined_text,
+                            );
+                            continue;
+                        }
+
+                        let reasoning_content = if role == "assistant" {
+                            take_pending_reasoning(&mut pending_synthetic_reasoning)
+                        } else {
+                            flush_pending_reasoning_message(
+                                &mut messages,
+                                &mut pending_synthetic_reasoning,
+                            );
+                            None
+                        };
+
                         // 构造消息内容：如果有图像则使用数组格式
                         if image_parts.is_empty() {
-                            let content =
-                                prefix_with_step_marker(step_marker, text_parts.join("\n"));
-                            messages.push(json!({
+                            let content = prefix_with_step_marker(step_marker, joined_text);
+                            let mut message = json!({
                                 "role": role,
                                 "content": content
-                            }));
+                            });
+                            if let Some(reasoning) = reasoning_content {
+                                message["reasoning_content"] = json!(reasoning);
+                            }
+                            messages.push(message);
                         } else {
                             let mut content_blocks: Vec<Value> = Vec::new();
-                            let marker_text =
-                                prefix_with_step_marker(step_marker, text_parts.join("\n"));
+                            let marker_text = prefix_with_step_marker(step_marker, joined_text);
                             if !marker_text.is_empty() {
                                 content_blocks.push(json!({
                                     "type": "text",
@@ -1384,10 +1504,14 @@ pub async fn handle_completions(
                                 }));
                             }
                             content_blocks.extend(image_parts);
-                            messages.push(json!({
+                            let mut message = json!({
                                 "role": role,
                                 "content": content_blocks
-                            }));
+                            });
+                            if let Some(reasoning) = reasoning_content {
+                                message["reasoning_content"] = json!(reasoning);
+                            }
+                            messages.push(message);
                         }
                     }
                     "function_call" | "custom_tool_call" | "local_shell_call"
@@ -1451,7 +1575,7 @@ pub async fn handle_completions(
                             }
                         }
 
-                        messages.push(json!({
+                        let mut message = json!({
                             "role": "assistant",
                             "content": "",
                             "tool_calls": [
@@ -1464,9 +1588,18 @@ pub async fn handle_completions(
                                     }
                                 }
                             ]
-                        }));
+                        });
+                        attach_pending_reasoning_content(
+                            &mut message,
+                            &mut pending_synthetic_reasoning,
+                        );
+                        messages.push(message);
                     }
                     "function_call_output" | "custom_tool_call_output" => {
+                        flush_pending_reasoning_message(
+                            &mut messages,
+                            &mut pending_synthetic_reasoning,
+                        );
                         let call_id = item
                             .get("call_id")
                             .and_then(|v| v.as_str())
@@ -1530,6 +1663,7 @@ pub async fn handle_completions(
                 }
             }
         }
+        flush_pending_reasoning_message(&mut messages, &mut pending_synthetic_reasoning);
 
         if let Some(obj) = body.as_object_mut() {
             obj.insert("messages".to_string(), json!(messages));
