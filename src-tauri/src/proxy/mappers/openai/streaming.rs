@@ -547,7 +547,7 @@ pub fn create_codex_sse_stream<S, E>(
     model: String,
     session_id: String,
     message_count: usize,
-    assistant_turn_index: usize,
+    _assistant_turn_index: usize,
 ) -> Pin<Box<dyn Stream<Item = Result<Bytes, String>> + Send>>
 where
     S: Stream<Item = Result<Bytes, E>> + Send + ?Sized + 'static,
@@ -598,7 +598,6 @@ where
         let mut emitted_tool_calls = std::collections::HashSet::new();
         let mut accumulated_text = String::new();
         let mut accumulated_thinking = String::new();
-        let mut all_reasoning_text = String::new();
         let mut has_seen_tool_calls = false;
         let mut final_finish_reason: Option<String> = None;
 
@@ -696,14 +695,19 @@ where
                                                             yield Ok::<Bytes, String>(codex_sse_frame(&done_ev));
 
                                                             final_outputs_map.insert(reasoning_output_index, reasoning_item);
-                                                            all_reasoning_text.push_str(&accumulated_thinking);
                                                             reasoning_open = false;
                                                         }
 
                                                         if let Some(text) = part.get("text").and_then(|t| t.as_str()) {
                                                             let clean_text = text.replace("<think>\n", "").replace("<think>", "").replace("\n</think>", "").replace("</think>", "");
                                                             if !clean_text.is_empty() {
-                                                                if is_thought {
+                                                                if is_thought && message_item_emitted {
+                                                                    // Once ordinary assistant text has started, it is the
+                                                                    // authoritative result for this response. A late thought
+                                                                    // delta must not be appended to it or open an overlapping
+                                                                    // commentary item.
+                                                                    tracing::warn!("[Codex-Stream] Dropping late thought delta after assistant text started");
+                                                                } else if is_thought {
                                                                     if !reasoning_open {
                                                                         reasoning_output_index = next_output_index;
                                                                         next_output_index += 1;
@@ -720,18 +724,6 @@ where
                                                                         yield Ok::<Bytes, String>(codex_sse_frame(&part_added));
 
                                                                         reasoning_open = true;
-
-                                                                        let prefix = "**Thinking**\n\n";
-                                                                        accumulated_thinking.push_str(prefix);
-                                                                        let prefix_ev = json!({
-                                                                            "type": "response.output_text.delta",
-                                                                            "item_id": &active_reasoning_item_id,
-                                                                            "output_index": reasoning_output_index,
-                                                                            "content_index": 0,
-                                                                            "delta": prefix
-                                                                        });
-                                                                        let prefix_ev = inject_seq(prefix_ev, &mut sequence_number);
-                                                                        yield Ok::<Bytes, String>(codex_sse_frame(&prefix_ev));
                                                                     }
 
                                                                     accumulated_thinking.push_str(&clean_text);
@@ -1061,7 +1053,6 @@ where
             yield Ok::<Bytes, String>(codex_sse_frame(&done_ev));
 
             final_outputs_map.insert(reasoning_output_index, reasoning_item);
-            all_reasoning_text.push_str(&accumulated_thinking);
         }
 
         // A proxy-generated diagnostic (for example an invalid apply_patch) may
@@ -1128,15 +1119,6 @@ where
             yield Ok::<Bytes, String>(codex_sse_frame(&output_item_done));
 
             final_outputs_map.insert(message_output_index, message_item);
-        }
-
-        // Cache the reasoning text for next turn
-        if !all_reasoning_text.is_empty() {
-            crate::proxy::SignatureCache::global().cache_session_reasoning(
-                &session_id,
-                all_reasoning_text,
-                assistant_turn_index,
-            );
         }
 
         let final_outputs: Vec<serde_json::Value> = final_outputs_map.into_values().collect();
@@ -1337,9 +1319,8 @@ mod tests {
         assert_eq!(output.len(), 2);
         assert_eq!(output[0]["type"], "message");
         assert_eq!(output[0]["phase"], "commentary");
-        assert!(output[0]["content"][0]["text"]
-            .as_str()
-            .is_some_and(|text| text.contains("Inspecting the workspace.")));
+        assert_eq!(output[0]["content"][0]["text"], "Inspecting the workspace.");
+        assert!(!raw.contains("**Thinking**"));
         assert_eq!(output[1]["type"], "function_call");
     }
 
@@ -1382,6 +1363,43 @@ mod tests {
         assert_eq!(terminal["type"], "response.completed");
         assert_eq!(terminal["response"]["status"], "completed");
         assert_eq!(terminal["response"]["output"][0]["phase"], "final_answer");
+        assert_eq!(
+            terminal["response"]["output"][0]["content"][0]["text"],
+            "The task is complete."
+        );
+    }
+
+    #[tokio::test]
+    async fn test_codex_late_thought_does_not_mix_into_final_answer() {
+        let (raw, events) = collect_codex_stream(vec![
+            json!({
+                "candidates": [{
+                    "content": {"parts": [{"text": "The task is complete."}]}
+                }]
+            }),
+            json!({
+                "candidates": [{
+                    "content": {"parts": [{"text": "late private thought", "thought": true}]}
+                }]
+            }),
+            json!({
+                "candidates": [{
+                    "finishReason": "STOP",
+                    "content": {"parts": [{"text": ""}]}
+                }]
+            }),
+        ])
+        .await;
+
+        assert!(!raw.contains("late private thought"));
+        assert!(events.iter().all(|event| {
+            !(event["type"] == "response.output_item.added"
+                && event["item"]["id"]
+                    .as_str()
+                    .is_some_and(|id| id.starts_with("msg_thought_")))
+        }));
+        let terminal = events.last().expect("terminal event");
+        assert_eq!(terminal["type"], "response.completed");
         assert_eq!(
             terminal["response"]["output"][0]["content"][0]["text"],
             "The task is complete."
