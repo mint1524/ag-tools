@@ -26,6 +26,66 @@ use axum::http::HeaderMap;
 use std::collections::VecDeque;
 use tokio::time::Duration;
 
+/// Return true only when a streamed chunk contains an actual error event.
+///
+/// Responses lifecycle envelopes legitimately contain `"error": null`, and
+/// assistant text may also mention the word "error". A substring search would
+/// misclassify both as failures and rotate otherwise healthy accounts.
+fn stream_chunk_has_error_event(bytes: &[u8]) -> bool {
+    String::from_utf8_lossy(bytes).lines().any(|line| {
+        let Some(data) = line.trim_start().strip_prefix("data:") else {
+            return false;
+        };
+        let Ok(payload) = serde_json::from_str::<Value>(data.trim()) else {
+            return false;
+        };
+
+        matches!(
+            payload.get("type").and_then(Value::as_str),
+            Some("error" | "response.failed")
+        ) || payload.get("error").is_some_and(|error| !error.is_null())
+    })
+}
+
+#[cfg(test)]
+mod stream_peek_tests {
+    use super::stream_chunk_has_error_event;
+
+    #[test]
+    fn responses_created_with_null_error_is_not_an_error_event() {
+        let chunk = br#"event: response.created
+data: {"type":"response.created","response":{"status":"in_progress","error":null}}
+
+"#;
+        assert!(!stream_chunk_has_error_event(chunk));
+    }
+
+    #[test]
+    fn response_failed_is_an_error_event() {
+        let chunk = br#"event: response.failed
+data: {"type":"response.failed","response":{"status":"failed","error":{"code":"upstream_error"}}}
+
+"#;
+        assert!(stream_chunk_has_error_event(chunk));
+    }
+
+    #[test]
+    fn legacy_top_level_error_is_an_error_event() {
+        let chunk = br#"data: {"error":{"message":"quota exceeded"}}
+
+"#;
+        assert!(stream_chunk_has_error_event(chunk));
+    }
+
+    #[test]
+    fn normal_text_containing_error_is_not_an_error_event() {
+        let chunk = br#"data: {"type":"response.output_text.delta","delta":"The JSON key is called \"error\"."}
+
+"#;
+        assert!(!stream_chunk_has_error_event(chunk));
+    }
+}
+
 fn compact_apply_patch_failure_output(
     output: String,
     seen: &mut std::collections::HashSet<String>,
@@ -527,7 +587,7 @@ pub async fn handle_chat_completions(
                             }
 
                             // Check for error events
-                            if text.contains("\"error\"") {
+                            if stream_chunk_has_error_event(&bytes) {
                                 tracing::warn!("[OpenAI] Error detected during peek, retrying...");
                                 last_error = "Error event during peek".to_string();
                                 retry_this_account = true;
@@ -2168,7 +2228,7 @@ pub async fn handle_completions(
                                 {
                                     continue;
                                 }
-                                if text.contains("\"error\"") {
+                                if stream_chunk_has_error_event(&bytes) {
                                     last_error = "Error event during peek".to_string();
                                     retry_this_account = true;
                                     break;
@@ -2283,7 +2343,7 @@ pub async fn handle_completions(
                                 {
                                     continue;
                                 }
-                                if text.contains("\"error\"") {
+                                if stream_chunk_has_error_event(&bytes) {
                                     last_error = "Error event in internal stream".to_string();
                                     retry_this_account = true;
                                     break;
