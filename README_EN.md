@@ -432,6 +432,11 @@ In clients that support OpenAI protocol (e.g., Cherry Studio), you can configure
             -   **Disable Efficiency Mode & Power Throttling**: Fixed the issue where Windows aggressively forces the process into "Efficiency Mode" (EcoQoS) when minimized/hidden to the system tray. We programmatically disable Power Throttling via Win32 APIs at startup to restore proper thread priority and CPU Core scheduling.
             -   **Resolve Gateway Lag & Tray Freezes**: Ensures the Axum proxy listener responds immediately to loopback TCP requests, and the `winit` event loop processes tray click events reliably in the background, eliminating all freeze symptoms.
             -   *Related Issue*: See [Issue #3241](https://github.com/lbjlaq/Antigravity-Manager/issues/3241).
+        -   **[Core Feature & Optimization] Claude Opus 4.6 Alias Mapping & Live Limit Persistence**:
+            -   **Alias & Parameter Alignment**: Added mapping aliases for `claude-opus-4.6(-thinking)` to target thinking models, enforcing specific `thinkingBudget` and `maxOutputTokens` request bounds during API conversion.
+            -   **Live Upstream Throttle Persistence**: Introduced the `live_limited_models` map to track and persist temporary upstream rate-limiting states locally per account, clearing them automatically upon successful requests.
+            -   **Image Quota Segmentation & Multipart Refinement**: Segmented `gemini-3.1-flash-image` and `gemini-3-pro-image` quotas, enhanced MIME-type auto-detection for Image Edits multipart requests, and aligned error status mapping.
+            -   *Related PR*: See [PR #3240](https://github.com/lbjlaq/Antigravity-Manager/pull/3240).
     *   **v4.3.9 (2026-07-10)**:
         -   **[Core Feature & Fix] Gemini Thinking Injection & Native Codex Reasoning Display**:
             -   **Gemini Thinking Configuration**: Enabled thinking effort configurations and `includeThoughts: true` for `gemini-pro` and `*-pro-agent` / `*-flash-agent` models to allow native thoughts retrieval.

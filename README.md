@@ -444,6 +444,11 @@ response = client.chat.completions.create(
             -   **禁用效率模式与电源限流**: 针对 Windows 平台在最小化/隐藏至系统托盘时被系统强制判定为后台闲置并打上“效率模式（EcoQoS）”标签的问题，我们在启动时通过 Win32 API 显式禁用了电源限流（Power Throttling），恢复正常的 CPU 核心与线程调度优先级。
             -   **消除网关延迟与托盘假死**: 保证了在后台挂置时，Axum 网关能及时响应外部反代请求，且 `winit` 事件循环能正常处理系统托盘菜单的右键点击事件，彻底解决了 Windows 平台后台卡死的问题。
             -   *相关 Issue*: 详见 [Issue #3241](https://github.com/lbjlaq/Antigravity-Manager/issues/3241)。
+        -   **[核心功能/优化] 支持 Claude Opus 4.6 别名映射与实时限流持久化管理 (Claude Opus 4.6 Alias & Live Throttle Persistence)**:
+            -   **别名与参数对齐**: 增加了对 `claude-opus-4.6(-thinking)` 别名到底层模型映射的支持，并在请求转译层对该模型强制锁定 `thinkingBudget` 和 `maxOutputTokens` 参数以防报错。
+            -   **实时限流监控状态持久化**: 引入了 `live_limited_models` 映射，实时在账户层级持久化保存来自上游请求反馈的临时限流状态，且在后续请求成功后自动清除；相关数据已在管理接口及系统托盘同步对齐展现。
+            -   **细分图像模型配额及多部请求优化**: 拆分了 Flash 与 Pro 图像模型配额；改进了图片编辑接口（Image Edits）上传图像及遮罩图像时 MIME 类型的自动提取逻辑；提升了多线程并发请求限流时的错误码响应精度。
+            -   *相关 PR*: 详见 [PR #3240](https://github.com/lbjlaq/Antigravity-Manager/pull/3240)。
     *   **v4.3.9 (2026-07-10)**:
         -   **[核心功能/修复] 修复 Gemini 思考注入与支持 Codex 思考流式原生显示 (Gemini Thinking Injection & Codex Native Reasoning Display)**:
             -   **支持 Gemini 思考程度配置**: 针对 `gemini-pro` 和 `*-pro-agent` / `*-flash-agent` 模型，增加了对其注入思维程度设置与 `includeThoughts: true` 的支持，开启原生思维链返回。
