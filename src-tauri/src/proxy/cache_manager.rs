@@ -197,7 +197,9 @@ impl CacheManager {
         }
 
         if expired {
-            self.si_cache.remove_if(raw_hash, |_, entry| Self::is_expired(entry.timestamp, LAYER_12_TTL));
+            self.si_cache.remove_if(raw_hash, |_, entry| {
+                Self::is_expired(entry.timestamp, LAYER_12_TTL)
+            });
             if let Ok(mut stats) = self.si_stats.write() {
                 stats.2 += 1; // misses
             }
@@ -292,7 +294,9 @@ impl CacheManager {
         }
 
         if expired {
-            self.tools_cache.remove_if(raw_hash, |_, entry| Self::is_expired(entry.timestamp, LAYER_12_TTL));
+            self.tools_cache.remove_if(raw_hash, |_, entry| {
+                Self::is_expired(entry.timestamp, LAYER_12_TTL)
+            });
             if let Ok(mut stats) = self.tools_stats.write() {
                 stats.2 += 1;
             }
@@ -401,7 +405,8 @@ impl CacheManager {
         }
 
         if expired {
-            self.prefix_tracker.remove_if(hash, |_, entry| entry.expires_at <= Instant::now());
+            self.prefix_tracker
+                .remove_if(hash, |_, entry| entry.expires_at <= Instant::now());
             if let Ok(mut stats) = self.prefix_stats.write() {
                 stats.2 += 1;
             }

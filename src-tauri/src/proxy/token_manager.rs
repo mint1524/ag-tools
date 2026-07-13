@@ -984,8 +984,10 @@ impl TokenManager {
                     .get("percentage")
                     .and_then(|v| v.as_i64())
                     .unwrap_or(0) as i32;
-                
-                if let Some(std_id) = crate::proxy::common::model_mapping::normalize_to_standard_id(name) {
+
+                if let Some(std_id) =
+                    crate::proxy::common::model_mapping::normalize_to_standard_id(name)
+                {
                     let entry = group_max_percentage.entry(std_id).or_insert(-1);
                     if percentage > *entry {
                         *entry = percentage;
@@ -3198,8 +3200,9 @@ mod tests {
         let candidates = TokenManager::build_dynamic_model_candidates("gemini-pro-agent").unwrap();
         assert_eq!(candidates[0], "gemini-pro-agent");
         assert!(candidates.contains(&"gemini-3.1-pro-low".to_string()));
-        
-        let candidates_high = TokenManager::build_dynamic_model_candidates("gemini-3.1-pro-high").unwrap();
+
+        let candidates_high =
+            TokenManager::build_dynamic_model_candidates("gemini-3.1-pro-high").unwrap();
         assert_eq!(candidates_high[0], "gemini-3.1-pro-high");
         assert!(candidates_high.contains(&"gemini-pro-agent".to_string()));
     }
