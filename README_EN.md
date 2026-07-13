@@ -428,6 +428,11 @@ In clients that support OpenAI protocol (e.g., Cherry Studio), you can configure
 
 *   **Version History (Changelog)**:
     *   **v4.4.2 (2026-07-13)**:
+        -   **[Core Feature] Enhanced Web Search MCP Integration & Deep Content Reading**:
+            -   **Search Resilience & Failover**: Revamped query parsing and result scoring algorithms. Implemented a robust fallback mechanism that automatically utilizes DuckDuckGo HTML scraping when official search APIs hit rate limits, ensuring continuous connectivity.
+            -   **Clutter-Free Reader Engine**: Integrated a powerful web reading engine (`handle_web_reader`) powered by Readability algorithms. It automatically strips ads and navigation noise from webpages, extracting clean main content and converting it to LLM-friendly Markdown on the fly.
+            -   **Nested Agent Server Spawning**: Extended ZAI dispatch to allow AI agents to seamlessly spawn sub-MCP servers for complex nested toolchains. Overhauled `ClientAdapter` to support enhanced stream forwarding.
+            -   *Related PR*: See [PR #3246](https://github.com/lbjlaq/Antigravity-Manager/pull/3246).
         -   **[Core Fix] Completely Resolved Windows Concurrency Freezes and Proxy Page Hangs (Tokio Thread Pool Starvation Fix)**:
             -   **Isolated High-Frequency Sync I/O**: Migrated all synchronous SQLite log writing (`proxy_db::save_log`, `token_stats::record_usage`) out of standard Tokio coroutines and into dedicated `tokio::task::spawn_blocking` thread pools. This entirely eliminates system-wide background blocking, network request interruptions, and application freezes caused by Windows Defender locking database files.
             -   **Refactored Proxy Page CLI Sync Deadlocks**: Addressed a critical bug where opening the "Proxy" page on Windows completely froze the client due to the `CliSyncCard` component triggering synchronous checks. The underlying `cmd.exe` and `npm` system calls (e.g., `get_cli_sync_status`), along with bulk account file reads, have been wrapped in `spawn_blocking` and refactored to use native `tokio::fs`. The page now loads smoothly without locking the async runtime.
