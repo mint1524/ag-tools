@@ -2043,7 +2043,7 @@ impl TokenManager {
         };
 
         let mut content: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(&path).map_err(|e| format!("读取文件失败: {}", e))?,
+            &tokio::fs::read_to_string(&path).await.map_err(|e| format!("读取文件失败: {}", e))?,
         )
         .map_err(|e| format!("解析 JSON 失败: {}", e))?;
 
@@ -2052,7 +2052,8 @@ impl TokenManager {
         content["disabled_at"] = serde_json::Value::Number(now.into());
         content["disabled_reason"] = serde_json::Value::String(truncate_reason(reason, 800));
 
-        std::fs::write(&path, serde_json::to_string_pretty(&content).unwrap())
+        tokio::fs::write(&path, serde_json::to_string_pretty(&content).unwrap())
+            .await
             .map_err(|e| format!("写入文件失败: {}", e))?;
 
         // 【修复 Issue #3】从内存中移除禁用的账号，防止被60s锁定逻辑继续使用
@@ -2069,13 +2070,14 @@ impl TokenManager {
         let path = &entry.account_path;
 
         let mut content: serde_json::Value = serde_json::from_str(
-            &std::fs::read_to_string(path).map_err(|e| format!("读取文件失败: {}", e))?,
+            &tokio::fs::read_to_string(path).await.map_err(|e| format!("读取文件失败: {}", e))?,
         )
         .map_err(|e| format!("解析 JSON 失败: {}", e))?;
 
         content["token"]["project_id"] = serde_json::Value::String(project_id.to_string());
 
-        std::fs::write(path, serde_json::to_string_pretty(&content).unwrap())
+        tokio::fs::write(path, serde_json::to_string_pretty(&content).unwrap())
+            .await
             .map_err(|e| format!("写入文件失败: {}", e))?;
 
         tracing::debug!("已保存 project_id 到账号 {}", account_id);

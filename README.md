@@ -1,5 +1,5 @@
 # Antigravity Tools 🚀
-> 专业级 AI 账号管理与协议代理系统 (v4.4.1)
+> 专业级 AI 账号管理与协议代理系统 (v4.4.2)
 <div align="center">
   <img src="public/icon.png" alt="Antigravity Logo" width="120" height="120" style="border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
 
@@ -8,7 +8,7 @@
   
   <p>
     <a href="https://github.com/lbjlaq/Antigravity-Manager">
-      <img src="https://img.shields.io/badge/Version-4.4.1-blue?style=flat-square" alt="Version">
+      <img src="https://img.shields.io/badge/Version-4.4.2-blue?style=flat-square" alt="Version">
     </a>
     <img src="https://img.shields.io/badge/Tauri-v2-orange?style=flat-square" alt="Tauri">
     <img src="https://img.shields.io/badge/Backend-Rust-red?style=flat-square" alt="Rust">
@@ -133,7 +133,7 @@ graph TD
 
 **Linux / macOS:**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.4.1/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/v4.4.2/install.sh | bash
 ```
 
 **Windows (PowerShell):**
@@ -143,7 +143,7 @@ irm https://raw.githubusercontent.com/lbjlaq/Antigravity-Manager/main/install.ps
 
 > **支持的格式**: Linux (`.deb` / `.rpm` / `.AppImage`) | macOS (`.dmg`) | Windows (NSIS `.exe`)
 >
-> **高级用法**: 安装指定版本 `curl -fsSL ... | bash -s -- --version 4.4.1`，预览模式 `curl -fsSL ... | bash -s -- --dry-run`
+> **高级用法**: 安装指定版本 `curl -fsSL ... | bash -s -- --version 4.4.2`，预览模式 `curl -fsSL ... | bash -s -- --dry-run`
 
 #### macOS - Homebrew
 如果您已安装 [Homebrew](https://brew.sh/)，也可以通过以下命令安装：
@@ -439,6 +439,11 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
+    *   **v4.4.2 (2026-07-13)**:
+        -   **[核心修复] 彻底解决 Windows 环境下并发卡死与反代页面假死问题 (Tokio Thread Pool Starvation Fix)**:
+            -   **隔离高频同步 I/O**: 将后端频繁写入 SQLite 数据库的监控日志从普通的 Tokio 协程中剥离，迁移至原生的 `tokio::task::spawn_blocking` 阻塞线程池中执行。彻底杜绝了 Windows 杀毒软件锁定文件导致的系统级后台阻塞、网络请求中断及应用拒绝响应。
+            -   **重构反代页面 CLI 同步锁死问题**: 针对 Windows 版本打开“反代页面”时因 `CliSyncCard` 组件触发检查而导致全客户端冻结的问题，将背后同步执行的 `cmd.exe`、`npm` 等命令行调用（如 `get_cli_sync_status`）以及大批量的账号文件读取统一使用 `spawn_blocking` 和原生 `tokio::fs` 进行改造，页面加载顺滑如初。
+            -   *相关 Issue*: 详见 [Issue #3245](https://github.com/lbjlaq/Antigravity-Manager/issues/3245)。
     *   **v4.4.1 (2026-07-12)**:
         -   **[核心修复] 修复托盘退出卡死、进程残留与端口占用问题 (System Tray Exit & Process Residual Fix)**:
             -   **彻底中止后台异步任务**: 在用户点击系统托盘菜单的“退出”时，显式中止 Token 管理器的所有后台扫描与监控任务，防止其阻塞 Tauri 的资源释放流程。
