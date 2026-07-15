@@ -952,8 +952,15 @@ impl ContextManager {
                         }
                         // inlineData: base64-encoded images/audio embedded in the request
                         if let Some(inline_data) = part.get("inlineData") {
-                            let mime = inline_data.get("mimeType").and_then(|m| m.as_str()).unwrap_or("");
-                            let data_len = inline_data.get("data").and_then(|d| d.as_str()).map(|s| s.len()).unwrap_or(0);
+                            let mime = inline_data
+                                .get("mimeType")
+                                .and_then(|m| m.as_str())
+                                .unwrap_or("");
+                            let data_len = inline_data
+                                .get("data")
+                                .and_then(|d| d.as_str())
+                                .map(|s| s.len())
+                                .unwrap_or(0);
                             total += estimate_inline_data_tokens(mime, data_len);
                         }
                         if let Some(fc) = part.get("functionCall") {
