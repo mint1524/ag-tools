@@ -439,6 +439,10 @@ response = client.chat.completions.create(
 ## 📝 开发者与社区
 
 *   **版本演进 (Changelog)**:
+    *   **v4.4.3 (2026-07-15)**:
+        -   **[核心特性] 账号准入限制解除 (Bypass Account Eligibility Check)**:
+            -   **一键解封拦截**: 针对新版客户端强制拦截未授权账号的问题，新增一键本地跳过功能。通过动态修改底层 `agy` 程序的 ARM64 机器指令流（重写 `cbz` 校验判断分支），并配合 macOS `codesign` 自动签发，直接突破本地账号准入验证。
+            -   *相关 PR*: 详见 [PR #3248](https://github.com/lbjlaq/Antigravity-Manager/pull/3248)。
     *   **v4.4.2 (2026-07-13)**:
         -   **[核心特性] 增强网页搜索 MCP 集成与网页正文深度读取 (Enhanced Web Search MCP & Content Reading)**:
             -   **防封锁搜索与容灾**: 重构了搜索词解析与结果排序评分算法，并在官方搜索 API 遭遇限流（Rate Limit）时自动降级采用 DuckDuckGo 的原生 HTML 抓取策略，确保联网搜索永不断联。

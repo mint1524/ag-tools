@@ -18,7 +18,7 @@ pub mod proxy_pool;
 pub mod user_token;
 // 导出 patch 命令
 pub mod patch;
-pub use patch::patch_agy_binary;
+pub use patch::*;
 
 /// 列出所有账号
 #[tauri::command]

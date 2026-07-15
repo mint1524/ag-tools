@@ -427,6 +427,10 @@ In clients that support OpenAI protocol (e.g., Cherry Studio), you can configure
 ## 📝 Developer & Community
 
 *   **Version History (Changelog)**:
+    *   **v4.4.3 (2026-07-15)**:
+        -   **[Core Feature] Bypass Account Eligibility Check**:
+            -   **One-Click Unblock**: Bypasses the new client's mandatory unauthorized account blocking. Dynamically patches the underlying `agy` ARM64 instruction stream (overwriting `cbz` branches) and performs ad-hoc macOS `codesign` to skip local access control checks seamlessly.
+            -   *Related PR*: See [PR #3248](https://github.com/lbjlaq/Antigravity-Manager/pull/3248).
     *   **v4.4.2 (2026-07-13)**:
         -   **[Core Feature] Enhanced Web Search MCP Integration & Deep Content Reading**:
             -   **Search Resilience & Failover**: Revamped query parsing and result scoring algorithms. Implemented a robust fallback mechanism that automatically utilizes DuckDuckGo HTML scraping when official search APIs hit rate limits, ensuring continuous connectivity.

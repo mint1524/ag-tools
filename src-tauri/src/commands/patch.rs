@@ -4,12 +4,21 @@ use std::process::Command;
 
 #[tauri::command]
 pub async fn patch_agy_binary(file_path: String) -> Result<String, String> {
-    let path = Path::new(&file_path);
+    let mut actual_path = file_path.clone();
+    if actual_path.ends_with(".app") || actual_path.ends_with(".app/") {
+        let app_path = Path::new(&actual_path);
+        let inner = app_path.join("Contents/MacOS/agy");
+        if inner.exists() {
+            actual_path = inner.to_string_lossy().to_string();
+        }
+    }
+
+    let path = Path::new(&actual_path);
     if !path.exists() {
         return Err("File not found".into());
     }
 
-    let mut data = fs::read(path).map_err(|e| format!("Failed to read file: {}", e))?;
+    let data = fs::read(path).map_err(|e| format!("Failed to read file: {}", e))?;
     let n = data.len();
     let mut patch_offset = None;
     let mut new_inst_bytes = None;
@@ -87,7 +96,7 @@ pub async fn patch_agy_binary(file_path: String) -> Result<String, String> {
     let patch_bytes = new_inst_bytes.unwrap();
 
     // Create backup
-    let backup_path = format!("{}.bak", file_path);
+    let backup_path = format!("{}.bak", actual_path);
     if !Path::new(&backup_path).exists() {
         fs::copy(path, &backup_path).map_err(|e| format!("Failed to create backup: {}", e))?;
     }
@@ -107,14 +116,18 @@ pub async fn patch_agy_binary(file_path: String) -> Result<String, String> {
     #[cfg(target_os = "macos")]
     {
         let _ = Command::new("codesign")
-            .args(&["--remove-signature", &file_path])
+            .args(&["--remove-signature", &actual_path])
             .output();
-        let status = Command::new("codesign")
-            .args(&["--sign", "-", &file_path])
-            .status();
-        match status {
-            Ok(s) if s.success() => {},
-            _ => return Err("Patch applied, but codesigning failed on macOS.".into()),
+        let output = Command::new("codesign")
+            .args(&["--sign", "-", &actual_path])
+            .output();
+        match output {
+            Ok(out) if out.status.success() => {},
+            Ok(out) => {
+                let err_msg = String::from_utf8_lossy(&out.stderr);
+                return Err(format!("Patch applied, but codesigning failed: {}", err_msg));
+            },
+            Err(e) => return Err(format!("Patch applied, but codesigning execution failed: {}", e)),
         }
     }
 
