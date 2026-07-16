@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import { formatTimeRemaining, formatCompactNumber } from '../../utils/format';
 import { enterMiniMode, exitMiniMode } from '../../utils/windowManager';
+import { categorizeModel, getModelDisplayName } from '../../config/modelConfig';
 import { getVersion } from '@tauri-apps/api/app';
 import { listen } from '@tauri-apps/api/event';
 
@@ -136,15 +137,10 @@ export default function MiniView() {
 
     // Extract specific models to match AccountRow.tsx
     const geminiProModel = currentAccount?.quota?.models
-        .filter(m =>
-            m.name.toLowerCase() === 'gemini-3-pro-high'
-            || m.name.toLowerCase() === 'gemini-3-pro-low'
-            || m.name.toLowerCase() === 'gemini-3.1-pro-high'
-            || m.name.toLowerCase() === 'gemini-3.1-pro-low'
-        )
+        .filter(m => categorizeModel(m.name) === 'gemini-pro')
         .sort((a, b) => (a.percentage || 0) - (b.percentage || 0))[0];
 
-    const geminiFlashModel = currentAccount?.quota?.models.find(m => m.name.toLowerCase() === 'gemini-3-flash');
+    const geminiFlashModel = currentAccount?.quota?.models.find(m => categorizeModel(m.name) === 'gemini-flash');
 
     const claudeGroupNames = [
         'claude-opus-4-6-thinking',
@@ -276,9 +272,9 @@ export default function MiniView() {
                             {/* Models List */}
                             <AnimatePresence mode='popLayout'>
                                 <div className="space-y-4 !mt-0">
-                                    {renderModelRow(geminiProModel, 'Gemini 3.1 Pro', 'emerald')}
-                                    {renderModelRow(geminiFlashModel, 'Gemini 3 Flash', 'emerald')}
-                                    {renderModelRow(claudeModel, t('common.claude_series', 'Claude 系列'), 'cyan')}
+                                    {renderModelRow(geminiProModel, getModelDisplayName(geminiProModel), 'emerald')}
+                                    {renderModelRow(geminiFlashModel, getModelDisplayName(geminiFlashModel), 'emerald')}
+                                    {renderModelRow(claudeModel, getModelDisplayName(claudeModel, t('common.claude_series', 'Claude 系列')), 'cyan')}
 
                                     {!geminiProModel && !geminiFlashModel && !claudeModel && (
                                         <div className="text-center py-4 text-xs text-gray-400">

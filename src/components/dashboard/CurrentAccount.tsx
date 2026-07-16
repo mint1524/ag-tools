@@ -1,6 +1,7 @@
 import { CheckCircle, Mail, Diamond, Gem, Circle, Tag, Lock, Clock } from 'lucide-react';
 import { Account } from '../../types/account';
 import { formatTimeRemaining } from '../../utils/format';
+import { categorizeModel, getModelProtectionKey, getModelDisplayName } from '../../config/modelConfig';
 
 interface CurrentAccountProps {
     account: Account | null;
@@ -26,24 +27,20 @@ function CurrentAccount({ account, onSwitch }: CurrentAccountProps) {
     }
 
     const geminiProModel = account.quota?.models
-        .filter(m =>
-            m.name.toLowerCase() === 'gemini-3-pro-high'
-            || m.name.toLowerCase() === 'gemini-3-pro-low'
-            || m.name.toLowerCase() === 'gemini-3.1-pro-high'
-            || m.name.toLowerCase() === 'gemini-3.1-pro-low'
-        )
+        .filter(m => categorizeModel(m.name) === 'gemini-pro')
         .sort((a, b) => (a.percentage || 0) - (b.percentage || 0))[0];
 
-    const geminiFlashModel = account.quota?.models.find(m => m.name.toLowerCase() === 'gemini-3-flash');
+    const geminiFlashModel = account.quota?.models.find(m => categorizeModel(m.name) === 'gemini-flash');
 
     const geminiImageModel = account.quota?.models.find(m => {
-        const name = m.name.toLowerCase();
-        return name === 'gemini-3.1-flash-image' || name === 'gemini-3-pro-image';
+        const cat = categorizeModel(m.name);
+        return cat === 'gemini-flash-image' || cat === 'gemini-pro-image';
     });
     const nowSeconds = Math.floor(Date.now() / 1000);
-    const liveImageLimit =
-        account.live_limited_models?.['gemini-3.1-flash-image'] ||
-        account.live_limited_models?.['gemini-3-pro-image'];
+    const imageProtectionKey = getModelProtectionKey(geminiImageModel?.name || '');
+    const liveImageLimit = imageProtectionKey
+        ? account.live_limited_models?.[imageProtectionKey]
+        : undefined;
     const isImageLiveLimited = Boolean(liveImageLimit && liveImageLimit.until > nowSeconds);
 
     const claudeGroupNames = [
@@ -108,7 +105,7 @@ function CurrentAccount({ account, onSwitch }: CurrentAccountProps) {
                         <div className="flex justify-between items-baseline">
                             <span className="text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1">
                                 {(account.protected_models?.includes('gemini-3-pro-high') || account.protected_models?.includes('gemini-3.1-pro-high')) && <Lock className="w-2.5 h-2.5 text-rose-500" />}
-                                Gemini 3.1 Pro
+                                {getModelDisplayName(geminiProModel)}
                             </span>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-gray-400 dark:text-gray-500" title={`${t('accounts.reset_time')}: ${new Date(geminiProModel.reset_time).toLocaleString()}`}>
@@ -139,7 +136,7 @@ function CurrentAccount({ account, onSwitch }: CurrentAccountProps) {
                             <span className="text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1">
                                 {isImageLiveLimited && <Clock className="w-2.5 h-2.5 text-amber-500" />}
                                 {(account.protected_models?.includes('gemini-3.1-flash-image') || account.protected_models?.includes('gemini-3-pro-image')) && <Lock className="w-2.5 h-2.5 text-rose-500" />}
-                                Gemini 3.1 Flash Image
+                                {getModelDisplayName(geminiImageModel)}
                             </span>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-gray-400 dark:text-gray-500" title={`${t('accounts.reset_time')}: ${new Date(geminiImageModel.reset_time).toLocaleString()}`}>
@@ -170,7 +167,7 @@ function CurrentAccount({ account, onSwitch }: CurrentAccountProps) {
                         <div className="flex justify-between items-baseline">
                             <span className="text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1">
                                 {account.protected_models?.includes('gemini-3-flash') && <Lock className="w-2.5 h-2.5 text-rose-500" />}
-                                Gemini 3 Flash
+                                {getModelDisplayName(geminiFlashModel)}
                             </span>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-gray-400 dark:text-gray-500" title={`${t('accounts.reset_time')}: ${new Date(geminiFlashModel.reset_time).toLocaleString()}`}>
@@ -201,7 +198,7 @@ function CurrentAccount({ account, onSwitch }: CurrentAccountProps) {
                         <div className="flex justify-between items-baseline">
                             <span className="text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1">
                                 {account.protected_models?.includes('claude') && <Lock className="w-2.5 h-2.5 text-rose-500" />}
-                                Claude 系列
+                                {getModelDisplayName(claudeModel, t('common.claude_series', 'Claude 系列'))}
                             </span>
                             <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-gray-400 dark:text-gray-500" title={`${t('accounts.reset_time')}: ${new Date(claudeModel.reset_time).toLocaleString()}`}>

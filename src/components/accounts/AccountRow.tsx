@@ -4,6 +4,7 @@ import { getQuotaColor, formatTimeRemaining, getTimeRemainingColor } from '../..
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 import { formatCompactDuration, getLiveLimitForModel, getLiveLimitState } from '../../utils/liveLimit';
+import { categorizeModel, getModelProtectionKey } from '../../config/modelConfig';
 
 interface AccountRowProps {
     account: Account;
@@ -27,21 +28,15 @@ function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSw
     const { t } = useTranslation();
     // [重构] 按组聚合查找逻辑，优先显示组内配额最低的型号以与锁定状态（🔒）对齐
     const geminiProModel = account.quota?.models
-        .filter(m =>
-            m.name.toLowerCase() === 'gemini-3-pro-high'
-            || m.name.toLowerCase() === 'gemini-3-pro-low'
-            || m.name.toLowerCase() === 'gemini-3.1-pro-high'
-            || m.name.toLowerCase() === 'gemini-3.1-pro-low'
-        )
+        .filter(m => categorizeModel(m.name) === 'gemini-pro')
         .sort((a, b) => (a.percentage || 0) - (b.percentage || 0))[0];
 
-    const geminiFlashModel = account.quota?.models.find(m => m.name.toLowerCase() === 'gemini-3-flash');
+    const geminiFlashModel = account.quota?.models.find(m => categorizeModel(m.name) === 'gemini-flash');
 
-    const geminiImageModel = account.quota?.models.find(m => {
-        const name = m.name.toLowerCase();
-        return name === 'gemini-3.1-flash-image' || name === 'gemini-3-pro-image';
-    });
-    const liveImageLimit = getLiveLimitForModel(account, geminiImageModel?.name, 'gemini-3.1-flash-image');
+    const geminiImageModel = account.quota?.models.find(m =>
+        categorizeModel(m.name) === 'gemini-flash-image' || categorizeModel(m.name) === 'gemini-pro-image'
+    );
+    const liveImageLimit = getLiveLimitForModel(account, geminiImageModel?.name, getModelProtectionKey(geminiImageModel?.name || '') ?? undefined);
     const liveImageState = getLiveLimitState(liveImageLimit);
     const isImageLiveLimited = liveImageState.shouldShow;
     const imageLimitTitle = liveImageLimit

@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import AddAccountDialog from '../components/accounts/AddAccountDialog';
 import { showToast } from '../components/common/ToastContainer';
 import BestAccounts from '../components/dashboard/BestAccounts';
+import { categorizeModel } from '../config/modelConfig';
 import CurrentAccount from '../components/dashboard/CurrentAccount';
 import { exportAccounts } from '../services/accountService';
 import { useAccountStore } from '../stores/useAccountStore';
@@ -36,12 +37,7 @@ function Dashboard() {
     const stats = useMemo(() => {
         const getGeminiProQuota = (a: Account) =>
             (a.quota?.models || [])
-                .filter(m =>
-                    m.name.toLowerCase() === 'gemini-3-pro-high'
-                    || m.name.toLowerCase() === 'gemini-3-pro-low'
-                    || m.name.toLowerCase() === 'gemini-3.1-pro-high'
-                    || m.name.toLowerCase() === 'gemini-3.1-pro-low'
-                )
+                .filter(m => categorizeModel(m.name) === 'gemini-pro')
                 .reduce((best, model) => Math.max(best, model.percentage || 0), 0);
 
         const geminiQuotas = accounts
@@ -50,8 +46,8 @@ function Dashboard() {
 
         const geminiImageQuotas = accounts
             .map(a => a.quota?.models.find(m =>
-                m.name.toLowerCase() === 'gemini-3.1-flash-image' ||
-                m.name.toLowerCase() === 'gemini-3-pro-image'
+                categorizeModel(m.name) === 'gemini-flash-image' ||
+                categorizeModel(m.name) === 'gemini-pro-image'
             )?.percentage || 0)
             .filter(q => q > 0);
 

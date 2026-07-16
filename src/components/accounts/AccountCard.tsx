@@ -5,7 +5,7 @@ import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 import { useConfigStore } from '../../stores/useConfigStore';
 import { QuotaItem } from './QuotaItem';
-import { MODEL_CONFIG, sortModels } from '../../config/modelConfig';
+import { MODEL_CONFIG, sortModels, categorizeModel } from '../../config/modelConfig';
 import { getValidationBlockedStatusLabel } from './accountValidationStatus';
 import { getLiveLimitForModel } from '../../utils/liveLimit';
 
@@ -96,7 +96,13 @@ function AccountCard({ account, selected, onSelect, isCurrent: propIsCurrent, is
             // Filter for pinned or defaults
             const pinned = config?.pinned_quota_models?.models;
             if (pinned && pinned.length > 0) {
-                models = accountModels.filter(m => pinned.includes(m.id));
+                // 使用 categorizeModel 做 family-aware 匹配，确保旧模型 ID 也能匹配到新 canonical ID
+                const pinnedCategories = new Set(pinned.map(p => categorizeModel(p)));
+                models = accountModels.filter(m => {
+                    const category = categorizeModel(m.id);
+                    if (category === 'other') return pinned.includes(m.id);
+                    return pinnedCategories.has(category);
+                });
             } else {
                 // Default fallback: show known default models, plus we show all dynamic pinned models
                 // 暂时退化：如果没有 config 就不阻拦了？不，没有 pinned 就显示内置+有 display_name 的。
