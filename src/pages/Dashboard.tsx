@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import AddAccountDialog from '../components/accounts/AddAccountDialog';
 import { showToast } from '../components/common/ToastContainer';
 import BestAccounts from '../components/dashboard/BestAccounts';
-import { categorizeModel, findQuotaModel } from '../config/modelConfig';
+import { findImageQuotaModel, findQuotaModel } from '../config/modelConfig';
 import CurrentAccount from '../components/dashboard/CurrentAccount';
 import { exportAccounts } from '../services/accountService';
 import { useAccountStore } from '../stores/useAccountStore';
@@ -43,10 +43,7 @@ function Dashboard() {
             .filter(q => q > 0);
 
         const geminiImageQuotas = accounts
-            .map(a => a.quota?.models.find(m =>
-                categorizeModel(m.name) === 'gemini-flash-image' ||
-                categorizeModel(m.name) === 'gemini-pro-image'
-            )?.percentage || 0)
+            .map(a => findImageQuotaModel(a.quota?.models)?.percentage || 0)
             .filter(q => q > 0);
 
         const claudeQuotas = accounts

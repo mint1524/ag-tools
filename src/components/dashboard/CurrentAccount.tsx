@@ -1,7 +1,7 @@
 import { CheckCircle, Mail, Diamond, Gem, Circle, Tag, Lock, Clock } from 'lucide-react';
 import { Account } from '../../types/account';
 import { formatTimeRemaining } from '../../utils/format';
-import { categorizeModel, getModelProtectionKey, getModelDisplayName, findQuotaModel } from '../../config/modelConfig';
+import { findQuotaModel, getModelProtectionKey, getModelDisplayName, findImageQuotaModel } from '../../config/modelConfig';
 
 interface CurrentAccountProps {
     account: Account | null;
@@ -29,10 +29,7 @@ function CurrentAccount({ account, onSwitch }: CurrentAccountProps) {
     const geminiProModel = findQuotaModel(account.quota?.models, 'gemini-pro');
     const geminiFlashModel = findQuotaModel(account.quota?.models, 'gemini-flash');
 
-    const geminiImageModel = account.quota?.models.find(m => {
-        const cat = categorizeModel(m.name);
-        return cat === 'gemini-flash-image' || cat === 'gemini-pro-image';
-    });
+    const geminiImageModel = findImageQuotaModel(account.quota?.models);
     const nowSeconds = Math.floor(Date.now() / 1000);
     const imageProtectionKey = getModelProtectionKey(geminiImageModel?.name || '');
     const liveImageLimit = imageProtectionKey
@@ -126,7 +123,7 @@ function CurrentAccount({ account, onSwitch }: CurrentAccountProps) {
                         <div className="flex justify-between items-baseline">
                             <span className="text-xs font-medium text-gray-600 dark:text-gray-400 flex items-center gap-1">
                                 {isImageLiveLimited && <Clock className="w-2.5 h-2.5 text-amber-500" />}
-                                {(account.protected_models?.includes('gemini-3.1-flash-image') || account.protected_models?.includes('gemini-3-pro-image')) && <Lock className="w-2.5 h-2.5 text-rose-500" />}
+                                {(imageProtectionKey && account.protected_models?.includes(imageProtectionKey)) && <Lock className="w-2.5 h-2.5 text-rose-500" />}
                                 {getModelDisplayName(geminiImageModel)}
                             </span>
                             <div className="flex items-center gap-2">

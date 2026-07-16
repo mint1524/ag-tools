@@ -31,7 +31,7 @@ function BestAccounts({ accounts, currentAccountId, onSwitch }: BestAccountsProp
         .filter(a => a.id !== currentAccountId)
         .map(a => ({
             ...a,
-            quotaVal: a.quota?.models.find(m => m.name.toLowerCase().includes('claude'))?.percentage || 0,
+            quotaVal: findQuotaModel(a.quota?.models, 'claude')?.percentage || 0,
         }))
         .filter(a => a.quotaVal > 0)
         .sort((a, b) => b.quotaVal - a.quotaVal);

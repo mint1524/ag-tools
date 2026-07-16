@@ -4,7 +4,7 @@ import { getQuotaColor, formatTimeRemaining, getTimeRemainingColor } from '../..
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 import { formatCompactDuration, getLiveLimitForModel, getLiveLimitState } from '../../utils/liveLimit';
-import { categorizeModel, getModelProtectionKey, findQuotaModel } from '../../config/modelConfig';
+import { getModelProtectionKey, findQuotaModel, findImageQuotaModel } from '../../config/modelConfig';
 
 interface AccountRowProps {
     account: Account;
@@ -30,10 +30,9 @@ function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSw
     const geminiProModel = findQuotaModel(account.quota?.models, 'gemini-pro');
     const geminiFlashModel = findQuotaModel(account.quota?.models, 'gemini-flash');
 
-    const geminiImageModel = account.quota?.models.find(m =>
-        categorizeModel(m.name) === 'gemini-flash-image' || categorizeModel(m.name) === 'gemini-pro-image'
-    );
-    const liveImageLimit = getLiveLimitForModel(account, geminiImageModel?.name, getModelProtectionKey(geminiImageModel?.name || '') ?? undefined);
+    const geminiImageModel = findImageQuotaModel(account.quota?.models);
+    const imageProtectionKey = getModelProtectionKey(geminiImageModel?.name || '');
+    const liveImageLimit = getLiveLimitForModel(account, geminiImageModel?.name, imageProtectionKey ?? undefined);
     const liveImageState = getLiveLimitState(liveImageLimit);
     const isImageLiveLimited = liveImageState.shouldShow;
     const imageLimitTitle = liveImageLimit
@@ -249,7 +248,7 @@ function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSw
                             <div className="relative z-10 w-full flex items-center text-[10px] font-mono leading-none">
                                 <span className="w-[64px] text-gray-500 dark:text-gray-400 font-bold pr-1 flex items-center gap-1" title={imageLimitTitle}>
                                     {isImageLiveLimited && <Clock className={cn("w-2.5 h-2.5 shrink-0 z-10", liveImageState.isActive ? "text-rose-500" : "text-amber-500")} />}
-                                    {(account.protected_models?.includes('gemini-3.1-flash-image') || account.protected_models?.includes('gemini-3-pro-image')) && <Lock className="w-2.5 h-2.5 text-rose-500 shrink-0 z-10" />}
+                                    {(imageProtectionKey && account.protected_models?.includes(imageProtectionKey)) && <Lock className="w-2.5 h-2.5 text-rose-500 shrink-0 z-10" />}
                                     <span className="truncate">G3 Image</span>
                                 </span>
                                 <div className="flex-1 flex justify-center">

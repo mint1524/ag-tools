@@ -325,4 +325,15 @@ export function sortModels<T extends { id: string }>(models: T[]): T[] {
 
 // ── 模型分类与保护键（实现在 src/utils/modelCategory.ts，此处只 re-export）───
 
-export { categorizeModel, getModelProtectionKey, getModelDisplayName, findQuotaModel, type ModelCategory } from '../utils/modelCategory';
+export {
+    categorizeModel,
+    getModelProtectionKey,
+    getModelDisplayName,
+    findQuotaModel,
+    findImageQuotaModel,
+    ensurePinnedImageSelector,
+    DEFAULT_IMAGE_PIN_SELECTOR,
+    resolveQuotaModels,
+    type ModelCategory,
+    type QuotaModelSelection,
+} from '../utils/modelCategory';

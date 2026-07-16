@@ -52,7 +52,7 @@ import { cn } from '../../utils/cn';
 
 import { useConfigStore } from '../../stores/useConfigStore';
 import { QuotaItem } from './QuotaItem';
-import { MODEL_CONFIG, sortModels } from '../../config/modelConfig';
+import { MODEL_CONFIG, sortModels, resolveQuotaModels, ensurePinnedImageSelector } from '../../config/modelConfig';
 import { categorizeModel, getModelProtectionKey } from '../../utils/modelCategory';
 import { getValidationBlockedStatusLabel } from './accountValidationStatus';
 import { getLiveLimitForModel } from '../../utils/liveLimit';
@@ -126,28 +126,6 @@ interface AccountRowContentProps {
 // ============================================================================
 
 
-
-// ============================================================================
-const MODEL_ID_ALIASES: Record<string, string[]> = {
-    'gemini-3-pro-high': ['gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3-pro-preview', 'gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3.1-pro-preview', 'gemini-3.1-pro', 'gemini-pro-agent'],
-    'gemini-3-pro-low': ['gemini-3-pro-low', 'gemini-3-pro-high', 'gemini-3-pro-preview', 'gemini-3.1-pro-low', 'gemini-3.1-pro-high', 'gemini-3.1-pro-preview', 'gemini-3.1-pro', 'gemini-pro-agent'],
-    'gemini-3-pro-preview': ['gemini-3-pro-preview', 'gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3.1-pro-preview', 'gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3.1-pro', 'gemini-pro-agent'],
-    'gemini-3.1-pro-high': ['gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3.1-pro-preview', 'gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3-pro-preview', 'gemini-3.1-pro', 'gemini-pro-agent'],
-    'gemini-3.1-pro-low': ['gemini-3.1-pro-low', 'gemini-3.1-pro-high', 'gemini-3.1-pro-preview', 'gemini-3-pro-low', 'gemini-3-pro-high', 'gemini-3-pro-preview', 'gemini-3.1-pro', 'gemini-pro-agent'],
-    'gemini-3.1-pro-preview': ['gemini-3.1-pro-preview', 'gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3-pro-preview', 'gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3.1-pro', 'gemini-pro-agent'],
-    'gemini-3.1-pro': ['gemini-3.1-pro', 'gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3.1-pro-preview', 'gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3-pro-preview', 'gemini-pro-agent'],
-    'gemini-pro-agent': ['gemini-pro-agent', 'gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3-pro-preview', 'gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3.1-pro-preview', 'gemini-3.1-pro'],
-    'gemini-3-flash': ['gemini-3-flash', 'gemini-3.5-flash', 'gemini-3-flash-agent'],
-    'gemini-3.5-flash': ['gemini-3.5-flash', 'gemini-3-flash', 'gemini-3-flash-agent'],
-    'gemini-3-flash-agent': ['gemini-3-flash-agent', 'gemini-3-flash', 'gemini-3.5-flash'],
-    'claude-sonnet-4-5': ['claude-sonnet-4-5', 'claude-sonnet-4-6', 'claude-opus-4-6-thinking'],
-    'claude-sonnet-4-6': ['claude-sonnet-4-6', 'claude-sonnet-4-5', 'claude-opus-4-6-thinking'],
-    'claude-opus-4-6-thinking': ['claude-opus-4-6-thinking', 'claude-sonnet-4-5', 'claude-sonnet-4-6'],
-};
-
-function getModelAliases(modelId: string): string[] {
-    return MODEL_ID_ALIASES[modelId] || [modelId];
-}
 
 function isModelProtected(protectedModels: string[] | undefined, modelName: string): boolean {
     if (!protectedModels || protectedModels.length === 0) return false;
@@ -322,7 +300,9 @@ function AccountRowContent({
     // 使用统一的模型配置
 
     // 获取要显示的模型列表
-    const pinnedModels = config?.pinned_quota_models?.models || Object.keys(MODEL_CONFIG);
+    const pinnedModels = ensurePinnedImageSelector(
+        config?.pinned_quota_models?.models || Object.keys(MODEL_CONFIG),
+    );
 
     // 根据 show_all 状态决定显示哪些模型
     const uniqueLabels = new Set<string>();
@@ -338,27 +318,23 @@ function AccountRowContent({
                     data: m
                 };
             })
-            : (() => {
-                const consumedModelNames = new Set<string>();
-                return pinnedModels.map(modelId => {
-                const m = account.quota?.models.find(m => (m.name === modelId || getModelAliases(modelId).includes(m.name.toLowerCase())) && !consumedModelNames.has(m.name.toLowerCase()));
-                if (m) consumedModelNames.add(m.name.toLowerCase());
-                const config = MODEL_CONFIG[modelId];
-                if (!config && !m) return null; // Safe guard for unknown models that aren't fetched
-                const label = m?.display_name || (config?.i18nKey ? t(config.i18nKey) : (config?.shortLabel || config?.label || modelId));
+            : resolveQuotaModels(account.quota?.models, pinnedModels).map(sel => {
+                const selectorConfig = MODEL_CONFIG[sel.selectorId.toLowerCase()];
+                const resolvedConfig = sel.model ? MODEL_CONFIG[sel.model.name.toLowerCase()] : undefined;
+                if (!selectorConfig && !sel.model) return null;
+                const label = sel.model?.display_name
+                    || (resolvedConfig?.shortLabel || resolvedConfig?.label)
+                    || (selectorConfig?.shortLabel || selectorConfig?.label)
+                    || (resolvedConfig?.i18nKey ? t(resolvedConfig.i18nKey) : undefined)
+                    || (selectorConfig?.i18nKey ? t(selectorConfig.i18nKey) : undefined)
+                    || sel.selectorId;
                 return {
-                    id: modelId,
-                    label: label,
-                    protectedKey: config?.protectedKey || modelId,
-                    data: m
+                    id: sel.model?.name.toLowerCase() ?? sel.selectorId.toLowerCase(),
+                    label,
+                    protectedKey: getModelProtectionKey(sel.model?.name ?? sel.selectorId) ?? resolvedConfig?.protectedKey ?? selectorConfig?.protectedKey ?? sel.selectorId,
+                    data: sel.model,
                 };
-            }).filter((item): item is {
-                id: string;
-                label: string;
-                protectedKey: string;
-                data: ModelQuota | undefined;
-            } => item !== null)   // closes .map().filter()
-        })()                     // closes (() => { ... })()
+            }).filter((item): item is { id: string; label: string; protectedKey: string; data: ModelQuota | undefined } => item !== null)
     ).filter(m => {
             // 过滤特定的 Claude/Gemini 思考变体 (在列表页隐藏)
             const isHiddenThinking = m.id.includes('thinking');

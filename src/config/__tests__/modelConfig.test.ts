@@ -6,7 +6,22 @@
  *
  * Run: npx tsx src/config/__tests__/modelConfig.test.ts
  */
-import { categorizeModel, getModelProtectionKey, getModelDisplayName, findQuotaModel, type ModelCategory } from '../../utils/modelCategory';
+import {
+    categorizeModel,
+    getModelProtectionKey,
+    getModelDisplayName,
+    findQuotaModel,
+    findImageQuotaModel,
+    ensurePinnedImageSelector,
+    DEFAULT_IMAGE_PIN_SELECTOR,
+    resolveQuotaModels,
+    type ModelCategory,
+} from '../../utils/modelCategory';
+// Compile-time guard: if findImageQuotaModel is removed from the config re-export,
+// the type alias test below fails with TS2724 on `pnpm tsc --noEmit`.
+function __noop<T>(): void { const _x: T[] = []; void _x; }
+type _ConfigFindImageQuotaModel = typeof import('../../config/modelConfig').findImageQuotaModel;
+__noop<_ConfigFindImageQuotaModel>();
 
 let passed = 0;
 let failed = 0;
@@ -119,10 +134,114 @@ const findCases: Array<[Array<{ name: string }>, ModelCategory, string | null]> 
 
 for (const [models, category, expected] of findCases) {
     test(`findQuotaModel(${category}, ${models.length} models)`, () => {
-        const result = findQuotaModel(models as any, category);
+        const result = findQuotaModel(models, category);
         assertEqual(result?.name ?? null, expected);
     });
 }
+
+// ── resolveQuotaModels image-selector regression ──────────────────────────────
+
+const imageModels = [{ name: 'gemini-3.1-flash-image', percentage: 80 }];
+
+test('resolveQuotaModels: legacy gemini-3-pro-image resolves flash-image + category:gemini-image', () => {
+    const results = resolveQuotaModels(imageModels, ['gemini-3-pro-image']);
+    assertEqual(results.length, 1);
+    assertEqual(results[0].selectionKey, 'category:gemini-image');
+    assertEqual(results[0].model?.name, 'gemini-3.1-flash-image');
+});
+
+test('resolveQuotaModels: current gemini-3.1-flash-image resolves same model + key', () => {
+    const results = resolveQuotaModels(imageModels, ['gemini-3.1-flash-image']);
+    assertEqual(results.length, 1);
+    assertEqual(results[0].selectionKey, 'category:gemini-image');
+    assertEqual(results[0].model?.name, 'gemini-3.1-flash-image');
+});
+
+test('resolveQuotaModels: both image selectors dedupe to one selection', () => {
+    const results = resolveQuotaModels(imageModels, ['gemini-3-pro-image', 'gemini-3.1-flash-image']);
+    assertEqual(results.length, 1);
+    assertEqual(results[0].selectionKey, 'category:gemini-image');
+    assertEqual(results[0].model?.name, 'gemini-3.1-flash-image');
+});
+
+test('resolveQuotaModels: legacy image selector with no image API model returns unresolved', () => {
+    const results = resolveQuotaModels([{ name: 'gemini-3.5-flash', percentage: 50 }], ['gemini-3-pro-image']);
+    assertEqual(results.length, 1);
+    assertEqual(results[0].selectionKey, 'category:gemini-image');
+    assertEqual(results[0].model, undefined);
+});
+
+// ── findImageQuotaModel ───────────────────────────────────────────────────
+
+const imageNameCases: Array<[Array<{ name: string }>, string | null]> = [
+    [[{ name: 'gemini-3.1-flash-image' }, { name: 'gemini-3-pro-image' }], 'gemini-3.1-flash-image'],
+    [[{ name: 'gemini-3-pro-image' }], 'gemini-3-pro-image'],
+    [[{ name: 'gemini-3.5-flash' }], null],
+];
+
+for (const [models, expected] of imageNameCases) {
+    test(`findImageQuotaModel(${models.length} models)`, () => {
+        const result = findImageQuotaModel(models);
+        assertEqual(result?.name ?? null, expected);
+    });
+}
+
+// ── ensurePinnedImageSelector (account management pin gap) ─────────────────
+
+test('ensurePinnedImageSelector: empty list gains default image pin', () => {
+    const result = ensurePinnedImageSelector([]);
+    assertEqual(result.length, 1);
+    assertEqual(result[0], DEFAULT_IMAGE_PIN_SELECTOR);
+});
+
+test('ensurePinnedImageSelector: live user pin list without image gains flash-image', () => {
+    const livePins = [
+        'gemini-3-pro-high',
+        'gemini-3-flash',
+        'claude-sonnet-4-5-thinking',
+        'gemini-3.1-pro-high',
+        'gemini-3.1-pro-low',
+        'claude-sonnet-4-6',
+    ];
+    const result = ensurePinnedImageSelector(livePins);
+    assertEqual(result.includes(DEFAULT_IMAGE_PIN_SELECTOR), true);
+    assertEqual(result.length, livePins.length + 1);
+});
+
+test('ensurePinnedImageSelector: existing flash-image pin is unchanged', () => {
+    const pins = ['gemini-pro-agent', 'gemini-3.1-flash-image'];
+    const result = ensurePinnedImageSelector(pins);
+    assertEqual(result.length, 2);
+    assertEqual(result.join(','), pins.join(','));
+});
+
+test('ensurePinnedImageSelector: existing pro-image pin is unchanged', () => {
+    const pins = ['gemini-3-pro-image', 'gemini-3-flash'];
+    const result = ensurePinnedImageSelector(pins);
+    assertEqual(result.length, 2);
+    assertEqual(result.includes(DEFAULT_IMAGE_PIN_SELECTOR), false);
+});
+
+test('resolveQuotaModels + ensurePinnedImageSelector: live pin gap resolves Gemini 3.1 Flash Image', () => {
+    const livePins = [
+        'gemini-3-pro-high',
+        'gemini-3-flash',
+        'claude-sonnet-4-5-thinking',
+        'gemini-3.1-pro-high',
+        'gemini-3.1-pro-low',
+        'claude-sonnet-4-6',
+    ];
+    const apiModels = [
+        { name: 'gemini-pro-agent', percentage: 80 },
+        { name: 'gemini-3-flash-agent', percentage: 70 },
+        { name: 'gemini-3.1-flash-image', percentage: 92, display_name: 'Gemini 3.1 Flash Image' },
+        { name: 'claude-sonnet-4-6', percentage: 50 },
+    ];
+    const results = resolveQuotaModels(apiModels, ensurePinnedImageSelector(livePins));
+    const image = results.find(r => r.selectionKey === 'category:gemini-image');
+    assertEqual(image?.model?.name, 'gemini-3.1-flash-image');
+    assertEqual(image?.model?.display_name, 'Gemini 3.1 Flash Image');
+});
 
 if (failed > 0) {
     throw new Error(`${failed} test(s) failed`);
