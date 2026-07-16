@@ -313,6 +313,43 @@ pub async fn handle_messages(
     let thinking_hint = extract_thinking_hint(&original_body);
     apply_thinking_hints(&mut request, &thinking_hint, &trace_id, temp_cap);
 
+    // [Variant] Resolve canonical model + variant → real model + real params.
+    // OpenCode sends canonical model names (e.g. gemini-3.5-flash) with the variant
+    // encoded as thinking.budget_tokens. We map to the real model ID and REPLACE the
+    // client's thinking/max_tokens with verified real values, so the forwarded
+    // request matches the expected upstream format.
+    let client_budget = original_body
+        .get("thinking")
+        .and_then(|t| t.get("budget_tokens"))
+        .and_then(|v| v.as_u64())
+        .map(|v| v as u32);
+    if let Some(spec) =
+        crate::proxy::common::variant_mapping::resolve(&request.model, client_budget)
+    {
+        tracing::info!(
+            "[{}] [Variant] canonical='{}' budget_hint={:?} -> real_model='{}' budget={} maxOut={}",
+            trace_id, request.model, client_budget, spec.id, spec.thinking_budget, spec.max_output_tokens
+        );
+        request.model = spec.id.to_string();
+        if spec.thinking_budget == 0 {
+            // Non-thinking checkpoint model (e.g. gemini-3.1-flash-lite): disable thinking
+            // entirely AND strip tools/toolConfig — per upstream spec §3 the upstream service's
+            // checkpoint requests carry no tools.
+            request.thinking = None;
+            request.tools = None;
+        } else {
+            request.thinking = Some(crate::proxy::mappers::claude::models::ThinkingConfig {
+                type_: "enabled".to_string(),
+                budget_tokens: Some(spec.effective_thinking_budget(client_budget)),
+                effort: None,
+            });
+        }
+        // Clear any client-sent output_config so a stale effort level cannot leak into
+        // the adaptive thinkingLevel resolution downstream.
+        request.output_config = None;
+        request.max_tokens = Some(spec.max_output_tokens);
+    }
+
     if debug_logger::is_enabled(&debug_cfg) {
         // [FIX] 使用原始 body 副本记录日志，确保不丢失任何字段
         let original_payload = json!({
@@ -1801,6 +1838,40 @@ pub async fn handle_count_tokens(
         "output_tokens": 0
     }))
     .into_response()
+}
+
+#[cfg(test)]
+mod variant_tests {
+    use crate::proxy::common::variant_mapping;
+    use crate::proxy::mappers::claude::models::ThinkingConfig;
+
+    #[test]
+    fn claude_opus_preserves_client_budget_when_present() {
+        let client_budget = Some(32_768);
+        let spec = variant_mapping::resolve("claude-opus-4-6-thinking", client_budget)
+            .expect("Claude Opus 4.6 thinking must resolve");
+        let request_thinking = ThinkingConfig {
+            type_: "enabled".to_string(),
+            budget_tokens: Some(spec.effective_thinking_budget(client_budget)),
+            effort: None,
+        };
+
+        assert_eq!(request_thinking.budget_tokens, client_budget);
+    }
+
+    #[test]
+    fn claude_opus_falls_back_to_spec_budget_when_client_budget_is_absent() {
+        let client_budget = None;
+        let spec = variant_mapping::resolve("claude-opus-4-6-thinking", client_budget)
+            .expect("Claude Opus 4.6 thinking must resolve");
+        let request_thinking = ThinkingConfig {
+            type_: "enabled".to_string(),
+            budget_tokens: Some(spec.effective_thinking_budget(client_budget)),
+            effort: None,
+        };
+
+        assert_eq!(request_thinking.budget_tokens, Some(1_024));
+    }
 }
 
 // 移除已失效的简单单元测试，后续将补全完整的集成测试
