@@ -78,6 +78,16 @@ pub fn infer_tier(budget_tokens: Option<u32>) -> VariantTier {
     }
 }
 
+/// Parse a supported Anthropic SDK output effort into a Gemini variant tier.
+pub fn tier_from_effort(effort: Option<&str>) -> Option<VariantTier> {
+    match effort {
+        Some("low") => Some(VariantTier::Low),
+        Some("medium") => Some(VariantTier::Medium),
+        Some("high") => Some(VariantTier::High),
+        _ => None,
+    }
+}
+
 /// Resolve a canonical model + tier to the real model + params.
 ///
 /// Returns None for models that have no variant split (use
@@ -136,12 +146,21 @@ pub fn resolve_non_variant_model(model: &str) -> Option<RealModelSpec> {
     None
 }
 
-/// Top-level resolver: tries variant split first, then non-variant, for any model.
+/// Resolve a model with an optional explicit variant tier.
 ///
-/// `budget_tokens` is the client-sent thinking budget used to infer the tier.
-pub fn resolve(canonical: &str, budget_tokens: Option<u32>) -> Option<RealModelSpec> {
-    let tier = infer_tier(budget_tokens);
+/// An explicit tier takes precedence over the client thinking budget.
+pub fn resolve_with_tier(
+    canonical: &str,
+    explicit_tier: Option<VariantTier>,
+    budget_tokens: Option<u32>,
+) -> Option<RealModelSpec> {
+    let tier = explicit_tier.unwrap_or_else(|| infer_tier(budget_tokens));
     resolve_real_model(canonical, tier).or_else(|| resolve_non_variant_model(canonical))
+}
+
+/// Top-level compatibility resolver using the client thinking budget.
+pub fn resolve(canonical: &str, budget_tokens: Option<u32>) -> Option<RealModelSpec> {
+    resolve_with_tier(canonical, None, budget_tokens)
 }
 
 // ── verified real model specs (from upstream spec) ──
@@ -323,6 +342,61 @@ mod tests {
         let s = resolve("gemini-3.5-flash", Some(1000)).unwrap();
         assert_eq!(s.id, "gemini-3.5-flash-extra-low");
         assert_eq!(s.thinking_budget, 1000);
+    }
+
+    #[test]
+    fn tier_from_effort_accepts_only_anthropic_sdk_values() {
+        assert_eq!(tier_from_effort(Some("low")), Some(VariantTier::Low));
+        assert_eq!(tier_from_effort(Some("medium")), Some(VariantTier::Medium));
+        assert_eq!(tier_from_effort(Some("high")), Some(VariantTier::High));
+        assert_eq!(tier_from_effort(Some("max")), None);
+        assert_eq!(tier_from_effort(None), None);
+    }
+
+    #[test]
+    fn resolve_with_tier_prefers_explicit_effort_over_budget() {
+        for (canonical, tier, budget, expected_id) in [
+            (
+                "gemini-3.5-flash",
+                VariantTier::Low,
+                10_000,
+                "gemini-3.5-flash-extra-low",
+            ),
+            (
+                "gemini-3.5-flash",
+                VariantTier::Medium,
+                1_000,
+                "gemini-3.5-flash-low",
+            ),
+            (
+                "gemini-3.5-flash",
+                VariantTier::High,
+                1_000,
+                "gemini-3-flash-agent",
+            ),
+            (
+                "gemini-3.1-pro",
+                VariantTier::Low,
+                10_000,
+                "gemini-3.1-pro-low",
+            ),
+            (
+                "gemini-3.1-pro",
+                VariantTier::Medium,
+                1_000,
+                "gemini-pro-agent",
+            ),
+            (
+                "gemini-3.1-pro",
+                VariantTier::High,
+                1_000,
+                "gemini-pro-agent",
+            ),
+        ] {
+            let spec = resolve_with_tier(canonical, Some(tier), Some(budget))
+                .expect("canonical Gemini tier must resolve");
+            assert_eq!(spec.id, expected_id);
+        }
     }
 
     #[test]

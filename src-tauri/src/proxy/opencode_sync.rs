@@ -996,25 +996,17 @@ fn build_claude_thinking_variant(budget: u32) -> Value {
     })
 }
 
-/// Look up a Gemini variant's registered thinking budget.
-fn gemini_variant_budget(canonical_id: &str, tier: VariantTier) -> Option<u32> {
-    GEMINI_FAMILIES
-        .iter()
-        .find(|family| family.canonical_id == canonical_id)
-        .and_then(|family| {
-            family
-                .tiers
-                .iter()
-                .find(|(candidate_tier, _)| *candidate_tier == tier)
-        })
-        .map(|(_, spec)| spec.thinking_budget)
-}
-
-/// Build Gemini 3 style variant with the OpenCode thinking budget fields.
-fn build_gemini3_variant(budget: u32) -> Value {
-    let mut variant = build_claude_thinking_variant(budget);
-    variant["budgetTokens"] = Value::from(budget);
-    variant
+/// Build Gemini 3 effort-based variant for the @ai-sdk/anthropic SDK.
+///
+/// The provider serializes `{ "effort": "<tier>" }` as `output_config.effort`
+/// on the outgoing Anthropic request. No thinking-budget fields are used.
+fn build_gemini3_effort_variant(tier: VariantTier) -> Value {
+    let effort = match tier {
+        VariantTier::Low => "low",
+        VariantTier::Medium => "medium",
+        VariantTier::High => "high",
+    };
+    serde_json::json!({ "effort": effort })
 }
 
 /// Build Gemini 2.5 thinking variant with thinkingConfig and thinking
@@ -1046,17 +1038,11 @@ fn build_variants_object(variant_type: Option<VariantType>) -> Option<Value> {
             let mut variants = serde_json::Map::new();
             variants.insert(
                 "low".to_string(),
-                build_gemini3_variant(gemini_variant_budget(
-                    "gemini-3.1-pro",
-                    VariantTier::Low,
-                )?),
+                build_gemini3_effort_variant(VariantTier::Low),
             );
             variants.insert(
                 "high".to_string(),
-                build_gemini3_variant(gemini_variant_budget(
-                    "gemini-3.1-pro",
-                    VariantTier::High,
-                )?),
+                build_gemini3_effort_variant(VariantTier::High),
             );
             Some(Value::Object(variants))
         }
@@ -1064,24 +1050,15 @@ fn build_variants_object(variant_type: Option<VariantType>) -> Option<Value> {
             let mut variants = serde_json::Map::new();
             variants.insert(
                 "low".to_string(),
-                build_gemini3_variant(gemini_variant_budget(
-                    "gemini-3.5-flash",
-                    VariantTier::Low,
-                )?),
+                build_gemini3_effort_variant(VariantTier::Low),
             );
             variants.insert(
                 "medium".to_string(),
-                build_gemini3_variant(gemini_variant_budget(
-                    "gemini-3.5-flash",
-                    VariantTier::Medium,
-                )?),
+                build_gemini3_effort_variant(VariantTier::Medium),
             );
             variants.insert(
                 "high".to_string(),
-                build_gemini3_variant(gemini_variant_budget(
-                    "gemini-3.5-flash",
-                    VariantTier::High,
-                )?),
+                build_gemini3_effort_variant(VariantTier::High),
             );
             Some(Value::Object(variants))
         }
@@ -1692,7 +1669,7 @@ fn apply_clear_to_config(mut config: Value, proxy_url: Option<&str>, clear_legac
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::proxy::common::variant_mapping::{infer_tier, resolve_real_model};
+    use crate::proxy::common::variant_mapping::resolve_real_model;
 
     /// Helper: build a ModelInput with just an id (no display name).
     fn minput(id: &str) -> ModelInput {
@@ -2020,6 +1997,16 @@ mod tests {
         assert!(matches!(flash_lite.variant_type, None));
     }
 
+    /// Map an Anthropic SDK effort string to the internal VariantTier.
+    fn effort_to_tier(effort: &str) -> VariantTier {
+        match effort {
+            "low" => VariantTier::Low,
+            "medium" => VariantTier::Medium,
+            "high" => VariantTier::High,
+            _ => panic!("unrecognized effort variant: {effort}"),
+        }
+    }
+
     #[test]
     fn build_variants_pro_resolve_to_real_ids() {
         let variants = build_variants_object(Some(VariantType::Gemini3Pro))
@@ -2030,14 +2017,13 @@ mod tests {
             ("high", "gemini-pro-agent"),
         ] {
             let variant = &variants[name];
-            let budget = variant["thinking"]["budget_tokens"]
-                .as_u64()
-                .expect("variant must expose thinking.budget_tokens") as u32;
+            let effort = variant["effort"]
+                .as_str()
+                .expect("Gemini 3 variant must expose effort string");
 
-            assert_eq!(variant["budgetTokens"], budget);
-            assert_eq!(variant["thinkingConfig"]["thinkingBudget"], budget);
+            let tier = effort_to_tier(effort);
             assert_eq!(
-                resolve_real_model("gemini-3.1-pro", infer_tier(Some(budget)))
+                resolve_real_model("gemini-3.1-pro", tier)
                     .expect("Gemini 3.1 Pro tier must resolve")
                     .id,
                 expected_id
@@ -2045,6 +2031,12 @@ mod tests {
         }
 
         assert_eq!(variants.as_object().expect("variants must be an object").len(), 2);
+
+        // Verify the JSON shape contains only `effort` — no budget fields
+        let low = &variants["low"];
+        assert_eq!(low.as_object().unwrap().len(), 1);
+        assert!(low.get("effort").is_some());
+        assert!(low.get("thinking").is_none());
     }
 
     #[test]
@@ -2058,14 +2050,13 @@ mod tests {
             ("high", "gemini-3-flash-agent"),
         ] {
             let variant = &variants[name];
-            let budget = variant["thinking"]["budget_tokens"]
-                .as_u64()
-                .expect("variant must expose thinking.budget_tokens") as u32;
+            let effort = variant["effort"]
+                .as_str()
+                .expect("Gemini 3 variant must expose effort string");
 
-            assert_eq!(variant["budgetTokens"], budget);
-            assert_eq!(variant["thinkingConfig"]["thinkingBudget"], budget);
+            let tier = effort_to_tier(effort);
             assert_eq!(
-                resolve_real_model("gemini-3.5-flash", infer_tier(Some(budget)))
+                resolve_real_model("gemini-3.5-flash", tier)
                     .expect("Gemini 3.5 Flash tier must resolve")
                     .id,
                 expected_id
@@ -2073,6 +2064,12 @@ mod tests {
         }
 
         assert_eq!(variants.as_object().expect("variants must be an object").len(), 3);
+
+        // Verify the JSON shape contains only `effort` — no budget fields
+        let low = &variants["low"];
+        assert_eq!(low.as_object().unwrap().len(), 1);
+        assert!(low.get("effort").is_some());
+        assert!(low.get("thinking").is_none());
     }
 
     #[test]
@@ -3106,7 +3103,7 @@ pub async fn execute_opencode_clear(
 }
 
 #[cfg(test)]
-mod tests {
+mod canonical_family_tests {
     use super::*;
 
     #[test]
