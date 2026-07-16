@@ -5,7 +5,7 @@ import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 import { useConfigStore } from '../../stores/useConfigStore';
 import { QuotaItem } from './QuotaItem';
-import { MODEL_CONFIG, sortModels, categorizeModel } from '../../config/modelConfig';
+import { MODEL_CONFIG, sortModels, categorizeModel, getModelProtectionKey } from '../../config/modelConfig';
 import { getValidationBlockedStatusLabel } from './accountValidationStatus';
 import { getLiveLimitForModel } from '../../utils/liveLimit';
 
@@ -82,7 +82,7 @@ function AccountCard({ account, selected, onSelect, isCurrent: propIsCurrent, is
             return {
                 id: m.name,
                 label: m.display_name || fullConfig?.shortLabel || fullConfig?.label || m.name,
-                protectedKey: fullConfig?.protectedKey || m.name,
+                protectedKey: getModelProtectionKey(m.name) ?? fullConfig?.protectedKey ?? m.name,
                 Icon: iconMap.get(m.name) || Bot,
                 data: m
             };

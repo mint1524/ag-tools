@@ -6,7 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import AddAccountDialog from '../components/accounts/AddAccountDialog';
 import { showToast } from '../components/common/ToastContainer';
 import BestAccounts from '../components/dashboard/BestAccounts';
-import { categorizeModel } from '../config/modelConfig';
+import { categorizeModel, findQuotaModel } from '../config/modelConfig';
 import CurrentAccount from '../components/dashboard/CurrentAccount';
 import { exportAccounts } from '../services/accountService';
 import { useAccountStore } from '../stores/useAccountStore';
@@ -36,9 +36,7 @@ function Dashboard() {
     // 计算统计数据
     const stats = useMemo(() => {
         const getGeminiProQuota = (a: Account) =>
-            (a.quota?.models || [])
-                .filter(m => categorizeModel(m.name) === 'gemini-pro')
-                .reduce((best, model) => Math.max(best, model.percentage || 0), 0);
+            findQuotaModel(a.quota?.models, 'gemini-pro')?.percentage || 0;
 
         const geminiQuotas = accounts
             .map(a => getGeminiProQuota(a))
@@ -52,13 +50,13 @@ function Dashboard() {
             .filter(q => q > 0);
 
         const claudeQuotas = accounts
-            .map(a => a.quota?.models.find(m => m.name.toLowerCase() === 'claude-sonnet-4-6' || m.name.toLowerCase() === 'claude-sonnet-4-5')?.percentage || 0)
+            .map(a => findQuotaModel(a.quota?.models, 'claude')?.percentage || 0)
             .filter(q => q > 0);
 
         const lowQuotaCount = accounts.filter(a => {
             if (a.quota?.is_forbidden) return false;
             const gemini = getGeminiProQuota(a);
-            const claude = a.quota?.models.find(m => m.name.toLowerCase() === 'claude-sonnet-4-6' || m.name.toLowerCase() === 'claude-sonnet-4-5')?.percentage || 0;
+            const claude = findQuotaModel(a.quota?.models, 'claude')?.percentage || 0;
             return gemini < 20 || claude < 20;
         }).length;
 

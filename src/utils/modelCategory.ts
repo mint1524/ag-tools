@@ -31,6 +31,29 @@ export function getModelDisplayName(
     return fallback ?? '';
 }
 
+/**
+ * 按优先级查找配额模型：先精确匹配首选名，再按类别 fallback。
+ */
+export function findQuotaModel<T extends { name: string }>(
+    models: T[] | undefined,
+    category: ModelCategory,
+): T | undefined {
+    if (!models || models.length === 0) return undefined;
+    const preferred: Partial<Record<ModelCategory, string[]>> = {
+        'gemini-pro': ['gemini-pro-agent', 'gemini-3.1-pro-high', 'gemini-3.1-pro', 'gemini-3.1-pro-low', 'gemini-2.5-pro'],
+        'gemini-flash': ['gemini-3-flash-agent', 'gemini-3-flash', 'gemini-3.5-flash'],
+        'claude': ['claude-sonnet-4-6', 'claude-opus-4-6-thinking'],
+    };
+    const names = preferred[category];
+    if (names) {
+        for (const name of names) {
+            const found = models.find(m => m.name === name);
+            if (found) return found;
+        }
+    }
+    return models.find(m => categorizeModel(m.name) === category);
+}
+
 export function getModelProtectionKey(name: string): string | null {
     switch (categorizeModel(name)) {
         case 'gemini-flash': return 'gemini-3-flash';

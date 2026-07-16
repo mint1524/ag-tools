@@ -1,7 +1,7 @@
 import { CheckCircle, Mail, Diamond, Gem, Circle, Tag, Lock, Clock } from 'lucide-react';
 import { Account } from '../../types/account';
 import { formatTimeRemaining } from '../../utils/format';
-import { categorizeModel, getModelProtectionKey, getModelDisplayName } from '../../config/modelConfig';
+import { categorizeModel, getModelProtectionKey, getModelDisplayName, findQuotaModel } from '../../config/modelConfig';
 
 interface CurrentAccountProps {
     account: Account | null;
@@ -26,11 +26,8 @@ function CurrentAccount({ account, onSwitch }: CurrentAccountProps) {
         );
     }
 
-    const geminiProModel = account.quota?.models
-        .filter(m => categorizeModel(m.name) === 'gemini-pro')
-        .sort((a, b) => (a.percentage || 0) - (b.percentage || 0))[0];
-
-    const geminiFlashModel = account.quota?.models.find(m => categorizeModel(m.name) === 'gemini-flash');
+    const geminiProModel = findQuotaModel(account.quota?.models, 'gemini-pro');
+    const geminiFlashModel = findQuotaModel(account.quota?.models, 'gemini-flash');
 
     const geminiImageModel = account.quota?.models.find(m => {
         const cat = categorizeModel(m.name);
@@ -43,13 +40,7 @@ function CurrentAccount({ account, onSwitch }: CurrentAccountProps) {
         : undefined;
     const isImageLiveLimited = Boolean(liveImageLimit && liveImageLimit.until > nowSeconds);
 
-    const claudeGroupNames = [
-        'claude-opus-4-6-thinking',
-        'claude'
-    ];
-    const claudeModel = account.quota?.models
-        .filter(m => claudeGroupNames.includes(m.name.toLowerCase()))
-        .sort((a, b) => (a.percentage || 0) - (b.percentage || 0))[0];
+    const claudeModel = findQuotaModel(account.quota?.models, 'claude');
 
     return (
         <div className="bg-white dark:bg-base-100 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-base-200 h-full flex flex-col">

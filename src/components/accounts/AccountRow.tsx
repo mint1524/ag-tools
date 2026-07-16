@@ -4,7 +4,7 @@ import { getQuotaColor, formatTimeRemaining, getTimeRemainingColor } from '../..
 import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 import { formatCompactDuration, getLiveLimitForModel, getLiveLimitState } from '../../utils/liveLimit';
-import { categorizeModel, getModelProtectionKey } from '../../config/modelConfig';
+import { categorizeModel, getModelProtectionKey, findQuotaModel } from '../../config/modelConfig';
 
 interface AccountRowProps {
     account: Account;
@@ -26,12 +26,9 @@ interface AccountRowProps {
 
 function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSwitching = false, onSwitch, onRefresh, onViewDetails, onExport, onDelete, onToggleProxy, onViewDevice }: AccountRowProps) {
     const { t } = useTranslation();
-    // [重构] 按组聚合查找逻辑，优先显示组内配额最低的型号以与锁定状态（🔒）对齐
-    const geminiProModel = account.quota?.models
-        .filter(m => categorizeModel(m.name) === 'gemini-pro')
-        .sort((a, b) => (a.percentage || 0) - (b.percentage || 0))[0];
-
-    const geminiFlashModel = account.quota?.models.find(m => categorizeModel(m.name) === 'gemini-flash');
+    // [重构] 按优先级查找配额模型
+    const geminiProModel = findQuotaModel(account.quota?.models, 'gemini-pro');
+    const geminiFlashModel = findQuotaModel(account.quota?.models, 'gemini-flash');
 
     const geminiImageModel = account.quota?.models.find(m =>
         categorizeModel(m.name) === 'gemini-flash-image' || categorizeModel(m.name) === 'gemini-pro-image'
@@ -50,13 +47,7 @@ function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSw
         ].filter(Boolean).join(' ')
         : 'Gemini 3.1 Flash Image';
 
-    const claudeGroupNames = [
-        'claude-opus-4-6-thinking',
-        'claude'
-    ];
-    const claudeModel = account.quota?.models
-        .filter(m => claudeGroupNames.includes(m.name.toLowerCase()))
-        .sort((a, b) => (a.percentage || 0) - (b.percentage || 0))[0];
+    const claudeModel = findQuotaModel(account.quota?.models, 'claude');
     const isDisabled = Boolean(account.disabled);
 
     // 颜色映射，避免动态类名被 Tailwind purge

@@ -129,14 +129,20 @@ interface AccountRowContentProps {
 
 // ============================================================================
 const MODEL_ID_ALIASES: Record<string, string[]> = {
-    'gemini-3-pro-high': ['gemini-3-pro-high', 'gemini-3.1-pro-high'],
-    'gemini-3-pro-low': ['gemini-3-pro-low', 'gemini-3.1-pro-low'],
-    'gemini-3-pro-preview': ['gemini-3-pro-preview', 'gemini-3.1-pro-preview'],
-    'gemini-3.1-pro-high': ['gemini-3.1-pro-high', 'gemini-3-pro-high'],
-    'gemini-3.1-pro-low': ['gemini-3.1-pro-low', 'gemini-3-pro-low'],
-    'gemini-3.1-pro-preview': ['gemini-3.1-pro-preview', 'gemini-3-pro-preview'],
-    'gemini-3.1-pro': ['gemini-3.1-pro', 'gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3-pro-high', 'gemini-3-pro-low'],
-    'gemini-3.5-flash': ['gemini-3.5-flash', 'gemini-3-flash'],
+    'gemini-3-pro-high': ['gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3-pro-preview', 'gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3.1-pro-preview', 'gemini-3.1-pro', 'gemini-pro-agent'],
+    'gemini-3-pro-low': ['gemini-3-pro-low', 'gemini-3-pro-high', 'gemini-3-pro-preview', 'gemini-3.1-pro-low', 'gemini-3.1-pro-high', 'gemini-3.1-pro-preview', 'gemini-3.1-pro', 'gemini-pro-agent'],
+    'gemini-3-pro-preview': ['gemini-3-pro-preview', 'gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3.1-pro-preview', 'gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3.1-pro', 'gemini-pro-agent'],
+    'gemini-3.1-pro-high': ['gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3.1-pro-preview', 'gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3-pro-preview', 'gemini-3.1-pro', 'gemini-pro-agent'],
+    'gemini-3.1-pro-low': ['gemini-3.1-pro-low', 'gemini-3.1-pro-high', 'gemini-3.1-pro-preview', 'gemini-3-pro-low', 'gemini-3-pro-high', 'gemini-3-pro-preview', 'gemini-3.1-pro', 'gemini-pro-agent'],
+    'gemini-3.1-pro-preview': ['gemini-3.1-pro-preview', 'gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3-pro-preview', 'gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3.1-pro', 'gemini-pro-agent'],
+    'gemini-3.1-pro': ['gemini-3.1-pro', 'gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3.1-pro-preview', 'gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3-pro-preview', 'gemini-pro-agent'],
+    'gemini-pro-agent': ['gemini-pro-agent', 'gemini-3-pro-high', 'gemini-3-pro-low', 'gemini-3-pro-preview', 'gemini-3.1-pro-high', 'gemini-3.1-pro-low', 'gemini-3.1-pro-preview', 'gemini-3.1-pro'],
+    'gemini-3-flash': ['gemini-3-flash', 'gemini-3.5-flash', 'gemini-3-flash-agent'],
+    'gemini-3.5-flash': ['gemini-3.5-flash', 'gemini-3-flash', 'gemini-3-flash-agent'],
+    'gemini-3-flash-agent': ['gemini-3-flash-agent', 'gemini-3-flash', 'gemini-3.5-flash'],
+    'claude-sonnet-4-5': ['claude-sonnet-4-5', 'claude-sonnet-4-6', 'claude-opus-4-6-thinking'],
+    'claude-sonnet-4-6': ['claude-sonnet-4-6', 'claude-sonnet-4-5', 'claude-opus-4-6-thinking'],
+    'claude-opus-4-6-thinking': ['claude-opus-4-6-thinking', 'claude-sonnet-4-5', 'claude-sonnet-4-6'],
 };
 
 function getModelAliases(modelId: string): string[] {
@@ -332,8 +338,11 @@ function AccountRowContent({
                     data: m
                 };
             })
-            : pinnedModels.map(modelId => {
-                const m = account.quota?.models.find(m => m.name === modelId || getModelAliases(modelId).includes(m.name.toLowerCase()));
+            : (() => {
+                const consumedModelNames = new Set<string>();
+                return pinnedModels.map(modelId => {
+                const m = account.quota?.models.find(m => (m.name === modelId || getModelAliases(modelId).includes(m.name.toLowerCase())) && !consumedModelNames.has(m.name.toLowerCase()));
+                if (m) consumedModelNames.add(m.name.toLowerCase());
                 const config = MODEL_CONFIG[modelId];
                 if (!config && !m) return null; // Safe guard for unknown models that aren't fetched
                 const label = m?.display_name || (config?.i18nKey ? t(config.i18nKey) : (config?.shortLabel || config?.label || modelId));
@@ -348,8 +357,9 @@ function AccountRowContent({
                 label: string;
                 protectedKey: string;
                 data: ModelQuota | undefined;
-            } => item !== null)
-        ).filter(m => {
+            } => item !== null)   // closes .map().filter()
+        })()                     // closes (() => { ... })()
+    ).filter(m => {
             // 过滤特定的 Claude/Gemini 思考变体 (在列表页隐藏)
             const isHiddenThinking = m.id.includes('thinking');
 

@@ -1,6 +1,6 @@
 import { TrendingUp } from 'lucide-react';
 import { Account } from '../../types/account';
-import { categorizeModel } from '../../config/modelConfig';
+import { findQuotaModel } from '../../config/modelConfig';
 
 interface BestAccountsProps {
     accounts: Account[];
@@ -16,10 +16,8 @@ function BestAccounts({ accounts, currentAccountId, onSwitch }: BestAccountsProp
     const geminiSorted = accounts
         .filter(a => a.id !== currentAccountId)
         .map(a => {
-            const proQuota = (a.quota?.models || [])
-                .filter(m => categorizeModel(m.name) === 'gemini-pro')
-                .reduce((best, model) => Math.max(best, model.percentage || 0), 0);
-            const flashQuota = a.quota?.models.find(m => categorizeModel(m.name) === 'gemini-flash')?.percentage || 0;
+            const proQuota = findQuotaModel(a.quota?.models, 'gemini-pro')?.percentage || 0;
+            const flashQuota = findQuotaModel(a.quota?.models, 'gemini-flash')?.percentage || 0;
             // 综合评分：Pro 权重更高 (70%)，Flash 权重 30%
             return {
                 ...a,

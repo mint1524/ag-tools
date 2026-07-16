@@ -6,7 +6,7 @@
  *
  * Run: npx tsx src/config/__tests__/modelConfig.test.ts
  */
-import { categorizeModel, getModelProtectionKey, getModelDisplayName, type ModelCategory } from '../../utils/modelCategory';
+import { categorizeModel, getModelProtectionKey, getModelDisplayName, findQuotaModel, type ModelCategory } from '../../utils/modelCategory';
 
 let passed = 0;
 let failed = 0;
@@ -97,6 +97,30 @@ for (const [model, fallback, expected] of displayNameCases) {
             : `getModelDisplayName({name:'${model.name}'${model.display_name ? `, display_name:'${model.display_name}'` : ''}})`;
     test(label, () => {
         assertEqual(getModelDisplayName(model, fallback), expected);
+    });
+}
+
+// ── findQuotaModel ──────────────────────────────────────────────────────────
+
+const findCases: Array<[Array<{ name: string }>, ModelCategory, string | null]> = [
+    // Pro: preferred chain
+    [[{ name: 'gemini-pro-agent' }, { name: 'gemini-3.1-pro-low' }], 'gemini-pro', 'gemini-pro-agent'],
+    [[{ name: 'gemini-2.5-pro' }], 'gemini-pro', 'gemini-2.5-pro'],
+    // Flash: preferred chain
+    [[{ name: 'gemini-3-flash-agent' }, { name: 'gemini-3.5-flash-low' }], 'gemini-flash', 'gemini-3-flash-agent'],
+    // Claude: preferred chain
+    [[{ name: 'claude-sonnet-4-6' }, { name: 'claude-opus-4-6-thinking' }], 'claude', 'claude-sonnet-4-6'],
+    [[{ name: 'claude-opus-4-6-thinking' }], 'claude', 'claude-opus-4-6-thinking'],
+    // Empty
+    [[], 'gemini-pro', null],
+    // Fallback to categorizeModel
+    [[{ name: 'gemini-3.5-flash-extra-low' }], 'gemini-flash', 'gemini-3.5-flash-extra-low'],
+];
+
+for (const [models, category, expected] of findCases) {
+    test(`findQuotaModel(${category}, ${models.length} models)`, () => {
+        const result = findQuotaModel(models as any, category);
+        assertEqual(result?.name ?? null, expected);
     });
 }
 

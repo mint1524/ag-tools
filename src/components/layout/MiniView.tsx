@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import { formatTimeRemaining, formatCompactNumber } from '../../utils/format';
 import { enterMiniMode, exitMiniMode } from '../../utils/windowManager';
-import { categorizeModel, getModelDisplayName } from '../../config/modelConfig';
+import { getModelDisplayName, findQuotaModel } from '../../config/modelConfig';
 import { getVersion } from '@tauri-apps/api/app';
 import { listen } from '@tauri-apps/api/event';
 
@@ -136,19 +136,10 @@ export default function MiniView() {
 
 
     // Extract specific models to match AccountRow.tsx
-    const geminiProModel = currentAccount?.quota?.models
-        .filter(m => categorizeModel(m.name) === 'gemini-pro')
-        .sort((a, b) => (a.percentage || 0) - (b.percentage || 0))[0];
+    const geminiProModel = findQuotaModel(currentAccount?.quota?.models, 'gemini-pro');
+    const geminiFlashModel = findQuotaModel(currentAccount?.quota?.models, 'gemini-flash');
 
-    const geminiFlashModel = currentAccount?.quota?.models.find(m => categorizeModel(m.name) === 'gemini-flash');
-
-    const claudeGroupNames = [
-        'claude-opus-4-6-thinking',
-        'claude'
-    ];
-    const claudeModel = currentAccount?.quota?.models
-        .filter(m => claudeGroupNames.includes(m.name.toLowerCase()))
-        .sort((a, b) => (a.percentage || 0) - (b.percentage || 0))[0];
+    const claudeModel = findQuotaModel(currentAccount?.quota?.models, 'claude');
 
     // Helper to render a model row
     const renderModelRow = (model: any, displayName: string, colorClass: string) => {
