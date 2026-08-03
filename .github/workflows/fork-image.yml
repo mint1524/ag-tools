@@ -135,6 +135,49 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Boot the image we just pushed: compiling is not the same as starting, and the
+      # deployment host is too small to try this locally.
+      - name: Smoke test the image
+        run: |
+          set -euo pipefail
+          tag=$(echo "${{ steps.meta.outputs.tags }}" | head -n1)
+          echo "booting $tag"
+          docker run -d --name agtools-smoke \
+            -e API_KEY=smoke-test-key \
+            -e ABV_BIND_LOCAL_ONLY=false \
+            -p 8045:8045 "$tag"
+
+          for i in $(seq 1 30); do
+            if curl -fsS -m 3 http://127.0.0.1:8045/health > /tmp/health.json; then
+              break
+            fi
+            sleep 2
+          done
+
+          echo "--- /health ---"; cat /tmp/health.json; echo
+          grep -q '"status"' /tmp/health.json
+
+          # The Web UI must be served from the bundled dist.
+          curl -fsS -m 5 http://127.0.0.1:8045/ | head -c 200; echo
+
+          # The new ChatGPT endpoints must exist and be behind admin auth (401/403),
+          # never 404 — a 404 would mean the routes did not make it into the build.
+          for path in /api/accounts/openai/auth/url /api/stats/providers; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -m 5 "http://127.0.0.1:8045$path")
+            echo "$path -> $code"
+            case "$code" in
+              401|403) ;;
+              *) echo "unexpected status for $path"; docker logs agtools-smoke | tail -40; exit 1 ;;
+            esac
+          done
+
+          echo "--- authenticated provider stats ---"
+          curl -fsS -m 5 -H "Authorization: Bearer smoke-test-key" \
+            "http://127.0.0.1:8045/api/stats/providers" | head -c 200; echo
+
+          docker logs agtools-smoke | tail -20
+          docker rm -f agtools-smoke > /dev/null
+
       - name: Summary
         run: |
           {
