@@ -120,6 +120,17 @@ const COMMAND_MAPPING: Record<string, { url: string; method: 'GET' | 'POST' | 'D
   'get_active_oauth_client': { url: '/api/accounts/oauth/client', method: 'GET' },
   'set_active_oauth_client': { url: '/api/accounts/oauth/client', method: 'POST' },
 
+  // [FORK] ChatGPT (OpenAI) accounts.
+  // Web/headless only: these have no Tauri command counterpart yet, so the desktop
+  // GUI cannot run the ChatGPT login (the deployment runs headless).
+  'openai_device_start': { url: '/api/accounts/openai/device/start', method: 'POST' },
+  'openai_device_poll': { url: '/api/accounts/openai/device/poll', method: 'POST' },
+  'openai_auth_url': { url: '/api/accounts/openai/auth/url', method: 'GET' },
+  'openai_submit_code': { url: '/api/accounts/openai/auth/submit-code', method: 'POST' },
+  'openai_import_auth_json': { url: '/api/accounts/openai/import', method: 'POST' },
+  'openai_refresh_tokens': { url: '/api/accounts/openai/refresh', method: 'POST' },
+  'get_token_stats_by_provider': { url: '/api/stats/providers', method: 'GET' },
+
   // Import
   'import_v1_accounts': { url: '/api/accounts/import/v1', method: 'POST' },
   'import_from_db': { url: '/api/accounts/import/db', method: 'POST' },

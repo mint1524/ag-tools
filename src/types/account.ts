@@ -1,7 +1,25 @@
+/** [FORK] Which upstream an account belongs to. Absent in legacy data -> google. */
+export type AccountProvider = 'google' | 'openai';
+
+/** [FORK] ChatGPT-specific account facts, present when provider === 'openai'. */
+export interface OpenAiAccountInfo {
+    chatgpt_account_id?: string;
+    chatgpt_user_id?: string;
+    plan_type?: string;
+    is_fedramp?: boolean;
+    last_refresh?: number;
+}
+
 export interface Account {
     id: string;
     email: string;
     name?: string;
+    /** [FORK] Provider of the account; treat a missing value as 'google'. */
+    provider?: AccountProvider;
+    /** [FORK] Plan/account id for ChatGPT accounts. */
+    openai?: OpenAiAccountInfo;
+    /** [FORK] Plan as returned by the admin API for ChatGPT accounts. */
+    openai_plan?: string;
     token: TokenData;
     device_profile?: DeviceProfile;
     device_history?: DeviceProfileVersion[];

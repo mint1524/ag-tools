@@ -119,6 +119,66 @@ export async function setActiveOAuthClient(clientKey: string): Promise<void> {
     return await invoke('set_active_oauth_client', { clientKey });
 }
 
+// ============================================================================
+// [FORK] ChatGPT (OpenAI) accounts
+// ============================================================================
+
+export interface OpenAiDeviceCode {
+    device_auth_id: string;
+    user_code: string;
+    verification_url: string;
+    interval: number;
+    expires_at: number;
+}
+
+export interface OpenAiDevicePoll {
+    status: 'pending' | 'complete';
+    interval?: number;
+    account?: Account;
+}
+
+export interface OpenAiAuthLink {
+    url: string;
+    state: string;
+    redirect_uri: string;
+    requires_manual_code: boolean;
+}
+
+/** Start a device-code login: the user opens a URL and types a short code. */
+export async function startOpenAiDeviceLogin(): Promise<OpenAiDeviceCode> {
+    return await invoke('openai_device_start');
+}
+
+/** Poll a device-code login; resolves with the account once the user approves. */
+export async function pollOpenAiDeviceLogin(deviceAuthId: string): Promise<OpenAiDevicePoll> {
+    return await invoke('openai_device_poll', { deviceAuthId });
+}
+
+/**
+ * Get a ChatGPT authorization link (PKCE).
+ *
+ * The callback points at localhost:1455 on the *user's* machine, which this server
+ * cannot serve — the code has to be pasted back via submitOpenAiCode.
+ */
+export async function getOpenAiAuthLink(): Promise<OpenAiAuthLink> {
+    return await invoke('openai_auth_url');
+}
+
+/** Finish a PKCE login with the code (or the full callback URL) from the browser. */
+export async function submitOpenAiCode(code: string, state?: string): Promise<{ account: Account }> {
+    return await invoke('openai_submit_code', { code, state });
+}
+
+/** Import a ChatGPT account from a pasted Codex CLI auth.json. */
+export async function importOpenAiAuthJson(content: string): Promise<{ account: Account }> {
+    return await invoke('openai_import_auth_json', { content });
+}
+
+/** Refresh access tokens of every ChatGPT account. */
+export async function refreshOpenAiTokens(): Promise<{ refreshed: number; failed: number }> {
+    return await invoke('openai_refresh_tokens');
+}
+
 // 导入
 export async function importV1Accounts(): Promise<Account[]> {
     return await invoke('import_v1_accounts');
