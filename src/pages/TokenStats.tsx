@@ -60,6 +60,21 @@ const MODEL_COLORS = [
     '#14b8a6', '#f97316', '#64748b', '#0ea5e9', '#d946ef'
 ];
 
+/** [FORK] Usage grouped by provider, from /api/stats/providers. */
+interface ProviderTokenStats {
+    provider: string;
+    total_input_tokens: number;
+    total_output_tokens: number;
+    total_cached_tokens: number;
+    total_tokens: number;
+    request_count: number;
+    account_count: number;
+}
+
+function providerLabel(provider: string): string {
+    return provider === 'openai' ? 'ChatGPT' : 'Google';
+}
+
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4', '#6366f1', '#f43f5e'];
 
 const formatNumber = (num: number): string => {
@@ -88,6 +103,8 @@ const TokenStats: React.FC = () => {
     const [allModels, setAllModels] = useState<string[]>([]);
     const [allAccounts, setAllAccounts] = useState<string[]>([]);
     const [summary, setSummary] = useState<TokenStatsSummary | null>(null);
+    // [FORK] usage split by provider (google / openai)
+    const [providerData, setProviderData] = useState<ProviderTokenStats[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchData = async () => {
@@ -158,15 +175,18 @@ const TokenStats: React.FC = () => {
             });
             setAccountTrendData(transformedAccountTrend);
 
-            const [accounts, models_stats, summaryData] = await Promise.all([
+            const [accounts, models_stats, summaryData, providers] = await Promise.all([
                 invoke<AccountTokenStats[]>('get_token_stats_by_account', { hours }),
                 invoke<ModelTokenStats[]>('get_token_stats_by_model', { hours }),
-                invoke<TokenStatsSummary>('get_token_stats_summary', { hours })
+                invoke<TokenStatsSummary>('get_token_stats_summary', { hours }),
+                // [FORK] provider split; tolerated as empty on older backends
+                invoke<ProviderTokenStats[]>('get_token_stats_by_provider', { hours }).catch(() => [])
             ]);
 
             setAccountData(accounts);
             setModelData(models_stats);
             setSummary(summaryData);
+            setProviderData(Array.isArray(providers) ? providers : []);
         } catch (error) {
             console.error('Failed to fetch token stats:', error);
         } finally {
@@ -378,6 +398,33 @@ const TokenStats: React.FC = () => {
                         </button>
                     </div>
                 </div>
+
+                {/* [FORK] Per-provider split: only meaningful once ChatGPT accounts are in use */}
+                {providerData.length > 1 && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {providerData.map((p) => (
+                            <div
+                                key={p.provider}
+                                className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700"
+                            >
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                                        {providerLabel(p.provider)}
+                                    </span>
+                                    <span className="text-[11px] text-gray-400">
+                                        {t('token_stats.provider_accounts', '{{count}} acc.', { count: p.account_count })}
+                                    </span>
+                                </div>
+                                <div className="text-2xl font-bold text-gray-800 dark:text-white">
+                                    {formatNumber(p.total_tokens)}
+                                </div>
+                                <div className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                                    {formatNumber(p.total_input_tokens)} in · {formatNumber(p.total_output_tokens)} out · {formatNumber(p.request_count)} req
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
                 {summary && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">

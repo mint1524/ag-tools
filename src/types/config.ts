@@ -17,6 +17,8 @@ export interface ProxyConfig {
     debug_logging?: DebugLoggingConfig;
     upstream_proxy: UpstreamProxyConfig;
     zai?: ZaiConfig;
+    /** [FORK] ChatGPT (OpenAI) provider, served from pooled provider=openai accounts. */
+    openai?: OpenAiProviderConfig;
     scheduling?: StickySessionConfig;
     experimental?: ExperimentalConfig;
     user_agent_override?: string;
@@ -95,6 +97,19 @@ export interface ZaiConfig {
     model_mapping?: Record<string, string>;
     models: ZaiModelDefaults;
     mcp: ZaiMcpConfig;
+}
+
+/** [FORK] How incoming requests are routed to ChatGPT accounts. */
+export type OpenAiDispatchMode = 'off' | 'prefix' | 'auto' | 'exclusive';
+
+/** [FORK] ChatGPT (OpenAI) provider settings. Credentials live on the accounts. */
+export interface OpenAiProviderConfig {
+    enabled: boolean;
+    base_url: string;
+    dispatch_mode: OpenAiDispatchMode;
+    model_mapping?: Record<string, string>;
+    default_model: string;
+    max_failover_accounts: number;
 }
 
 export interface ScheduledWarmupConfig {
