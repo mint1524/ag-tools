@@ -250,6 +250,7 @@ pub async fn ensure_admin_server(
         config.user_agent_override.clone(),
         crate::proxy::ProxySecurityConfig::from_proxy_config(&config),
         config.zai.clone(),
+        config.openai.clone(),
         monitor,
         config.experimental.clone(),
         config.debug_logging.clone(),

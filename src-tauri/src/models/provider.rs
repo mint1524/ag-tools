@@ -118,7 +118,10 @@ mod tests {
     fn openai_provider_accepts_chatgpt_alias() {
         let parsed: AccountProvider = serde_json::from_str("\"chatgpt\"").unwrap();
         assert_eq!(parsed, AccountProvider::Openai);
-        assert_eq!(AccountProvider::parse("Codex"), Some(AccountProvider::Openai));
+        assert_eq!(
+            AccountProvider::parse("Codex"),
+            Some(AccountProvider::Openai)
+        );
         assert_eq!(
             AccountProvider::parse("antigravity"),
             Some(AccountProvider::Google)

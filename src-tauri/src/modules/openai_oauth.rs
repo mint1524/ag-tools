@@ -282,7 +282,9 @@ pub fn parse_id_token(jwt: &str) -> Result<IdTokenInfo, String> {
 
 /// Expiry (unix seconds) from a JWT `exp` claim, if present.
 pub fn jwt_expiry(jwt: &str) -> Option<i64> {
-    decode_jwt_payload::<StandardClaims>(jwt).ok().and_then(|c| c.exp)
+    decode_jwt_payload::<StandardClaims>(jwt)
+        .ok()
+        .and_then(|c| c.exp)
 }
 
 fn build_tokens(

@@ -98,6 +98,8 @@ pub struct AppState {
     pub upstream_proxy: Arc<tokio::sync::RwLock<crate::proxy::config::UpstreamProxyConfig>>,
     pub upstream: Arc<crate::proxy::upstream::client::UpstreamClient>,
     pub zai: Arc<RwLock<crate::proxy::ZaiConfig>>,
+    /// [FORK] ChatGPT (OpenAI) provider config, hot-reloadable like `zai`.
+    pub openai: Arc<RwLock<crate::proxy::OpenAiConfig>>,
     pub provider_rr: Arc<AtomicUsize>,
     pub zai_vision_mcp: Arc<crate::proxy::zai_vision_mcp::ZaiVisionMcpState>,
     pub monitor: Arc<crate::proxy::monitor::ProxyMonitor>,
@@ -132,6 +134,11 @@ struct AccountResponse {
     id: String,
     email: String,
     name: Option<String>,
+    /// [FORK] "google" | "openai"
+    provider: String,
+    /// [FORK] ChatGPT plan (plus/pro/...), only for provider == "openai".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    openai_plan: Option<String>,
     is_current: bool,
     disabled: bool,
     disabled_reason: Option<String>,
@@ -221,6 +228,11 @@ fn to_account_response(
         id: account.id.clone(),
         email: account.email.clone(),
         name: account.name.clone(),
+        provider: account.provider.as_str().to_string(),
+        openai_plan: account
+            .openai
+            .as_ref()
+            .and_then(|info| info.plan_type.clone()),
         is_current: current_id.as_ref() == Some(&account.id),
         disabled: account.disabled,
         disabled_reason: account.disabled_reason.clone(),
@@ -265,6 +277,7 @@ pub struct AxumServer {
     upstream: Arc<crate::proxy::upstream::client::UpstreamClient>,
     security_state: Arc<RwLock<crate::proxy::ProxySecurityConfig>>,
     zai_state: Arc<RwLock<crate::proxy::ZaiConfig>>,
+    openai_state: Arc<RwLock<crate::proxy::OpenAiConfig>>,
     experimental: Arc<RwLock<crate::proxy::config::ExperimentalConfig>>,
     debug_logging: Arc<RwLock<crate::proxy::config::DebugLoggingConfig>>,
     #[allow(dead_code)] // 预留给 cloudflared 运行状态查询与后续控制
@@ -329,6 +342,13 @@ impl AxumServer {
         tracing::info!("z.ai 配置已热更新");
     }
 
+    /// [FORK] Hot-reload the ChatGPT provider config.
+    pub async fn update_openai(&self, config: &crate::proxy::config::ProxyConfig) {
+        let mut openai = self.openai_state.write().await;
+        *openai = config.openai.clone();
+        tracing::info!("ChatGPT (OpenAI) provider config hot-reloaded");
+    }
+
     pub async fn update_experimental(&self, config: &crate::proxy::config::ProxyConfig) {
         let mut exp = self.experimental.write().await;
         *exp = config.experimental.clone();
@@ -365,6 +385,7 @@ impl AxumServer {
         user_agent_override: Option<String>,
         security_config: crate::proxy::ProxySecurityConfig,
         zai_config: crate::proxy::ZaiConfig,
+        openai_config: crate::proxy::OpenAiConfig, // [FORK]
         monitor: Arc<crate::proxy::monitor::ProxyMonitor>,
         experimental_config: crate::proxy::config::ExperimentalConfig,
         debug_logging: crate::proxy::config::DebugLoggingConfig,
@@ -383,6 +404,7 @@ impl AxumServer {
         proxy_pool_manager.clone().start_health_check_loop();
         let security_state = Arc::new(RwLock::new(security_config));
         let zai_state = Arc::new(RwLock::new(zai_config));
+        let openai_state = Arc::new(RwLock::new(openai_config));
         let provider_rr = Arc::new(AtomicUsize::new(0));
         let zai_vision_mcp_state = Arc::new(crate::proxy::zai_vision_mcp::ZaiVisionMcpState::new());
         let experimental_state = Arc::new(RwLock::new(experimental_config));
@@ -411,6 +433,7 @@ impl AxumServer {
                 u
             },
             zai: zai_state.clone(),
+            openai: openai_state.clone(),
             provider_rr: provider_rr.clone(),
             zai_vision_mcp: zai_vision_mcp_state,
             monitor: monitor.clone(),
@@ -639,6 +662,26 @@ impl AxumServer {
             .route("/accounts/oauth/cancel", post(admin_cancel_oauth_login))
             .route("/accounts/oauth/submit-code", post(admin_submit_oauth_code))
             .route("/accounts/oauth/clients", get(admin_list_oauth_clients))
+            // [FORK] ChatGPT (OpenAI) accounts
+            .route(
+                "/accounts/openai/device/start",
+                post(admin_openai_device_start),
+            )
+            .route(
+                "/accounts/openai/device/poll",
+                post(admin_openai_device_poll),
+            )
+            .route("/accounts/openai/auth/url", get(admin_openai_auth_url))
+            .route(
+                "/accounts/openai/auth/submit-code",
+                post(admin_openai_submit_code),
+            )
+            .route("/accounts/openai/import", post(admin_openai_import))
+            .route(
+                "/accounts/openai/refresh",
+                post(admin_openai_refresh_tokens),
+            )
+            .route("/stats/providers", get(admin_get_provider_stats))
             .route(
                 "/accounts/oauth/client",
                 get(admin_get_active_oauth_client).post(admin_set_active_oauth_client),
@@ -833,6 +876,7 @@ impl AxumServer {
             upstream: state.upstream.clone(),
             security_state,
             zai_state,
+            openai_state,
             experimental: experimental_state.clone(),
             debug_logging: debug_logging_state.clone(),
             cloudflared_state,
@@ -1301,6 +1345,271 @@ async fn admin_submit_oauth_code(
             )
         })?;
     Ok(StatusCode::OK)
+}
+
+// ============================================================================
+// [FORK] ChatGPT (OpenAI) login endpoints
+// ============================================================================
+
+/// A pending ChatGPT PKCE flow: the verifier must survive between "give me a link"
+/// and "here is the code I got". Kept in memory only — never persisted.
+struct PendingOpenAiFlow {
+    pkce: crate::modules::openai_oauth::PkceCodes,
+    state: String,
+    redirect_uri: String,
+    created_at: std::time::Instant,
+}
+
+static PENDING_OPENAI_FLOW: std::sync::OnceLock<
+    tokio::sync::Mutex<Option<PendingOpenAiFlow>>,
+> = std::sync::OnceLock::new();
+
+fn pending_openai_flow() -> &'static tokio::sync::Mutex<Option<PendingOpenAiFlow>> {
+    PENDING_OPENAI_FLOW.get_or_init(|| tokio::sync::Mutex::new(None))
+}
+
+/// Device-code flows in progress, keyed by device_auth_id, so the UI can poll.
+static PENDING_OPENAI_DEVICE: std::sync::OnceLock<
+    tokio::sync::Mutex<
+        std::collections::HashMap<String, crate::modules::openai_oauth::DeviceCode>,
+    >,
+> = std::sync::OnceLock::new();
+
+fn pending_openai_devices() -> &'static tokio::sync::Mutex<
+    std::collections::HashMap<String, crate::modules::openai_oauth::DeviceCode>,
+> {
+    PENDING_OPENAI_DEVICE.get_or_init(|| tokio::sync::Mutex::new(std::collections::HashMap::new()))
+}
+
+fn internal_error(e: String) -> (StatusCode, Json<ErrorResponse>) {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ErrorResponse { error: e }),
+    )
+}
+
+fn bad_request(e: String) -> (StatusCode, Json<ErrorResponse>) {
+    (StatusCode::BAD_REQUEST, Json(ErrorResponse { error: e }))
+}
+
+/// POST /api/accounts/openai/device/start — begin a device-code login.
+///
+/// The primary flow for this deployment: no browser and no reachable redirect URI are
+/// needed on the server side.
+async fn admin_openai_device_start() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)>
+{
+    let device = crate::modules::openai_oauth::request_device_code()
+        .await
+        .map_err(internal_error)?;
+
+    pending_openai_devices()
+        .lock()
+        .await
+        .insert(device.device_auth_id.clone(), device.clone());
+
+    Ok(Json(serde_json::json!({
+        "device_auth_id": device.device_auth_id,
+        "user_code": device.user_code,
+        "verification_url": device.verification_url,
+        "interval": device.interval,
+        "expires_at": device.expires_at,
+    })))
+}
+
+#[derive(Deserialize)]
+struct OpenAiDevicePollRequest {
+    #[serde(alias = "deviceAuthId")]
+    device_auth_id: String,
+}
+
+/// POST /api/accounts/openai/device/poll — check whether the user approved yet.
+async fn admin_openai_device_poll(
+    State(state): State<AppState>,
+    Json(payload): Json<OpenAiDevicePollRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let device = {
+        let devices = pending_openai_devices().lock().await;
+        devices.get(&payload.device_auth_id).cloned()
+    }
+    .ok_or_else(|| bad_request("No such ChatGPT device login in progress".to_string()))?;
+
+    match crate::modules::openai_oauth::poll_device_code_once(&device).await {
+        Ok(crate::modules::openai_oauth::DevicePollResult::Pending) => Ok(Json(
+            serde_json::json!({ "status": "pending", "interval": device.interval }),
+        )),
+        Ok(crate::modules::openai_oauth::DevicePollResult::Complete(tokens)) => {
+            pending_openai_devices()
+                .lock()
+                .await
+                .remove(&payload.device_auth_id);
+            let account = finish_openai_login(&state, &tokens).map_err(internal_error)?;
+            reload_pool_after_openai_change(&state).await;
+            Ok(Json(serde_json::json!({
+                "status": "complete",
+                "account": account,
+            })))
+        }
+        Err(e) => {
+            pending_openai_devices()
+                .lock()
+                .await
+                .remove(&payload.device_auth_id);
+            Err(internal_error(e))
+        }
+    }
+}
+
+/// GET /api/accounts/openai/auth/url — start a PKCE login and return the link.
+async fn admin_openai_auth_url() -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let pkce = crate::modules::openai_oauth::PkceCodes::generate();
+    let state_str = crate::modules::openai_oauth::generate_state();
+    let redirect_uri = crate::modules::openai_oauth::default_redirect_uri();
+    let url =
+        crate::modules::openai_oauth::build_authorize_url(&pkce, &state_str, &redirect_uri);
+
+    if url.is_empty() {
+        return Err(internal_error(
+            "Failed to build the ChatGPT authorization URL".to_string(),
+        ));
+    }
+
+    *pending_openai_flow().lock().await = Some(PendingOpenAiFlow {
+        pkce,
+        state: state_str.clone(),
+        redirect_uri: redirect_uri.clone(),
+        created_at: std::time::Instant::now(),
+    });
+
+    Ok(Json(serde_json::json!({
+        "url": url,
+        "state": state_str,
+        "redirect_uri": redirect_uri,
+        // The callback lands on localhost:1455 of *the user's* machine, which this
+        // server cannot serve — the UI asks the user to paste the URL back.
+        "requires_manual_code": true,
+    })))
+}
+
+#[derive(Deserialize)]
+struct OpenAiSubmitCodeRequest {
+    /// Either a bare `code` or the full callback URL copied from the browser.
+    code: String,
+    #[serde(default)]
+    state: Option<String>,
+}
+
+/// POST /api/accounts/openai/auth/submit-code — finish the PKCE login.
+async fn admin_openai_submit_code(
+    State(app_state): State<AppState>,
+    Json(payload): Json<OpenAiSubmitCodeRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    const FLOW_TTL_SECONDS: u64 = 15 * 60;
+
+    let flow = {
+        let mut guard = pending_openai_flow().lock().await;
+        match guard.take() {
+            Some(flow) if flow.created_at.elapsed().as_secs() <= FLOW_TTL_SECONDS => flow,
+            Some(_) => {
+                return Err(bad_request(
+                    "The ChatGPT login link expired, request a new one".to_string(),
+                ))
+            }
+            None => {
+                return Err(bad_request(
+                    "No ChatGPT login in progress, request a link first".to_string(),
+                ))
+            }
+        }
+    };
+
+    let (code, url_state) =
+        crate::modules::openai_oauth::extract_code_from_input(&payload.code);
+    if code.trim().is_empty() {
+        return Err(bad_request(
+            "Could not find an authorization code in the submitted value".to_string(),
+        ));
+    }
+
+    // CSRF check against whichever state we can see (explicit field or pasted URL).
+    if let Some(provided) = payload.state.or(url_state) {
+        if provided != flow.state {
+            return Err(bad_request(
+                "ChatGPT login state mismatch (CSRF protection)".to_string(),
+            ));
+        }
+    }
+
+    let tokens = crate::modules::openai_oauth::exchange_code(
+        &code,
+        &flow.redirect_uri,
+        &flow.pkce.code_verifier,
+    )
+    .await
+    .map_err(internal_error)?;
+
+    let account = finish_openai_login(&app_state, &tokens).map_err(internal_error)?;
+    reload_pool_after_openai_change(&app_state).await;
+    Ok(Json(serde_json::json!({ "account": account })))
+}
+
+#[derive(Deserialize)]
+struct OpenAiImportRequest {
+    /// Contents of a Codex CLI `~/.codex/auth.json`.
+    #[serde(alias = "authJson", alias = "auth_json")]
+    content: String,
+}
+
+/// POST /api/accounts/openai/import — add an account from a pasted Codex auth.json.
+async fn admin_openai_import(
+    State(state): State<AppState>,
+    Json(payload): Json<OpenAiImportRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let account = crate::modules::openai_account::import_from_codex_auth_json(&payload.content)
+        .map_err(bad_request)?;
+
+    let current_id = state.account_service.get_current_id().ok().flatten();
+    let response = to_account_response(&account, &current_id);
+    reload_pool_after_openai_change(&state).await;
+    Ok(Json(serde_json::json!({ "account": response })))
+}
+
+/// POST /api/accounts/openai/refresh — refresh every ChatGPT access token.
+async fn admin_openai_refresh_tokens(
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let (refreshed, failed) = crate::modules::openai_account::refresh_all_openai_tokens().await;
+    Ok(Json(
+        serde_json::json!({ "refreshed": refreshed, "failed": failed }),
+    ))
+}
+
+/// GET /api/stats/providers — usage split by provider. [FORK]
+async fn admin_get_provider_stats(
+    Query(params): Query<StatsPeriodQuery>,
+) -> Result<impl IntoResponse, (StatusCode, Json<ErrorResponse>)> {
+    let hours = params.hours.unwrap_or(168);
+    let stats = tokio::task::spawn_blocking(move || token_stats::get_provider_stats(hours))
+        .await
+        .map_err(|e| internal_error(e.to_string()))?
+        .map_err(internal_error)?;
+    Ok(Json(stats))
+}
+
+/// Persist tokens as a pooled account and return its API representation.
+fn finish_openai_login(
+    state: &AppState,
+    tokens: &crate::modules::openai_oauth::OpenAiTokens,
+) -> Result<AccountResponse, String> {
+    let account = crate::modules::openai_account::save_account_from_tokens(tokens)?;
+    let current_id = state.account_service.get_current_id().ok().flatten();
+    Ok(to_account_response(&account, &current_id))
+}
+
+/// ChatGPT accounts are pooled by the OpenAI provider, but the Google pool caches
+/// account files too — reload it so a newly added account cannot linger there.
+async fn reload_pool_after_openai_change(state: &AppState) {
+    if let Err(e) = state.token_manager.reload_all_accounts().await {
+        tracing::debug!("[OpenAI] Pool reload after account change failed: {}", e);
+    }
 }
 
 #[derive(Deserialize)]

@@ -46,6 +46,18 @@ pub struct ModelTokenStats {
     pub request_count: u64,
 }
 
+/// [FORK] Per-provider token statistics (google vs openai).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProviderTokenStats {
+    pub provider: String,
+    pub total_input_tokens: u64,
+    pub total_output_tokens: u64,
+    pub total_cached_tokens: u64,
+    pub total_tokens: u64,
+    pub request_count: u64,
+    pub account_count: u64,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelTrendPoint {
     pub period: String,
@@ -148,10 +160,23 @@ pub fn init_db() -> Result<(), String> {
         "total_cached_tokens INTEGER NOT NULL DEFAULT 0",
     )?;
 
+    // [FORK] Provider dimension so ChatGPT and Google usage can be told apart.
+    // Existing rows predate multi-provider support and are Google by definition.
+    add_column_if_missing(
+        &conn,
+        "token_usage",
+        "provider TEXT NOT NULL DEFAULT 'google'",
+    )?;
+    add_column_if_missing(
+        &conn,
+        "token_stats_hourly",
+        "provider TEXT NOT NULL DEFAULT 'google'",
+    )?;
+
     Ok(())
 }
 
-/// Record token usage from a request
+/// Record token usage from a request (Google/Antigravity accounts).
 pub fn record_usage(
     account_email: &str,
     model: &str,
@@ -159,28 +184,49 @@ pub fn record_usage(
     output_tokens: u32,
     cached_tokens: u32,
 ) -> Result<(), String> {
+    record_usage_with_provider(
+        account_email,
+        model,
+        input_tokens,
+        output_tokens,
+        cached_tokens,
+        crate::models::AccountProvider::Google,
+    )
+}
+
+/// [FORK] Record token usage tagged with the serving provider.
+pub fn record_usage_with_provider(
+    account_email: &str,
+    model: &str,
+    input_tokens: u32,
+    output_tokens: u32,
+    cached_tokens: u32,
+    provider: crate::models::AccountProvider,
+) -> Result<(), String> {
+    let provider = provider.as_str();
     let conn = connect_db()?;
     let timestamp = chrono::Local::now().timestamp();
     let total_tokens = input_tokens + output_tokens;
 
     // Insert into raw usage table
     conn.execute(
-        "INSERT INTO token_usage (timestamp, account_email, model, input_tokens, output_tokens, cached_tokens, total_tokens)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        params![timestamp, account_email, model, input_tokens, output_tokens, cached_tokens, total_tokens],
+        "INSERT INTO token_usage (timestamp, account_email, model, input_tokens, output_tokens, cached_tokens, total_tokens, provider)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![timestamp, account_email, model, input_tokens, output_tokens, cached_tokens, total_tokens, provider],
     ).map_err(|e| e.to_string())?;
 
     let hour_bucket = chrono::Local::now().format("%Y-%m-%d %H:00").to_string();
     conn.execute(
-        "INSERT INTO token_stats_hourly (hour_bucket, account_email, total_input_tokens, total_output_tokens, total_cached_tokens, total_tokens, request_count)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1)
+        "INSERT INTO token_stats_hourly (hour_bucket, account_email, total_input_tokens, total_output_tokens, total_cached_tokens, total_tokens, request_count, provider)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ?7)
          ON CONFLICT(hour_bucket, account_email) DO UPDATE SET
             total_input_tokens = total_input_tokens + ?3,
             total_output_tokens = total_output_tokens + ?4,
             total_cached_tokens = total_cached_tokens + ?5,
             total_tokens = total_tokens + ?6,
-            request_count = request_count + 1",
-        params![hour_bucket, account_email, input_tokens, output_tokens, cached_tokens, total_tokens],
+            request_count = request_count + 1,
+            provider = ?7",
+        params![hour_bucket, account_email, input_tokens, output_tokens, cached_tokens, total_tokens, provider],
     ).map_err(|e| e.to_string())?;
 
     Ok(())
@@ -424,6 +470,48 @@ pub fn get_model_stats(hours: i64) -> Result<Vec<ModelTokenStats>, String> {
                 total_cached_tokens: row.get(3)?,
                 total_tokens: row.get(4)?,
                 request_count: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut result = Vec::new();
+    for row in rows {
+        result.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(result)
+}
+
+/// [FORK] Usage broken down by provider (google / openai).
+pub fn get_provider_stats(hours: i64) -> Result<Vec<ProviderTokenStats>, String> {
+    let conn = connect_db()?;
+    let cutoff = chrono::Local::now().timestamp() - (hours * 3600);
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT COALESCE(NULLIF(TRIM(provider), ''), 'google') as prov,
+                SUM(input_tokens) as input,
+                SUM(output_tokens) as output,
+                SUM(cached_tokens) as cached,
+                SUM(total_tokens) as total,
+                COUNT(*) as count,
+                COUNT(DISTINCT account_email) as accounts
+         FROM token_usage
+         WHERE timestamp >= ?1
+         GROUP BY prov
+         ORDER BY total DESC",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([cutoff], |row| {
+            Ok(ProviderTokenStats {
+                provider: row.get(0)?,
+                total_input_tokens: row.get(1)?,
+                total_output_tokens: row.get(2)?,
+                total_cached_tokens: row.get(3)?,
+                total_tokens: row.get(4)?,
+                request_count: row.get(5)?,
+                account_count: row.get(6)?,
             })
         })
         .map_err(|e| e.to_string())?;
