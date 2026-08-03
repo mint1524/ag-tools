@@ -23,7 +23,9 @@ on:
         default: true
 
 concurrency:
-  group: fork-image-${{ github.ref }}
+  # Keyed by commit, not by branch: a follow-up push must not cancel an image build
+  # that is already halfway through a release compile.
+  group: fork-image-${{ github.sha }}
   cancel-in-progress: true
 
 env:

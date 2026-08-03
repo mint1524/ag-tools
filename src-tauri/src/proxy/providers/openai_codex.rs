@@ -480,29 +480,60 @@ async fn attempt_once(
             ClientWire::Chat => Some(ChatStreamTranslator::new(model)),
             ClientWire::Responses => None,
         };
-        let stream = response.bytes_stream().map(move |chunk| match chunk {
-            Ok(bytes) => {
-                let text = String::from_utf8_lossy(&bytes);
-                inspector.push_chunk(&text);
-                if let Some(usage) = inspector.usage.take() {
-                    record_usage(&account_email, &model_for_stats, usage);
-                }
-                match translator.as_mut() {
-                    Some(translator) => {
-                        Ok::<Bytes, std::io::Error>(Bytes::from(translator.push_chunk(&text)))
+        // async_stream (rather than `.map`) so the chat stream can still be terminated
+        // after the upstream ends — a stream that stops without `response.completed`
+        // would otherwise leave a chat client waiting for `[DONE]` forever.
+        let stream = async_stream::stream! {
+            let mut upstream = response.bytes_stream();
+
+            while let Some(chunk) = upstream.next().await {
+                match chunk {
+                    Ok(bytes) => {
+                        let text = String::from_utf8_lossy(&bytes);
+                        inspector.push_chunk(&text);
+                        if let Some(usage) = inspector.usage.take() {
+                            record_usage(&account_email, &model_for_stats, usage);
+                        }
+                        match translator.as_mut() {
+                            Some(translator) => {
+                                let translated = translator.push_chunk(&text);
+                                if !translated.is_empty() {
+                                    yield Ok::<Bytes, std::io::Error>(Bytes::from(translated));
+                                }
+                            }
+                            None => yield Ok::<Bytes, std::io::Error>(bytes),
+                        }
                     }
-                    None => Ok::<Bytes, std::io::Error>(bytes),
+                    Err(e) => {
+                        match translator.as_mut() {
+                            // Close the chat stream properly instead of leaking a raw
+                            // error frame a chat client cannot parse.
+                            Some(translator) => {
+                                let tail = translator.finish();
+                                if !tail.is_empty() {
+                                    yield Ok::<Bytes, std::io::Error>(Bytes::from(tail));
+                                }
+                            }
+                            None => {
+                                yield Ok::<Bytes, std::io::Error>(Bytes::from(format!(
+                                    "data: {{\"type\":\"error\",\"error\":{{\"message\":\"ChatGPT stream error: {}\"}}}}\n\n",
+                                    e
+                                )));
+                            }
+                        }
+                        break;
+                    }
                 }
             }
-            Err(e) => Ok(Bytes::from(match translator.as_mut() {
-                // Close the chat stream properly instead of leaking a raw error frame.
-                Some(translator) => translator.finish(),
-                None => format!(
-                    "data: {{\"type\":\"error\",\"error\":{{\"message\":\"ChatGPT stream error: {}\"}}}}\n\n",
-                    e
-                ),
-            })),
-        });
+
+            // Upstream finished. For chat clients, make sure the stream is terminated.
+            if let Some(translator) = translator.as_mut() {
+                let tail = translator.finish();
+                if !tail.is_empty() {
+                    yield Ok::<Bytes, std::io::Error>(Bytes::from(tail));
+                }
+            }
+        };
 
         let built = Response::builder()
             .status(status)
