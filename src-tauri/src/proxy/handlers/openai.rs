@@ -735,6 +735,34 @@ pub async fn handle_chat_completions(
         return intercept_chat_to_image(state, body, &model_name).await;
     }
 
+    // [FORK] ChatGPT (Codex) routing for chat/completions.
+    //
+    // Converted to the Responses API on the way in and back to chat.completion(.chunk) on
+    // the way out, so ordinary OpenAI-compatible clients can be served by a ChatGPT
+    // subscription account.
+    {
+        let openai_cfg = state.openai.read().await.clone();
+        let requested_model = body.get("model").and_then(|v| v.as_str());
+
+        if body.get("messages").is_some()
+            && crate::proxy::providers::openai_codex::should_route_to_openai(
+                &openai_cfg,
+                requested_model,
+            )
+        {
+            tracing::info!(
+                "[OpenAI] Routing /v1/chat/completions to the ChatGPT account pool (model={:?})",
+                requested_model
+            );
+            return Ok(
+                crate::proxy::providers::openai_codex::forward_chat_completions(
+                    &state, &headers, body,
+                )
+                .await,
+            );
+        }
+    }
+
     // [FIX] 保存原始请求体的完整副本，用于日志记录
     // 这确保了即使结构体定义遗漏字段，日志也能完整记录所有参数
     let original_body = body.clone();
