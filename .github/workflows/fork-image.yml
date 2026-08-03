@@ -1,0 +1,134 @@
+name: Fork image (ghcr)
+
+# Fork-specific pipeline: the deployment host is too small to compile this project
+# (2 cores / 3 GB RAM), so GitHub Actions is the only compiler and image builder.
+# Result: ghcr.io/<owner>/ag-tools, consumed by the Dokploy app `sidequests/agtools`.
+
+on:
+  push:
+    branches:
+      - main
+      - "feat/**"
+      - "fix/**"
+    paths-ignore:
+      - "README*.md"
+      - "docs/**"
+      - "web_site/**"
+      - "Casks/**"
+  workflow_dispatch:
+    inputs:
+      push_image:
+        description: "Build and push the image to ghcr"
+        type: boolean
+        default: true
+
+concurrency:
+  group: fork-image-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/ag-tools
+
+jobs:
+  # Fast feedback: types + rust compile. Linux only — the fork ships a Linux container,
+  # cross-platform desktop builds stay in the upstream ci.yml.
+  check:
+    name: Check (tsc + cargo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install frontend deps
+        run: npm install --legacy-peer-deps
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Install Rust build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev \
+            libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf \
+            pkg-config libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libnm-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri"
+
+      - name: cargo fmt
+        run: cd src-tauri && cargo fmt -- --check
+
+      - name: cargo check
+        run: cd src-tauri && cargo check --bin antigravity_tools
+
+      - name: cargo clippy
+        run: cd src-tauri && cargo clippy --bin antigravity_tools
+
+      - name: Rust tests (openai provider only)
+        run: cd src-tauri && cargo test openai -- --nocapture
+
+  image:
+    name: Build & push headless image
+    needs: check
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.push_image)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=sha,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          build-args: |
+            USE_MIRROR=false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          {
+            echo "### Image pushed"
+            echo ""
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+            echo ""
+            echo "Deploy: point the Dokploy app \`sidequests/agtools\` at one of these tags."
+          } >> "$GITHUB_STEP_SUMMARY"
