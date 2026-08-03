@@ -25,7 +25,19 @@ use serde_json::{json, Value};
 use crate::models::{Account, AccountProvider};
 use crate::modules::openai_account;
 use crate::modules::openai_oauth;
+use crate::proxy::providers::openai_chat_bridge::{
+    chat_to_responses, responses_to_chat_completion, ChatStreamTranslator,
+};
 use crate::proxy::server::AppState;
+
+/// Which protocol the *client* speaks. The upstream is always streaming Responses.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClientWire {
+    /// Client speaks the Responses API — relay verbatim.
+    Responses,
+    /// Client speaks chat/completions — translate both ways.
+    Chat,
+}
 
 /// Models the Codex backend is known to serve. Used by `Auto` dispatch to decide
 /// whether an unprefixed model belongs to ChatGPT rather than Antigravity.
@@ -336,6 +348,7 @@ async fn attempt_once(
     body_bytes: Vec<u8>,
     model: &str,
     client_wants_stream: bool,
+    wire: ClientWire,
 ) -> AttemptOutcome {
     let url = upstream_url(config, path);
     // Emulated TLS client: chatgpt.com sits behind Cloudflare and a plain fingerprint
@@ -460,20 +473,35 @@ async fn attempt_once(
     let model_for_stats = model.to_string();
 
     if client_wants_stream {
-        // Relay the SSE stream untouched while sniffing the terminal event for usage.
+        // Relay the SSE stream while sniffing the terminal event for usage. For chat
+        // clients the events are rewritten into chat.completion.chunk on the way out.
         let mut inspector = SseInspector::default();
+        let mut translator = match wire {
+            ClientWire::Chat => Some(ChatStreamTranslator::new(model)),
+            ClientWire::Responses => None,
+        };
         let stream = response.bytes_stream().map(move |chunk| match chunk {
             Ok(bytes) => {
-                inspector.push_chunk(&String::from_utf8_lossy(&bytes));
+                let text = String::from_utf8_lossy(&bytes);
+                inspector.push_chunk(&text);
                 if let Some(usage) = inspector.usage.take() {
                     record_usage(&account_email, &model_for_stats, usage);
                 }
-                Ok::<Bytes, std::io::Error>(bytes)
+                match translator.as_mut() {
+                    Some(translator) => {
+                        Ok::<Bytes, std::io::Error>(Bytes::from(translator.push_chunk(&text)))
+                    }
+                    None => Ok::<Bytes, std::io::Error>(bytes),
+                }
             }
-            Err(e) => Ok(Bytes::from(format!(
-                "data: {{\"type\":\"error\",\"error\":{{\"message\":\"ChatGPT stream error: {}\"}}}}\n\n",
-                e
-            ))),
+            Err(e) => Ok(Bytes::from(match translator.as_mut() {
+                // Close the chat stream properly instead of leaking a raw error frame.
+                Some(translator) => translator.finish(),
+                None => format!(
+                    "data: {{\"type\":\"error\",\"error\":{{\"message\":\"ChatGPT stream error: {}\"}}}}\n\n",
+                    e
+                ),
+            })),
         });
 
         let built = Response::builder()
@@ -528,11 +556,17 @@ async fn attempt_once(
     let _ = account_id;
 
     match inspector.final_response {
-        Some(final_response) => AttemptOutcome {
-            status,
-            response: (status, axum::Json(final_response)).into_response(),
-            retryable: false,
-        },
+        Some(final_response) => {
+            let payload = match wire {
+                ClientWire::Chat => responses_to_chat_completion(&final_response, model),
+                ClientWire::Responses => final_response,
+            };
+            AttemptOutcome {
+                status,
+                response: (status, axum::Json(payload)).into_response(),
+                retryable: false,
+            }
+        }
         None => AttemptOutcome {
             status: StatusCode::BAD_GATEWAY,
             response: (
@@ -566,7 +600,58 @@ pub async fn forward_responses(
     state: &AppState,
     path: &str,
     incoming_headers: &HeaderMap,
+    body: Value,
+) -> Response {
+    let client_wants_stream = body
+        .get("stream")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    forward(
+        state,
+        path,
+        incoming_headers,
+        body,
+        ClientWire::Responses,
+        client_wants_stream,
+    )
+    .await
+}
+
+/// Forward a chat/completions request: converted to Responses on the way in and back to
+/// chat.completion(.chunk) on the way out.
+pub async fn forward_chat_completions(
+    state: &AppState,
+    incoming_headers: &HeaderMap,
+    chat_body: Value,
+) -> Response {
+    let config = state.openai.read().await.clone();
+    let requested_model = chat_body.get("model").and_then(|v| v.as_str());
+    let model = resolve_model(&config, requested_model);
+    let client_wants_stream = chat_body
+        .get("stream")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    let responses_body = chat_to_responses(&chat_body, &model);
+
+    forward(
+        state,
+        "responses",
+        incoming_headers,
+        responses_body,
+        ClientWire::Chat,
+        client_wants_stream,
+    )
+    .await
+}
+
+async fn forward(
+    state: &AppState,
+    path: &str,
+    incoming_headers: &HeaderMap,
     mut body: Value,
+    wire: ClientWire,
+    client_wants_stream: bool,
 ) -> Response {
     let config = state.openai.read().await.clone();
 
@@ -583,13 +668,6 @@ pub async fn forward_responses(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
     let model = resolve_model(&config, requested_model.as_deref());
-
-    // The client's own streaming preference decides how we hand the answer back; the
-    // upstream call is always streaming.
-    let client_wants_stream = body
-        .get("stream")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
 
     normalize_request_body(&mut body, &model);
     let body_bytes = match serde_json::to_vec(&body) {
@@ -627,6 +705,7 @@ pub async fn forward_responses(
             body_bytes.clone(),
             &model,
             client_wants_stream,
+            wire,
         )
         .await;
 
