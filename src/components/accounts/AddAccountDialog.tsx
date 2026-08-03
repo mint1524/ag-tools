@@ -8,6 +8,7 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { request as invoke } from '../../utils/request';
 import { isTauri } from '../../utils/env';
 import { copyToClipboard } from '../../utils/clipboard';
+import ChatGptLoginPanel from './ChatGptLoginPanel';
 
 interface AddAccountDialogProps {
     onAdd: (email: string, refreshToken: string) => Promise<void>;
@@ -20,7 +21,7 @@ function AddAccountDialog({ onAdd, showText = true }: AddAccountDialogProps) {
     const { t } = useTranslation();
     const fetchAccounts = useAccountStore(state => state.fetchAccounts);
     const [isOpen, setIsOpen] = useState(false);
-    const [activeTab, setActiveTab] = useState<'oauth' | 'token' | 'import'>(isTauri() ? 'oauth' : 'token');
+    const [activeTab, setActiveTab] = useState<'oauth' | 'token' | 'import' | 'chatgpt'>(isTauri() ? 'oauth' : 'token');
     const [refreshToken, setRefreshToken] = useState('');
     const [oauthUrl, setOauthUrl] = useState('');
     const [oauthUrlCopied, setOauthUrlCopied] = useState(false);
@@ -492,7 +493,7 @@ function AddAccountDialog({ onAdd, showText = true }: AddAccountDialogProps) {
 
                         {/* Tab 导航 - 胶囊风格 */}
 
-                        <div className="bg-gray-100 dark:bg-base-200 p-1 rounded-xl mb-6 grid grid-cols-3 gap-1">
+                        <div className="bg-gray-100 dark:bg-base-200 p-1 rounded-xl mb-6 grid grid-cols-4 gap-1">
                             <button
                                 className={`py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'oauth'
                                     ? 'bg-white dark:bg-base-100 shadow-sm text-blue-600 dark:text-blue-400'
@@ -519,6 +520,16 @@ function AddAccountDialog({ onAdd, showText = true }: AddAccountDialogProps) {
                                 onClick={() => setActiveTab('import')}
                             >
                                 {t('accounts.add.tabs.import')}
+                            </button>
+                            {/* [FORK] ChatGPT (OpenAI) accounts */}
+                            <button
+                                className={`py-2 px-3 rounded-lg text-sm font-medium transition-all duration-200 ${activeTab === 'chatgpt'
+                                    ? 'bg-white dark:bg-base-100 shadow-sm text-emerald-600 dark:text-emerald-400'
+                                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-200/50 dark:hover:bg-base-300'
+                                    } `}
+                                onClick={() => setActiveTab('chatgpt')}
+                            >
+                                {t('accounts.add.tabs.chatgpt', 'ChatGPT')}
                             </button>
                         </div>
 
@@ -644,6 +655,15 @@ function AddAccountDialog({ onAdd, showText = true }: AddAccountDialogProps) {
                             )}
 
                             {/* 从数据库导入 */}
+                            {/* [FORK] ChatGPT login */}
+                            {activeTab === 'chatgpt' && (
+                                <ChatGptLoginPanel
+                                    onAdded={() => {
+                                        fetchAccounts();
+                                    }}
+                                />
+                            )}
+
                             {activeTab === 'import' && (
                                 <div className="space-y-6 py-2">
                                     <div className="space-y-2">

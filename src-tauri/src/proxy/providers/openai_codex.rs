@@ -58,10 +58,7 @@ pub fn looks_like_openai_model(model: &str) -> bool {
 ///
 /// Pure function of config + model so it can be unit-tested and reasoned about; the
 /// caller additionally checks that a usable account exists.
-pub fn should_route_to_openai(
-    config: &crate::proxy::OpenAiConfig,
-    model: Option<&str>,
-) -> bool {
+pub fn should_route_to_openai(config: &crate::proxy::OpenAiConfig, model: Option<&str>) -> bool {
     use crate::proxy::OpenAiDispatchMode as Mode;
 
     if !config.enabled {
@@ -153,7 +150,10 @@ pub struct UsageTotals {
 /// Pull usage out of a Responses API `usage` object.
 pub fn parse_usage(usage: &Value) -> UsageTotals {
     let as_u32 = |value: Option<&Value>| -> u32 {
-        value.and_then(|v| v.as_u64()).unwrap_or(0).min(u32::MAX as u64) as u32
+        value
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0)
+            .min(u32::MAX as u64) as u32
     };
 
     UsageTotals {
@@ -226,9 +226,8 @@ pub struct PreparedAccount {
 
 /// List pool candidates, least-recently-used first, skipping unusable ones.
 fn candidate_accounts(state: &AppState, model: &str, exclude: &[String]) -> Vec<Account> {
-    let mut accounts =
-        crate::modules::account::list_accounts_by_provider(AccountProvider::Openai)
-            .unwrap_or_default();
+    let mut accounts = crate::modules::account::list_accounts_by_provider(AccountProvider::Openai)
+        .unwrap_or_default();
 
     accounts.retain(|account| {
         if account.disabled || account.proxy_disabled {
@@ -275,8 +274,7 @@ pub async fn prepare_account(
         match openai_account::ensure_fresh_access_token(&account).await {
             Ok(access_token) => {
                 // Re-read: the refresh may have rotated tokens and bumped account info.
-                let account = crate::modules::account::load_account(&account.id)
-                    .unwrap_or(account);
+                let account = crate::modules::account::load_account(&account.id).unwrap_or(account);
                 return Ok(PreparedAccount {
                     account,
                     access_token,
@@ -453,7 +451,9 @@ async fn attempt_once(
     }
 
     state.token_manager.record_success(&prepared.account.id);
-    state.token_manager.mark_account_success(&prepared.account.id);
+    state
+        .token_manager
+        .mark_account_success(&prepared.account.id);
 
     let account_email = prepared.account.email.clone();
     let account_id = prepared.account.id.clone();
@@ -611,9 +611,8 @@ pub async fn forward_responses(
         let prepared = match prepare_account(state, &model, &tried).await {
             Ok(prepared) => prepared,
             Err(e) => {
-                return last_response.unwrap_or_else(|| {
-                    (StatusCode::SERVICE_UNAVAILABLE, e).into_response()
-                })
+                return last_response
+                    .unwrap_or_else(|| (StatusCode::SERVICE_UNAVAILABLE, e).into_response())
             }
         };
 
@@ -696,7 +695,10 @@ mod tests {
             strip_routing_prefix("openai:GPT-5.1-Codex").as_deref(),
             Some("GPT-5.1-Codex")
         );
-        assert_eq!(strip_routing_prefix("Codex:gpt-5").as_deref(), Some("gpt-5"));
+        assert_eq!(
+            strip_routing_prefix("Codex:gpt-5").as_deref(),
+            Some("gpt-5")
+        );
         assert_eq!(strip_routing_prefix("gpt-5"), None);
     }
 
@@ -773,7 +775,9 @@ mod tests {
         assert_eq!(usage.output_tokens, 45);
         assert_eq!(usage.cached_tokens, 100);
         assert_eq!(
-            inspector.final_response.and_then(|r| r["id"].as_str().map(str::to_string)),
+            inspector
+                .final_response
+                .and_then(|r| r["id"].as_str().map(str::to_string)),
             Some("resp_123".to_string())
         );
     }
