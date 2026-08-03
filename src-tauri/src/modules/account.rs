@@ -254,6 +254,7 @@ mod tests {
                     id: "acc-1".to_string(),
                     email: "user1@example.com".to_string(),
                     name: Some("User One".to_string()),
+                    provider: Default::default(),
                     disabled: false,
                     proxy_disabled: false,
                     protected_models: HashSet::new(),
@@ -264,6 +265,7 @@ mod tests {
                     id: "acc-2".to_string(),
                     email: "user2@example.com".to_string(),
                     name: None,
+                    provider: Default::default(),
                     disabled: true,
                     proxy_disabled: true,
                     protected_models: HashSet::new(),
@@ -331,6 +333,7 @@ mod tests {
                 id: "acc-1".to_string(),
                 email: "user1@example.com".to_string(),
                 name: Some("User One".to_string()),
+                provider: Default::default(),
                 disabled: false,
                 proxy_disabled: false,
                 protected_models: HashSet::new(),
@@ -564,6 +567,7 @@ fn rebuild_index_from_accounts_in_dir(data_dir: &PathBuf) -> Result<AccountIndex
                                     id: account.id,
                                     email: account.email,
                                     name: account.name,
+                                    provider: account.provider,
                                     disabled: account.disabled,
                                     proxy_disabled: account.proxy_disabled,
                                     protected_models: account.protected_models,
@@ -809,8 +813,14 @@ pub fn add_account(
         .map_err(|e| format!("failed_to_acquire_lock: {}", e))?;
     let mut index = load_account_index()?;
 
-    // Check if account already exists
-    if index.accounts.iter().any(|s| s.email == email) {
+    // Check if account already exists.
+    // Provider-scoped: the same address can legitimately be both a Google and a
+    // ChatGPT account, and they must stay separate entries in the pool.
+    if index
+        .accounts
+        .iter()
+        .any(|s| s.email == email && s.provider.is_google())
+    {
         return Err(format!("Account already exists: {}", email));
     }
 
@@ -827,6 +837,7 @@ pub fn add_account(
         id: account.id.clone(),
         email: account.email.clone(),
         name: account.name.clone(),
+        provider: account.provider,
         disabled: account.disabled,
         proxy_disabled: account.proxy_disabled,
         protected_models: account.protected_models.clone(),
@@ -855,11 +866,11 @@ pub fn upsert_account(
         .map_err(|e| format!("failed_to_acquire_lock: {}", e))?;
     let mut index = load_account_index()?;
 
-    // Find account ID if exists
+    // Find account ID if exists (Google accounts only — see add_account).
     let existing_account_id = index
         .accounts
         .iter()
-        .find(|s| s.email == email)
+        .find(|s| s.email == email && s.provider.is_google())
         .map(|s| s.id.clone());
 
     if let Some(account_id) = existing_account_id {
@@ -919,6 +930,121 @@ pub fn upsert_account(
     // Release lock, let add_account handle it
     drop(_lock);
     add_account(email, name, token)
+}
+
+/// Add or update an account of a non-default provider (fork addition).
+///
+/// Google accounts keep using [`upsert_account`]; this entry point exists so provider
+/// modules (currently OpenAI/ChatGPT) can own their own account shape while all index
+/// mutation still happens here, under `ACCOUNT_INDEX_LOCK`.
+///
+/// `mutate` receives the account to write — freshly created or loaded from disk — and is
+/// responsible for setting tokens and provider-specific fields. Matching is done on
+/// (email, provider), so the same address can exist once per provider.
+pub fn upsert_provider_account<F>(
+    provider: crate::models::AccountProvider,
+    email: &str,
+    name: Option<String>,
+    mutate: F,
+) -> Result<Account, String>
+where
+    F: FnOnce(&mut Account),
+{
+    let _lock = ACCOUNT_INDEX_LOCK
+        .lock()
+        .map_err(|e| format!("failed_to_acquire_lock: {}", e))?;
+    let mut index = load_account_index()?;
+
+    let existing_id = index
+        .accounts
+        .iter()
+        .find(|s| s.email == email && s.provider == provider)
+        .map(|s| s.id.clone());
+
+    let (mut account, is_new) = match existing_id {
+        Some(id) => match load_account(&id) {
+            Ok(account) => (account, false),
+            Err(e) => {
+                crate::modules::logger::log_warn(&format!(
+                    "Account {} file missing ({}), recreating...",
+                    id, e
+                ));
+                let placeholder = TokenData::new(
+                    String::new(),
+                    String::new(),
+                    0,
+                    Some(email.to_string()),
+                    None,
+                    None,
+                    false,
+                    None,
+                );
+                (Account::new(id, email.to_string(), placeholder), false)
+            }
+        },
+        None => {
+            let placeholder = TokenData::new(
+                String::new(),
+                String::new(),
+                0,
+                Some(email.to_string()),
+                None,
+                None,
+                false,
+                None,
+            );
+            (
+                Account::new(Uuid::new_v4().to_string(), email.to_string(), placeholder),
+                true,
+            )
+        }
+    };
+
+    account.provider = provider;
+    account.email = email.to_string();
+    if name.is_some() {
+        account.name = name.clone();
+    }
+
+    mutate(&mut account);
+
+    // A credential refresh always re-enables an account that was disabled because its
+    // previous credentials had died.
+    if account.disabled {
+        account.disabled = false;
+        account.disabled_reason = None;
+        account.disabled_at = None;
+    }
+    account.update_last_used();
+
+    save_account(&account)?;
+
+    if is_new {
+        index.accounts.push(AccountSummary {
+            id: account.id.clone(),
+            email: account.email.clone(),
+            name: account.name.clone(),
+            provider: account.provider,
+            disabled: account.disabled,
+            proxy_disabled: account.proxy_disabled,
+            protected_models: account.protected_models.clone(),
+            created_at: account.created_at,
+            last_used: account.last_used,
+        });
+        if index.current_account_id.is_none() {
+            index.current_account_id = Some(account.id.clone());
+        }
+    } else if let Some(summary) = index.accounts.iter_mut().find(|s| s.id == account.id) {
+        summary.email = account.email.clone();
+        summary.name = account.name.clone();
+        summary.provider = account.provider;
+        summary.disabled = account.disabled;
+        summary.last_used = account.last_used;
+    }
+
+    save_account_index(&index)?;
+
+    Ok(account)
 }
 
 /// Delete account
@@ -1635,6 +1761,30 @@ pub fn find_account_id_by_email(email: &str) -> Option<String> {
         .map(|a| a.id)
 }
 
+/// Provider-scoped lookup. Needed because the same address may exist twice in the
+/// pool (once as a Google account, once as a ChatGPT account).
+pub fn find_account_id_by_email_and_provider(
+    email: &str,
+    provider: crate::models::AccountProvider,
+) -> Option<String> {
+    load_account_index()
+        .ok()?
+        .accounts
+        .into_iter()
+        .find(|a| a.email == email && a.provider == provider)
+        .map(|a| a.id)
+}
+
+/// All accounts of a given provider, freshly loaded from disk.
+pub fn list_accounts_by_provider(
+    provider: crate::models::AccountProvider,
+) -> Result<Vec<Account>, String> {
+    Ok(list_accounts()?
+        .into_iter()
+        .filter(|a| a.provider == provider)
+        .collect())
+}
+
 pub fn mark_account_forbidden(account_id: &str, reason: &str) -> Result<(), String> {
     let _lock = ACCOUNT_INDEX_LOCK
         .lock()
@@ -1989,6 +2139,11 @@ pub async fn refresh_all_quotas_logic() -> Result<RefreshStats, String> {
     let tasks: Vec<_> = accounts
         .into_iter()
         .filter(|account| {
+            // [FORK] ChatGPT accounts have no Google quota endpoint; their limits come
+            // from the Codex response headers instead (see modules::openai_account).
+            if account.provider.is_openai() {
+                return false;
+            }
             // [MOD] Now we allow refreshing disabled and proxy_disabled accounts
             // to support forced re-sync from UI.
             // Only strictly skip forbidden accounts if necessary, but even those

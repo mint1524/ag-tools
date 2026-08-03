@@ -660,7 +660,9 @@ pub async fn warm_up_all_accounts() -> Result<String, String> {
         // [FIX] 过滤掉禁用反代的账号
         let target_accounts: Vec<_> = all_accounts
             .into_iter()
-            .filter(|a| !a.disabled && !a.proxy_disabled)
+            // [FORK] Warmup probes the Antigravity endpoints; ChatGPT accounts are not
+            // part of that flow.
+            .filter(|a| !a.disabled && !a.proxy_disabled && !a.provider.is_openai())
             .collect();
 
         if target_accounts.is_empty() {
@@ -857,6 +859,11 @@ pub async fn warm_up_account(account_id: &str) -> Result<String, String> {
 
     if account_owned.disabled || account_owned.proxy_disabled {
         return Err("Account is disabled".to_string());
+    }
+
+    // [FORK] Warmup is Antigravity-specific.
+    if account_owned.provider.is_openai() {
+        return Err("Warmup is not supported for ChatGPT accounts".to_string());
     }
 
     let email = account_owned.email.clone();
