@@ -109,9 +109,12 @@ pub fn generate_state() -> String {
 
 /// Build the authorization URL for the PKCE flow.
 pub fn build_authorize_url(pkce: &PkceCodes, state: &str, redirect_uri: &str) -> String {
+    // Bound to locals: these Strings must outlive the params array.
+    let client = client_id();
+    let originator_value = originator();
     let params = [
         ("response_type", "code"),
-        ("client_id", &client_id()),
+        ("client_id", client.as_str()),
         ("redirect_uri", redirect_uri),
         ("scope", SCOPE),
         ("code_challenge", pkce.code_challenge.as_str()),
@@ -119,7 +122,7 @@ pub fn build_authorize_url(pkce: &PkceCodes, state: &str, redirect_uri: &str) ->
         ("id_token_add_organizations", "true"),
         ("codex_cli_simplified_flow", "true"),
         ("state", state),
-        ("originator", originator().as_str()),
+        ("originator", originator_value.as_str()),
     ];
 
     match url::Url::parse_with_params(&authorize_url(), params) {
