@@ -2309,6 +2309,15 @@ impl TokenManager {
         );
     }
 
+    /// [FORK] Is this ChatGPT account currently parked?
+    ///
+    /// Consults the tracker directly: unlike `is_rate_limited_sync` it takes no async
+    /// lock (that one calls `blocking_read`, which panics inside a runtime) and it is not
+    /// gated on the circuit-breaker toggle — a 429 from OpenAI is a hard stop.
+    pub fn is_openai_rate_limited(&self, account_id: &str, model: Option<&str>) -> bool {
+        self.rate_limit_tracker.is_rate_limited(account_id, model)
+    }
+
     /// 检查账号是否在限流中 (支持模型级)
     pub async fn is_rate_limited(&self, account_id: &str, model: Option<&str>) -> bool {
         // [NEW] 检查熔断是否启用

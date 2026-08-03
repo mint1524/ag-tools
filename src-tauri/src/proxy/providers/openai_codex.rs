@@ -252,10 +252,11 @@ fn candidate_accounts(state: &AppState, model: &str, exclude: &[String]) -> Vec<
             return false;
         }
         // Reuse the shared tracker so ChatGPT cooldowns show up in the same UI as
-        // Antigravity ones.
+        // Antigravity ones. NB: the tracker-only variant — `is_rate_limited_sync` takes an
+        // async lock via `blocking_read` and would panic here.
         if state
             .token_manager
-            .is_rate_limited_sync(&account.id, Some(model))
+            .is_openai_rate_limited(&account.id, Some(model))
         {
             return false;
         }
