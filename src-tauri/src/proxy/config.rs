@@ -355,6 +355,70 @@ impl Default for ZaiConfig {
     }
 }
 
+/// How incoming requests are routed to ChatGPT (OpenAI) accounts. [FORK]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenAiDispatchMode {
+    /// Never route to ChatGPT accounts.
+    #[default]
+    Off,
+    /// Route only when the model is explicitly prefixed (`openai:` / `codex:`).
+    Prefix,
+    /// Route when the model looks like an OpenAI model, or is prefixed.
+    Auto,
+    /// Route every request to ChatGPT accounts (Google pool unused).
+    Exclusive,
+}
+
+fn default_openai_base_url() -> String {
+    "https://chatgpt.com/backend-api/codex".to_string()
+}
+
+/// ChatGPT (OpenAI) provider configuration. [FORK]
+///
+/// Credentials are not stored here — they live on the pooled accounts themselves
+/// (`provider: openai`), obtained through the ChatGPT OAuth flow.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenAiConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    /// Codex backend base URL; override only for testing.
+    #[serde(default = "default_openai_base_url")]
+    pub base_url: String,
+    #[serde(default)]
+    pub dispatch_mode: OpenAiDispatchMode,
+    /// Incoming model id -> upstream OpenAI model id.
+    #[serde(default)]
+    pub model_mapping: HashMap<String, String>,
+    /// Model used when the client asks for something unknown but routing chose OpenAI.
+    #[serde(default = "default_openai_fallback_model")]
+    pub default_model: String,
+    /// How many other ChatGPT accounts to try when one is rate-limited.
+    #[serde(default = "default_openai_max_failover")]
+    pub max_failover_accounts: usize,
+}
+
+fn default_openai_fallback_model() -> String {
+    "gpt-5.1-codex".to_string()
+}
+
+fn default_openai_max_failover() -> usize {
+    3
+}
+
+impl Default for OpenAiConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            base_url: default_openai_base_url(),
+            dispatch_mode: OpenAiDispatchMode::Off,
+            model_mapping: HashMap::new(),
+            default_model: default_openai_fallback_model(),
+            max_failover_accounts: default_openai_max_failover(),
+        }
+    }
+}
+
 /// 实验性功能配置 (Feature Flags)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExperimentalConfig {
@@ -623,6 +687,10 @@ pub struct ProxyConfig {
     #[serde(default)]
     pub zai: ZaiConfig,
 
+    /// ChatGPT (OpenAI) provider configuration. [FORK]
+    #[serde(default)]
+    pub openai: OpenAiConfig,
+
     /// 自定义 User-Agent 请求头 (可选覆盖)
     #[serde(default)]
     pub user_agent_override: Option<String>,
@@ -696,6 +764,7 @@ impl Default for ProxyConfig {
             upstream_proxy: UpstreamProxyConfig::default(),
             only_raw_quota_models: false,
             zai: ZaiConfig::default(),
+            openai: OpenAiConfig::default(),
             scheduling: crate::proxy::sticky_config::StickySessionConfig::default(),
             experimental: ExperimentalConfig::default(),
             security_monitor: SecurityMonitorConfig::default(),

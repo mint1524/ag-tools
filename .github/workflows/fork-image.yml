@@ -68,9 +68,13 @@ jobs:
       # so the gate is scoped to the files this fork adds.
       - name: rustfmt (fork files)
         run: |
-          files=$(git ls-files 'src-tauri/src/**/openai*.rs' 'src-tauri/src/models/provider.rs')
-          echo "checking: $files"
-          test -n "$files" && rustfmt --edition 2021 --check $files
+          files="
+            src-tauri/src/models/provider.rs
+            src-tauri/src/modules/openai_oauth.rs
+            src-tauri/src/modules/openai_account.rs
+            src-tauri/src/proxy/providers/openai_codex.rs
+          "
+          rustfmt --edition 2021 --check $files
 
       - name: cargo check
         run: cd src-tauri && cargo check --bin antigravity_tools

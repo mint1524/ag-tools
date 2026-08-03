@@ -5,7 +5,9 @@
 //! rate-limit response headers into the same `QuotaData` shape the UI already renders for
 //! Google accounts.
 
-use crate::models::{Account, AccountProvider, ModelQuota, OpenAiAccountInfo, QuotaData, TokenData};
+use crate::models::{
+    Account, AccountProvider, ModelQuota, OpenAiAccountInfo, QuotaData, TokenData,
+};
 use crate::modules::openai_oauth::{self, OpenAiTokens, RefreshFailure};
 
 /// Build the `TokenData` for a ChatGPT account.
@@ -368,8 +370,8 @@ where
             .ok()?;
         let window_minutes = get(&format!("x-codex-{}-window-minutes", prefix))
             .and_then(|v| v.trim().parse::<i64>().ok());
-        let resets_in_seconds = get(&format!("x-codex-{}-reset-at", prefix))
-            .and_then(|v| parse_reset_at(v.trim()));
+        let resets_in_seconds =
+            get(&format!("x-codex-{}-reset-at", prefix)).and_then(|v| parse_reset_at(v.trim()));
         Some(RateLimitWindow {
             used_percent,
             window_minutes,

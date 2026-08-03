@@ -21,7 +21,7 @@ pub mod middleware; // Axum 中间件
 pub mod model_specs; // 模型规格管理 (v4.1.29)
 pub mod monitor; // 监控
 pub mod opencode_sync; // OpenCode 配置同步
-pub mod providers; // Extra upstream providers (z.ai, etc.)
+pub mod providers; // Extra upstream providers (z.ai, ChatGPT/Codex, etc.)
 pub mod proxy_pool; // 代理池管理器
 pub mod rate_limit; // 限流跟踪
 pub mod session_manager; // 会话指纹管理
@@ -34,6 +34,8 @@ pub mod zai_vision_tools; // Built-in Vision MCP tools (z.ai vision API) // 调�
 pub use config::update_global_system_prompt_config;
 pub use config::update_image_thinking_mode;
 pub use config::update_thinking_budget_config;
+pub use config::OpenAiConfig;
+pub use config::OpenAiDispatchMode;
 pub use config::ProxyAuthMode;
 pub use config::ProxyConfig;
 pub use config::ProxyPoolConfig;

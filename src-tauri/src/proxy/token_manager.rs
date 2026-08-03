@@ -2314,6 +2314,28 @@ impl TokenManager {
         );
     }
 
+    /// [FORK] Park a ChatGPT account for a known number of seconds.
+    ///
+    /// The Google path derives cooldowns from quota API responses; the Codex backend
+    /// instead tells us the reset time in `x-codex-*-reset-at`, so this takes the
+    /// duration directly. Bypasses the circuit-breaker toggle on purpose: a 429 from
+    /// OpenAI is a hard "stop using this account", not a heuristic.
+    pub fn mark_openai_rate_limited(
+        &self,
+        account_id: &str,
+        model: Option<String>,
+        retry_after_secs: u64,
+    ) {
+        let reset_time =
+            std::time::SystemTime::now() + std::time::Duration::from_secs(retry_after_secs.max(1));
+        self.rate_limit_tracker.set_lockout_until(
+            account_id,
+            reset_time,
+            crate::proxy::rate_limit::RateLimitReason::RateLimitExceeded,
+            model,
+        );
+    }
+
     /// 检查账号是否在限流中 (支持模型级)
     pub async fn is_rate_limited(&self, account_id: &str, model: Option<&str>) -> bool {
         // [NEW] 检查熔断是否启用

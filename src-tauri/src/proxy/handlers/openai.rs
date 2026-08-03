@@ -1725,12 +1725,45 @@ fn web_tools_guidance_message() -> Value {
 pub async fn handle_completions(
     axum::extract::OriginalUri(uri): axum::extract::OriginalUri,
     State(state): State<AppState>,
+    headers: axum::http::HeaderMap,
     Json(mut body): Json<Value>,
 ) -> Response {
     debug!(
         "Received /v1/completions or /v1/responses payload: {:?}",
         body
     );
+
+    // [FORK] ChatGPT (Codex) routing.
+    //
+    // Requests already in Responses format are handed to the ChatGPT account pool
+    // untouched — that is the native protocol of the Codex backend, so no mapping is
+    // involved and Codex-style clients work as-is. Legacy `prompt`-only bodies are left
+    // to the Antigravity path below.
+    {
+        let openai_cfg = state.openai.read().await.clone();
+        let requested_model = body.get("model").and_then(|v| v.as_str());
+        let is_responses_shape = body.get("input").is_some() || body.get("instructions").is_some();
+
+        if is_responses_shape
+            && crate::proxy::providers::openai_codex::should_route_to_openai(
+                &openai_cfg,
+                requested_model,
+            )
+        {
+            tracing::info!(
+                "[OpenAI] Routing {} to the ChatGPT account pool (model={:?})",
+                uri.path(),
+                requested_model
+            );
+            return crate::proxy::providers::openai_codex::forward_responses(
+                &state,
+                "responses",
+                &headers,
+                body,
+            )
+            .await;
+        }
+    }
     let original_body = body.clone();
     let debug_cfg = state.debug_logging.read().await.clone();
 
