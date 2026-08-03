@@ -1783,6 +1783,14 @@ async fn admin_save_config(
         *zai = new_config.clone().proxy.zai;
     }
 
+    // [FORK] ChatGPT (OpenAI) provider. Without this the Web UI could save the config
+    // but the running proxy kept the values it started with, so toggling the provider
+    // did nothing until the container was restarted.
+    {
+        let mut openai = state.openai.write().await;
+        *openai = new_config.clone().proxy.openai;
+    }
+
     // 更新实验性配置
     {
         let mut exp = state.experimental.write().await;
