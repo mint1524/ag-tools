@@ -365,8 +365,17 @@ async fn attempt_once(
             format!("Bearer {}", prepared.access_token),
         )
         .header("originator", openai_oauth::originator())
-        .header("session-id", session_id_from(incoming_headers))
-        .header("OpenAI-Beta", "responses=experimental");
+        .header("session-id", session_id_from(incoming_headers));
+
+    // The real Codex CLI sends no `OpenAI-Beta` on the SSE responses path (that header is
+    // websocket-only upstream), so we send none either. A User-Agent is only set when the
+    // operator provides one — inventing a client version would be worse than staying with
+    // the HTTP client default.
+    if let Ok(user_agent) = std::env::var("ABV_OPENAI_USER_AGENT") {
+        if !user_agent.trim().is_empty() {
+            request = request.header(header::USER_AGENT.as_str(), user_agent);
+        }
+    }
 
     if let Some(account_id) = prepared.account.chatgpt_account_id() {
         request = request.header("ChatGPT-Account-ID", account_id);
