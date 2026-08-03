@@ -76,6 +76,11 @@ pub fn start_scheduler(
             let Ok(accounts) = account::list_accounts() else {
                 continue;
             };
+            // [FORK] The scheduler only warms Antigravity quota models.
+            let accounts: Vec<_> = accounts
+                .into_iter()
+                .filter(|a| !a.provider.is_openai())
+                .collect();
 
             if accounts.is_empty() {
                 continue;

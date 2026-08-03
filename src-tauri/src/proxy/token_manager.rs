@@ -313,6 +313,27 @@ impl TokenManager {
         let mut account: serde_json::Value =
             serde_json::from_str(&content).map_err(|e| format!("解析 JSON 失败: {}", e))?;
 
+        // [FORK] ChatGPT accounts must never enter the Google/Antigravity pool: their
+        // tokens are only valid against the Codex backend, and letting the Google refresh
+        // path touch them would burn the refresh token. They are pooled separately by
+        // `crate::proxy::providers::openai_codex`.
+        if account
+            .get("provider")
+            .and_then(|v| v.as_str())
+            .map(|p| p.eq_ignore_ascii_case("openai") || p.eq_ignore_ascii_case("chatgpt"))
+            .unwrap_or(false)
+        {
+            tracing::debug!(
+                "Skipping ChatGPT account in Google pool: {:?} (email={})",
+                path,
+                account
+                    .get("email")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("<unknown>")
+            );
+            return Ok(None);
+        }
+
         // [修复 #1344] 先检查账号是否被手动禁用(非配额保护原因)
         let is_proxy_disabled = account
             .get("proxy_disabled")

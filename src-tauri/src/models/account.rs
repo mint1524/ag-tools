@@ -1,4 +1,8 @@
-use super::{quota::QuotaData, token::TokenData};
+use super::{
+    provider::{AccountProvider, OpenAiAccountInfo},
+    quota::QuotaData,
+    token::TokenData,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 
@@ -19,6 +23,12 @@ pub struct Account {
     pub id: String,
     pub email: String,
     pub name: Option<String>,
+    /// Which upstream this account belongs to. Missing in legacy files -> Google.
+    #[serde(default)]
+    pub provider: AccountProvider,
+    /// OpenAI-only facts (account id / plan), present when `provider == Openai`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub openai: Option<OpenAiAccountInfo>,
     pub token: TokenData,
     /// 可选的设备指纹，用于切换账号时固定机器信息
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -83,6 +93,8 @@ impl Account {
             id,
             email,
             name: None,
+            provider: AccountProvider::Google,
+            openai: None,
             token,
             device_profile: None,
             device_history: Vec::new(),
@@ -111,6 +123,30 @@ impl Account {
         self.last_used = chrono::Utc::now().timestamp();
     }
 
+    /// Convenience constructor for a ChatGPT (Codex OAuth) account.
+    pub fn new_openai(
+        id: String,
+        email: String,
+        token: TokenData,
+        openai: OpenAiAccountInfo,
+    ) -> Self {
+        let mut account = Self::new(id, email, token);
+        account.provider = AccountProvider::Openai;
+        account.openai = Some(openai);
+        account
+    }
+
+    pub fn is_openai(&self) -> bool {
+        self.provider.is_openai()
+    }
+
+    /// Value for the `ChatGPT-Account-ID` header, if known.
+    pub fn chatgpt_account_id(&self) -> Option<&str> {
+        self.openai
+            .as_ref()
+            .and_then(|info| info.chatgpt_account_id.as_deref())
+    }
+
     pub fn update_quota(&mut self, mut quota: QuotaData) {
         if let Some(ref existing) = self.quota {
             if quota.subscription_tier.is_none() {
@@ -137,6 +173,9 @@ pub struct AccountSummary {
     pub id: String,
     pub email: String,
     pub name: Option<String>,
+    /// Provider of the account; absent in legacy indexes -> Google.
+    #[serde(default)]
+    pub provider: AccountProvider,
     #[serde(default)]
     pub disabled: bool,
     #[serde(default)]
