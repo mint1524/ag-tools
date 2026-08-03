@@ -843,6 +843,31 @@ export default function ApiProxy() {
         saveConfig(newConfig);
     };
 
+    /**
+     * [FORK] Update the ChatGPT (OpenAI) provider config.
+     *
+     * Defaults are filled in here because older gui_config.json files predate the
+     * section entirely — without them the first toggle would send a partial object.
+     */
+    const updateOpenAiConfig = (updates: Partial<NonNullable<ProxyConfig['openai']>>) => {
+        if (!appConfig) return;
+        const current = appConfig.proxy.openai || {
+            enabled: false,
+            base_url: 'https://chatgpt.com/backend-api/codex',
+            dispatch_mode: 'off' as const,
+            default_model: 'gpt-5.1-codex',
+            max_failover_accounts: 3,
+        };
+        const newConfig = {
+            ...appConfig,
+            proxy: {
+                ...appConfig.proxy,
+                openai: { ...current, ...updates }
+            }
+        };
+        saveConfig(newConfig);
+    };
+
     const updateZaiGeneralConfig = (updates: Partial<NonNullable<ProxyConfig['zai']>>) => {
         if (!appConfig?.proxy.zai) return;
         const newConfig = {
@@ -1531,6 +1556,75 @@ print(response.choices[0].message.content)`;
                                     proxyUrl={status.running ? status.base_url : `http://127.0.0.1:${appConfig.proxy.port || 8045}`}
                                     apiKey={appConfig.proxy.api_key}
                                 />
+                            </CollapsibleCard>
+
+                            {/* [FORK] ChatGPT (OpenAI) provider */}
+                            <CollapsibleCard
+                                title={t('proxy.config.openai.title', 'ChatGPT (OpenAI) accounts')}
+                                icon={<Zap size={18} className="text-emerald-500" />}
+                                enabled={!!appConfig.proxy.openai?.enabled}
+                                onToggle={(checked) => updateOpenAiConfig({ enabled: checked })}
+                            >
+                                <div className="space-y-4">
+                                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                                        {t(
+                                            'proxy.config.openai.desc',
+                                            'Serves requests from ChatGPT accounts in the pool (Codex backend). Add accounts on the Accounts page; no API key is used.'
+                                        )}
+                                    </p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1">
+                                            <label className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                                {t('proxy.config.openai.dispatch_mode', 'Routing')}
+                                            </label>
+                                            <select
+                                                className="select select-sm select-bordered w-full text-xs"
+                                                value={appConfig.proxy.openai?.dispatch_mode || 'off'}
+                                                onChange={(e) => updateOpenAiConfig({ dispatch_mode: e.target.value as any })}
+                                            >
+                                                <option value="off">{t('proxy.config.openai.modes.off', 'Off')}</option>
+                                                <option value="prefix">{t('proxy.config.openai.modes.prefix', 'Only openai:/codex: prefixed models')}</option>
+                                                <option value="auto">{t('proxy.config.openai.modes.auto', 'Auto (OpenAI-looking models)')}</option>
+                                                <option value="exclusive">{t('proxy.config.openai.modes.exclusive', 'Everything')}</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                                {t('proxy.config.openai.default_model', 'Default model')}
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={appConfig.proxy.openai?.default_model || 'gpt-5.1-codex'}
+                                                onChange={(e) => updateOpenAiConfig({ default_model: e.target.value })}
+                                                className="input input-sm input-bordered w-full font-mono text-xs"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                                {t('proxy.config.openai.base_url', 'Codex base URL')}
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={appConfig.proxy.openai?.base_url || 'https://chatgpt.com/backend-api/codex'}
+                                                onChange={(e) => updateOpenAiConfig({ base_url: e.target.value })}
+                                                className="input input-sm input-bordered w-full font-mono text-xs"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
+                                                {t('proxy.config.openai.max_failover', 'Accounts to try per request')}
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min={1}
+                                                max={10}
+                                                value={appConfig.proxy.openai?.max_failover_accounts ?? 3}
+                                                onChange={(e) => updateOpenAiConfig({ max_failover_accounts: Math.max(1, Number(e.target.value) || 1) })}
+                                                className="input input-sm input-bordered w-full font-mono text-xs"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
                             </CollapsibleCard>
 
                             {/* z.ai (GLM) Dispatcher */}

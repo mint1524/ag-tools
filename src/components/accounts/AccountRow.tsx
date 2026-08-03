@@ -5,6 +5,7 @@ import { cn } from '../../utils/cn';
 import { useTranslation } from 'react-i18next';
 import { formatCompactDuration, getLiveLimitForModel, getLiveLimitState } from '../../utils/liveLimit';
 import { getModelProtectionKey, findQuotaModel, findImageQuotaModel } from '../../config/modelConfig';
+import ProviderBadge from './ProviderBadge';
 
 interface AccountRowProps {
     account: Account;
@@ -97,6 +98,9 @@ function AccountRow({ account, selected, onSelect, isCurrent, isRefreshing, isSw
                     </span>
 
                     <div className="flex items-center gap-1.5 shrink-0">
+                        {/* [FORK] provider marker */}
+                        <ProviderBadge account={account} />
+
                         {isCurrent && (
                             <span className="px-2 py-0.5 rounded-md bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-[10px] font-bold shadow-sm border border-blue-200/50 dark:border-blue-800/50">
                                 {t('accounts.current').toUpperCase()}
