@@ -79,10 +79,10 @@ jobs:
           rustfmt --edition 2021 --check $files
 
       - name: cargo check
-        run: cd src-tauri && cargo check --bin antigravity_tools
+        run: cd src-tauri && cargo check --bin antigravity-tools
 
       - name: cargo clippy
-        run: cd src-tauri && cargo clippy --bin antigravity_tools
+        run: cd src-tauri && cargo clippy --bin antigravity-tools
 
       # Filter `openai_` matches this fork's modules (openai_oauth / openai_account /
       # openai_codex) and its `openai_*` test names, while excluding upstream's
