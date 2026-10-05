@@ -48,6 +48,8 @@ The first 8,813 log bytes were analyzed in-memory without printing lines or acco
 
 The production Swarm service was not restarted or updated. No Dokploy mutation API was called.
 
+After all shadow evidence was collected, the standalone candidate was stopped cleanly with `docker stop --time 30` to release runtime resources. Read-back: candidate status `exited`; shadow volume and verified backup volume remain; production still has one running task on `ghcr.io/mint1524/ag-tools:sha-0066e12` and public health is HTTP 200.
+
 ## Verdict
 
 **PASS for TSK-004.** The pinned candidate is healthy, loopback-only, independent of the live volume and outside Traefik/Dokploy ownership.

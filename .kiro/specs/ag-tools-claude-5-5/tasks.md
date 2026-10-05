@@ -32,7 +32,7 @@ approved_at: 2026-10-05
 | TSK-010 | Owner deploy gate | Blocked | TSK-009 | Closed by missing 5.5 catalog/capability; no Deploy guide issued |
 | TSK-011 | Production read-back | Blocked | TSK-010 + owner Deploy | Runtime, accounts, models and generation verified live |
 | TSK-012 | Hermes alias activation | Blocked | TSK-011 | Six aliases/cache verified in every qualified profile |
-| TSK-013 | Rollback readiness/action | Pending | TSK-003; conditional on TSK-011 | Previous image + backup restoration path; execute only on failure |
+| TSK-013 | Rollback readiness/action | Ready / conditional | TSK-003; conditional on TSK-011 | `evidence/tsk-013-rollback-readiness.md`; execution not triggered |
 | TSK-014 | QA closeout | Blocked | TSK-011–TSK-013 | QA report, tasks matrix, HQ project/checkpoint current |
 
 **Progress:** 6 / 14 tasks done. TSK-006/007 block the production gate; TSK-011, TSK-012 and TSK-014 also require the owner-only production deployment.
@@ -234,11 +234,11 @@ approved_at: 2026-10-05
 
 ### TSK-013. Prove rollback readiness and execute rollback only if triggered
 
-- [ ] Before the owner gate, validate that the previous image reference and backup artifact are readable.
-- [ ] Document exact owner rollback clicks and the data-restore condition.
+- [x] Before the owner gate, validate that the previous image reference and backup artifact are readable.
+- [x] Document exact owner rollback clicks and the data-restore condition.
 - [ ] If TSK-011 fails, instruct the owner to restore the previous image; restore backup data only if mutation incompatibility is observed.
 - [ ] After any rollback, verify v4.5.1 health, three accounts and Gemini completion before closing the incident.
-- [ ] Ensure Hermes aliases are absent/removed if their targets are not live.
+- [x] Ensure Hermes aliases are absent while their targets are not live; removal remains conditional on any later activation.
 
 **Dependencies:** TSK-003; execution branch conditional on TSK-011 failure.
 
@@ -248,11 +248,11 @@ approved_at: 2026-10-05
 
 ### TSK-014. Run final QA audit and durable closeout
 
-- [ ] Load the quality-assurance skill.
-- [ ] Programmatically parse the coverage matrix and task statuses; no requirement may map only to an open/blocked task for a `PASS` verdict.
-- [ ] Write `qa-report.md` with verdict, per-requirement evidence, tests, review result, owner action and remaining risks.
-- [ ] Update the task checkboxes, Progress table and progress count from actual status.
-- [ ] Update `/home/mint/hq/Projects/ag-tools.md` Status/Pending/Recent and append the final feature checkpoint.
+- [x] Load the quality-assurance skill.
+- [x] Programmatically parse the coverage matrix and task statuses; no requirement may map only to an open/blocked task for a `PASS` verdict.
+- [x] Write `qa-report.md` with grounded BLOCKED verdict, per-requirement evidence, tests, owner action and remaining risks; patch the review subsection after the independent verdict.
+- [x] Update the task checkboxes, Progress table and progress count from actual status.
+- [x] Update `/home/mint/hq/Projects/ag-tools.md` Status/Pending/Recent and append the blocked-work checkpoint.
 - [ ] Commit/push only intended spec/evidence/HQ files as `mint <hutr8276@yandex.ru>`.
 
 **Dependencies:** TSK-011, TSK-012 and the applicable branch of TSK-013.

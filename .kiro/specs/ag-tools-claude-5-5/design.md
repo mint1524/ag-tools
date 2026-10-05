@@ -304,3 +304,14 @@ A read-only reviewer receives the spec, command evidence and changed config path
 **Chosen:** inventory and prepare aliases before the gate; activate them after the backend serves the six IDs.
 
 **Rejected:** install aliases before deploy, because they would advertise models that the current v4.5.1 backend rejects.
+
+## 9. Implementation correction — 2026-10-05
+
+Shadow probing refined the model-discovery design:
+
+- `official_models.json` proves that v4.9.4 knows how to map the six public Claude 5.5 IDs, but it does **not** grant account entitlement.
+- Runtime `/v1/models` combines static supported models with advanced models derived from the live accounts’ cached quota `model_limits`; the advanced set is capability-filtered across enabled accounts.
+- `POST /api/accounts/refresh` is the shadow-side refresh seam. After a real refresh, all three copied PRO accounts still expose 29 quota models and no Claude 5.5 entry, so candidate `/v1/models` contains approved 0/6.
+- Direct Sonnet 5.5 probing reaches both production and sandbox upstream endpoints and receives HTTP 404 for every account; AG Tools maps the exhausted/limited result to client HTTP 503.
+
+Therefore the immutable source catalog is necessary supply-chain evidence, while **live quota catalog 6/6 plus successful requests** is the deployment gate. A static alias or model-list override would only hide the missing entitlement and is explicitly rejected.
