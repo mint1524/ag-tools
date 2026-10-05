@@ -21,21 +21,21 @@ approved_at: 2026-10-05
 | Task | Phase | Status | Depends on | Gate / evidence |
 |---|---|---:|---|---|
 | TSK-001 | Spec | Done | — | Requirements, design and tasks approved; mechanical consistency check |
-| TSK-002 | Supply-chain proof | Pending | TSK-001 | Tag, digest, model catalog and fix lineage read-back |
-| TSK-003 | Baseline + backup | Pending | TSK-001 | Live remains `1/1`; verified timestamped backup |
-| TSK-004 | Shadow isolation | Pending | TSK-002, TSK-003 | Pinned v4.9.4 on copy, loopback only, no Traefik |
-| TSK-005 | Data compatibility | Pending | TSK-004 | Three accounts survive first start + restart |
-| TSK-006 | Catalog + Gemini | Pending | TSK-005 | Six IDs present; Gemini smoke green |
-| TSK-007 | Claude capability | Pending | TSK-006 | Six single-turn + two second-turn smokes green |
-| TSK-008 | Hermes inventory | Pending | TSK-001 | Qualified profiles and unchanged defaults captured; no early alias activation |
-| TSK-009 | Independent review | Pending | TSK-002–TSK-008 | Clean review or findings fixed and re-verified |
-| TSK-010 | Owner deploy gate | Pending | TSK-009 | Exact Dokploy click guide; agent stops before Deploy |
+| TSK-002 | Supply-chain proof | Done | TSK-001 | `evidence/tsk-002-supply-chain.md` — tag/digest/catalog/fix lineage PASS |
+| TSK-003 | Baseline + backup | Done | TSK-001 | `evidence/tsk-003-baseline-backup.md` — restorable backup PASS |
+| TSK-004 | Shadow isolation | Done | TSK-002, TSK-003 | `evidence/tsk-004-shadow-isolation.md` — isolation/health PASS |
+| TSK-005 | Data compatibility | Done | TSK-004 | `evidence/tsk-005-data-compatibility.md` — two-start preservation PASS |
+| TSK-006 | Catalog + Gemini | Blocked | TSK-005 | `evidence/tsk-006-007-capability-blocker.md` — Gemini PASS, Claude catalog 0/6 |
+| TSK-007 | Claude capability | Blocked | TSK-006 | Upstream quota refresh omits 5.5; direct 5.5 attempts return upstream 404 |
+| TSK-008 | Hermes inventory | Done | TSK-001 | `evidence/tsk-008-hermes-inventory.md` — three qualified profiles; writes deferred |
+| TSK-009 | Independent review | In progress | TSK-002–TSK-008 | Review the blocker/evidence; cannot authorize deployment while TSK-006/007 are red |
+| TSK-010 | Owner deploy gate | Blocked | TSK-009 | Closed by missing 5.5 catalog/capability; no Deploy guide issued |
 | TSK-011 | Production read-back | Blocked | TSK-010 + owner Deploy | Runtime, accounts, models and generation verified live |
 | TSK-012 | Hermes alias activation | Blocked | TSK-011 | Six aliases/cache verified in every qualified profile |
 | TSK-013 | Rollback readiness/action | Pending | TSK-003; conditional on TSK-011 | Previous image + backup restoration path; execute only on failure |
 | TSK-014 | QA closeout | Blocked | TSK-011–TSK-013 | QA report, tasks matrix, HQ project/checkpoint current |
 
-**Progress:** 1 / 14 tasks done. Tasks TSK-011, TSK-012 and TSK-014 are intentionally blocked by the owner-only production deployment.
+**Progress:** 6 / 14 tasks done. TSK-006/007 block the production gate; TSK-011, TSK-012 and TSK-014 also require the owner-only production deployment.
 
 ---
 
@@ -57,12 +57,12 @@ approved_at: 2026-10-05
 
 ### TSK-002. Prove immutable candidate and upstream capability
 
-- [ ] Read back the v4.9.4 tag/commit from upstream.
-- [ ] Read back the multi-platform registry digest and ensure it equals `sha256:eef6a4d326d420429b3a31b9f3cc1a990fcc462704afd9aa2d58d74224cf1e47`.
-- [ ] Pull by immutable digest on `nlvmv2`; inspect the local repo digest without running against live data.
-- [ ] Parse `official_models.json` at the exact v4.9.4 ref and assert the approved six-ID set.
-- [ ] Confirm the signature-fix lineage and v4.6.3+ account JSON self-heal lineage from source/commit evidence.
-- [ ] Confirm account/config structures do not deny unknown fork fields.
+- [x] Read back the v4.9.4 tag/commit from upstream.
+- [x] Read back the multi-platform registry digest and ensure it equals `sha256:eef6a4d326d420429b3a31b9f3cc1a990fcc462704afd9aa2d58d74224cf1e47`.
+- [x] Pull by immutable digest on `nlvmv2`; inspect the local repo digest without running against live data.
+- [x] Parse `official_models.json` at the exact v4.9.4 ref and assert the approved six-ID set.
+- [x] Confirm the signature-fix lineage and v4.6.3+ account JSON self-heal lineage from source/commit evidence.
+- [x] Confirm account/config structures do not deny unknown fork fields.
 
 **Dependencies:** TSK-001.
 
@@ -76,12 +76,12 @@ approved_at: 2026-10-05
 
 ### TSK-003. Capture live baseline and create verified pre-migration backup
 
-- [ ] Re-read Swarm service image, digest, replica state and restart status.
-- [ ] Re-check production health/version and bounded Gemini completion.
-- [ ] Determine the exact live volume/mount from `docker service inspect`/`docker inspect`; do not assume the name.
-- [ ] Create a timestamped root-only backup while the service remains running, using a consistency-safe copy strategy for the actual volume.
-- [ ] Test archive/extraction, parse `accounts.json` and all account JSON files, and assert secret-safe invariants: count 3, Google-only, disabled 0, proxy-disabled 0.
-- [ ] Record the backup path, size and checksum in evidence without account IDs/emails/tokens.
+- [x] Re-read Swarm service image, digest, replica state and restart status.
+- [x] Re-check production health/version and bounded Gemini completion.
+- [x] Determine the exact live volume/mount from `docker service inspect`/`docker inspect`; do not assume the name.
+- [x] Create a timestamped root-only backup while the service remains running, using a consistency-safe copy strategy for the actual volume.
+- [x] Test archive/extraction, parse `accounts.json` and all account JSON files, and assert secret-safe invariants: count 3, Google-only, disabled 0, proxy-disabled 0.
+- [x] Record the backup path, size and checksum in evidence without account IDs/emails/tokens.
 
 **Dependencies:** TSK-001.
 
@@ -91,11 +91,11 @@ approved_at: 2026-10-05
 
 ### TSK-004. Start and inspect isolated v4.9.4 shadow candidate
 
-- [ ] Restore the verified backup into a new dedicated shadow volume.
-- [ ] Verify a free loopback port and start the pinned digest with no restart policy, no Traefik labels and no Dokploy ownership.
-- [ ] Inspect mounts and published ports; fail if the live volume or a non-loopback bind is present.
-- [ ] Wait for real readiness and assert `/health` HTTP 200 with version `4.9.4`.
-- [ ] Preserve bounded candidate logs with secret redaction/absence checks.
+- [x] Restore the verified backup into a new dedicated shadow volume.
+- [x] Verify a free loopback port and start the pinned digest with no restart policy, no Traefik labels and no Dokploy ownership.
+- [x] Inspect mounts and published ports; fail if the live volume or a non-loopback bind is present.
+- [x] Wait for real readiness and assert `/health` HTTP 200 with version `4.9.4`.
+- [x] Preserve bounded candidate logs with secret redaction/absence checks.
 
 **Dependencies:** TSK-002, TSK-003.
 
@@ -105,10 +105,10 @@ approved_at: 2026-10-05
 
 ### TSK-005. Verify data compatibility across first start and restart
 
-- [ ] Parse the shadow account index/files after first startup and assert the preservation invariant.
-- [ ] Stop the disposable shadow cleanly, start it again on the same copy, and repeat health/account checks.
-- [ ] Compare first-start and second-start secret-safe counts/states.
-- [ ] Confirm no malformed/quarantined account was silently lost.
+- [x] Parse the shadow account index/files after first startup and assert the preservation invariant.
+- [x] Stop the disposable shadow cleanly, start it again on the same copy, and repeat health/account checks.
+- [x] Compare first-start and second-start secret-safe counts/states.
+- [x] Confirm no malformed/quarantined account was silently lost.
 
 **Dependencies:** TSK-004.
 
@@ -122,10 +122,10 @@ approved_at: 2026-10-05
 
 ### TSK-006. Verify the live candidate catalog and Gemini regression
 
-- [ ] Call shadow `/v1/models` with an existing credential without printing it.
-- [ ] Programmatically compare `data[].id` to the approved six-ID set; reject duplicates or omissions.
-- [ ] Assert `gemini-3.8-flash-low` remains in the catalog.
-- [ ] Send one bounded Gemini `Reply exactly: OK` completion and validate HTTP/status/content.
+- [x] Call shadow `/v1/models` with an existing credential without printing it.
+- [~] Programmatically compare `data[].id` to the approved six-ID set; result is 0/6, so the acceptance assertion is red.
+- [x] Assert `gemini-3.8-flash-low` remains in the catalog.
+- [x] Send one bounded Gemini `Reply exactly: OK` completion and validate HTTP/status/content.
 
 **Dependencies:** TSK-005.
 
@@ -135,12 +135,12 @@ approved_at: 2026-10-05
 
 ### TSK-007. Verify all Claude 5.5 variants and the multi-turn fix
 
-- [ ] Send one bounded single-turn request to each of the six approved IDs.
-- [ ] Record only model ID, HTTP status, latency class and non-empty content boolean; do not expose account selection or hidden reasoning.
-- [ ] Run a two-message conversation proof for `claude-sonnet-5-5-high`.
-- [ ] Run a two-message conversation proof for `claude-opus-5-5-high`.
-- [ ] Search bounded responses/logs for `thinking.signature` failures.
-- [ ] Classify 403/404 as an entitlement blocker and stop the production path rather than treating catalog presence as success.
+- [~] Send one bounded `claude-sonnet-5-5-high` probe: client HTTP 503; redacted logs prove upstream HTTP 404 across all three accounts. Do not burn quota on the other five while capability is absent.
+- [x] Record only model/status/error classification; no account identifier, hidden reasoning or credential was emitted.
+- [ ] Run a two-message conversation proof for `claude-sonnet-5-5-high` — blocked until single-turn capability appears.
+- [ ] Run a two-message conversation proof for `claude-opus-5-5-high` — blocked until single-turn capability appears.
+- [x] Search bounded responses/logs for `thinking.signature` failures; zero, but generation did not reach a successful response.
+- [x] Classify the upstream 404/account-catalog absence as an entitlement/rollout blocker and stop the production path.
 
 **Dependencies:** TSK-006.
 
@@ -154,12 +154,12 @@ approved_at: 2026-10-05
 
 ### TSK-008. Inventory Hermes profiles and prepare alias activation
 
-- [ ] Discover default and named Hermes homes without printing secrets.
-- [ ] Parse each profile and classify whether an existing `providers.okak` targets `https://ai.okak.club/v1`.
-- [ ] Capture each qualified profile’s current default provider/model and existing relevant aliases.
-- [ ] Generate exact `hermes config set` commands for six aliases per qualifying profile using that profile’s own context.
-- [ ] Verify the plan introduces no provider/credential into unqualified profiles and does not change defaults.
-- [ ] Do **not** activate aliases/cache before production serves the IDs.
+- [x] Discover default and named Hermes homes without printing secrets.
+- [x] Parse each profile and classify whether an existing `providers.okak` targets `https://ai.okak.club/v1`.
+- [x] Capture each qualified profile’s current default provider/model and existing relevant aliases.
+- [x] Generate exact `hermes config set` commands for six aliases per qualifying profile using that profile’s own context.
+- [x] Verify the plan introduces no provider/credential into unqualified profiles and does not change defaults.
+- [x] Do **not** activate aliases/cache before production serves the IDs.
 
 **Dependencies:** TSK-001.
 
