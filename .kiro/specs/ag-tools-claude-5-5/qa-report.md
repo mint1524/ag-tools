@@ -37,11 +37,11 @@ This is the explicit FR-5 / AC-5.4 entitlement-capability branch. It is not safe
 Mechanical parsing of `tasks.md` produced:
 
 ```text
-Done: 6
-Blocked: 6
-In progress: 1
+Done: 8
+Blocked: 5
+In progress: 0
 Ready / conditional: 1
-Requirements with no completed covering task: FR-4, FR-5, FR-8, NFR-4
+Requirements with no completed covering task: FR-4, FR-5, NFR-4
 ```
 
 | Requirement group | Status | Reason |
@@ -79,14 +79,24 @@ Requirements with no completed covering task: FR-4, FR-5, FR-8, NFR-4
 
 ## Independent review
 
-An approved `claude-sonnet-5` / high read-only review is in progress against the spec, evidence and source lineage. The reviewer was explicitly prohibited from production mutations, shared-tree changes and secret/config-value access. This QA report does not upgrade the gate while the review is pending.
+The broad `claude-sonnet-5` / high read-only round independently confirmed the immutable source/model/fix lineage and quota-capability filtering, but stalled before returning a schema verdict; it was not treated as PASS.
+
+A final narrow review on clean frozen head `b15890995c8edd015188f69ed2b4f04a4a68a509` returned:
+
+```text
+verdict=PASS
+deployment_gate=BLOCKED
+findings=0
+```
+
+Its only suggestion was to record this verdict and finish the intended spec/HQ commit/push. That process action is applied in this closeout. Review PASS validates the documentation and fail-closed decision; it does not override the missing 5.5 capability.
 
 ## Exact unblock condition
 
 1. At least one current account’s real quota refresh exposes all six approved Claude 5.5 variants, or a separately confirmed eligible Google AI Pro non-trial/Ultra account is added by the owner.
 2. If capability arrives on a current account, restart the preserved shadow and refresh quota. If the owner adds another account, first create a new verified production backup/copy so that account exists in the shadow dataset. In either branch, assert catalog 6/6 before generation tests.
 3. Run six bounded single-turn smokes and two high multi-turn smokes with zero `thinking.signature` failures.
-4. Obtain a clean independent review with no open suggestions.
+4. Obtain a fresh clean independent review of the successful 6/6 and generation evidence with no open findings/suggestions.
 5. Only then issue the manual Dokploy owner guide. After owner Deploy, repeat live production checks before adding aliases to `default`, `study` and `work`.
 
 ## Owner state

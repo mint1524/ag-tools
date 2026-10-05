@@ -28,14 +28,14 @@ approved_at: 2026-10-05
 | TSK-006 | Catalog + Gemini | Blocked | TSK-005 | `evidence/tsk-006-007-capability-blocker.md` — Gemini PASS, Claude catalog 0/6 |
 | TSK-007 | Claude capability | Blocked | TSK-006 | Upstream quota refresh omits 5.5; direct 5.5 attempts return upstream 404 |
 | TSK-008 | Hermes inventory | Done | TSK-001 | `evidence/tsk-008-hermes-inventory.md` — three qualified profiles; writes deferred |
-| TSK-009 | Independent review | In progress | TSK-002–TSK-008 | Review the blocker/evidence; cannot authorize deployment while TSK-006/007 are red |
+| TSK-009 | Independent review | Done | TSK-002–TSK-008 | `evidence/tsk-009-independent-review.md` — PASS, deployment gate BLOCKED, findings 0 |
 | TSK-010 | Owner deploy gate | Blocked | TSK-009 | Closed by missing 5.5 catalog/capability; no Deploy guide issued |
 | TSK-011 | Production read-back | Blocked | TSK-010 + owner Deploy | Runtime, accounts, models and generation verified live |
 | TSK-012 | Hermes alias activation | Blocked | TSK-011 | Six aliases/cache verified in every qualified profile |
 | TSK-013 | Rollback readiness/action | Ready / conditional | TSK-003; conditional on TSK-011 | `evidence/tsk-013-rollback-readiness.md`; execution not triggered |
-| TSK-014 | QA closeout | Blocked | TSK-011–TSK-013 | QA report, tasks matrix, HQ project/checkpoint current |
+| TSK-014 | QA closeout | Done (BLOCKED verdict) | TSK-009 + terminal blocked state | `qa-report.md`; spec/HQ current and pushed |
 
-**Progress:** 6 / 14 tasks done. TSK-006/007 block the production gate; TSK-011, TSK-012 and TSK-014 also require the owner-only production deployment.
+**Progress:** 8 / 14 tasks done. TSK-006/007 block the production gate; TSK-010–TSK-012 remain blocked, while TSK-013 is ready/conditional.
 
 ---
 
@@ -169,11 +169,11 @@ approved_at: 2026-10-05
 
 ### TSK-009. Run an independent fail-closed review
 
-- [ ] Commit/push the spec and secret-free evidence before review.
-- [ ] Dispatch an approved independent reviewer in read-only mode against the spec, evidence and current runtime facts.
-- [ ] Explicitly prohibit production deployment, secret/config-value reads, shared-tree mutation and access to `.env`, account JSON values or key files.
-- [ ] Reproduce every finding against current state.
-- [ ] Fix all applicable findings, rerun affected checks and obtain a clean final verdict; 401/429/tool failure is not PASS.
+- [x] Commit/push the spec and secret-free evidence before the final frozen-head review.
+- [x] Dispatch an approved independent reviewer in read-only mode against the spec, evidence and current runtime facts.
+- [x] Explicitly prohibit production deployment, secret/config-value reads, shared-tree mutation and access to `.env`, account JSON values or key files.
+- [x] Reproduce every finding against current state; final review returned no findings.
+- [x] Apply the only process suggestion by recording the verdict and closing/pushing spec and HQ; final verdict is PASS with deployment gate BLOCKED.
 
 **Dependencies:** TSK-002 through TSK-008.
 
@@ -253,9 +253,9 @@ approved_at: 2026-10-05
 - [x] Write `qa-report.md` with grounded BLOCKED verdict, per-requirement evidence, tests, owner action and remaining risks; patch the review subsection after the independent verdict.
 - [x] Update the task checkboxes, Progress table and progress count from actual status.
 - [x] Update `/home/mint/hq/Projects/ag-tools.md` Status/Pending/Recent and append the blocked-work checkpoint.
-- [ ] Commit/push only intended spec/evidence/HQ files as `mint <hutr8276@yandex.ru>`.
+- [x] Commit/push only intended spec/evidence/HQ files as `mint <hutr8276@yandex.ru>`.
 
-**Dependencies:** TSK-011, TSK-012 and the applicable branch of TSK-013.
+**Dependencies:** normally TSK-011, TSK-012 and the applicable branch of TSK-013; executed early as a grounded BLOCKED closeout because TSK-006/007 terminally closed the deployment path for this work segment.
 
 **Definition of Done / evidence:** QA report has a grounded PASS or explicit FAIL/BLOCKED verdict; tasks and HQ agree with live state; commits/pushes verified.
 
