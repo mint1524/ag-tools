@@ -83,8 +83,8 @@ An approved `claude-sonnet-5` / high read-only review is in progress against the
 
 ## Exact unblock condition
 
-1. At least one copied account’s real quota refresh exposes all six approved Claude 5.5 variants, or a separately confirmed eligible Google AI Pro non-trial/Ultra account is added by the owner.
-2. Restart the preserved shadow candidate, refresh quota and assert catalog 6/6.
+1. At least one current account’s real quota refresh exposes all six approved Claude 5.5 variants, or a separately confirmed eligible Google AI Pro non-trial/Ultra account is added by the owner.
+2. If capability arrives on a current account, restart the preserved shadow and refresh quota. If the owner adds another account, first create a new verified production backup/copy so that account exists in the shadow dataset. In either branch, assert catalog 6/6 before generation tests.
 3. Run six bounded single-turn smokes and two high multi-turn smokes with zero `thinking.signature` failures.
 4. Obtain a clean independent review with no open suggestions.
 5. Only then issue the manual Dokploy owner guide. After owner Deploy, repeat live production checks before adding aliases to `default`, `study` and `work`.
