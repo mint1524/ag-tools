@@ -1,0 +1,220 @@
+{
+  "sessions": [
+    {
+      "test": "default_provider_no_model",
+      "session_db": "/home/mint/.hermes/profiles/work/state.db",
+      "session": {
+        "id": "20261028_174402_cf5f03",
+        "source": "tool",
+        "model": "gemini-3.8-flash-high",
+        "profile_name": "work",
+        "api_call_count": 2,
+        "tool_call_count": 1,
+        "billing_provider": "custom",
+        "billing_base_url": "https://ai.okak.club/v1",
+        "end_reason": "cli_close"
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "This is an already approved read-only provider acceptance test. Use read_file exactly once to read /home/mint/.hermes/profiles/work/cache/okak-hermes-acceptance/fixture.txt. Then reply with the exact complete marker from that file. Do not guess its content, do not write files or use other tools. Do not create a spec.",
+          "tool_calls": null,
+          "tool_call_id": null,
+          "tool_name": null
+        },
+        {
+          "role": "assistant",
+          "content": "",
+          "tool_calls": "[{\"id\": \"call_29e31a8444b7011b\", \"call_id\": \"call_29e31a8444b7011b\", \"response_item_id\": \"fc_29e31a8444b7011b\", \"type\": \"function\", \"function\": {\"name\": \"read_file\", \"arguments\": \"{\\\"path\\\":\\\"/home/mint/.hermes/profiles/work/cache/okak-hermes-acceptance/fixture.txt\\\"}\"}}]",
+          "tool_call_id": null,
+          "tool_name": null
+        },
+        {
+          "role": "tool",
+          "content": "{\"content\": \"1|OKAK_HERMES_TOOL_LOOP_8276\\n2|\", \"total_lines\": 1, \"file_size\": 27, \"truncated\": false, \"is_binary\": false, \"is_image\": false}",
+          "tool_calls": null,
+          "tool_call_id": "call_29e31a8444b7011b",
+          "tool_name": "read_file"
+        },
+        {
+          "role": "assistant",
+          "content": "OKAK_HERMES_TOOL_LOOP_8276",
+          "tool_calls": null,
+          "tool_call_id": null,
+          "tool_name": null
+        }
+      ],
+      "matching_runtime_logs": [
+        "2026-10-28 17:44:04,918 INFO [20261028_174402_cf5f03] agent.turn_context: conversation turn: session=20261028_174402_cf5f03 model=gemini-3.8-flash-high provider=custom platform=cli history=0 msg='This is an already approved read-only provider acceptance test. Use read_file ex...'",
+        "2026-10-28 17:44:14,911 INFO [20261028_174402_cf5f03] agent.conversation_loop: API call #1: model=gemini-3.8-flash-high provider=custom in=5451 out=40 total=5491 latency=9.4s",
+        "2026-10-28 17:44:14,961 INFO [20261028_174402_cf5f03] agent.tool_executor: tool read_file completed (0.04s, 141 chars)",
+        "2026-10-28 17:44:18,664 INFO [20261028_174402_cf5f03] agent.conversation_loop: API call #2: model=gemini-3.8-flash-high provider=custom in=6032 out=14 total=6046 latency=3.7s",
+        "2026-10-28 17:44:18,733 INFO [20261028_174402_cf5f03] agent.conversation_loop: Turn ended: reason=text_response(finish_reason=stop) model=gemini-3.8-flash-high api_calls=2/4 budget=2/4 tool_turns=1 last_msg_role=assistant response_len=26 session=20261028_174402_cf5f03"
+      ],
+      "fixture_marker_verified": true,
+      "exit_code": 0,
+      "normal_rules": true,
+      "toolsets": [
+        "file"
+      ]
+    },
+    {
+      "test": "sonnet_alias",
+      "session_db": "/home/mint/.hermes/profiles/work/state.db",
+      "session": {
+        "id": "20261028_174402_0989e6",
+        "source": "tool",
+        "model": "claude-sonnet-4-6",
+        "profile_name": "work",
+        "api_call_count": 2,
+        "tool_call_count": 1,
+        "billing_provider": "custom",
+        "billing_base_url": "https://ai.okak.club/v1",
+        "end_reason": "cli_close"
+      },
+      "messages": [
+        {
+          "role": "user",
+          "content": "This is an already approved read-only provider acceptance test. Use read_file exactly once to read /home/mint/.hermes/profiles/work/cache/okak-hermes-acceptance/fixture.txt. Then reply with the exact complete marker from that file. Do not guess its content, do not write files or use other tools. Do not create a spec.",
+          "tool_calls": null,
+          "tool_call_id": null,
+          "tool_name": null
+        },
+        {
+          "role": "assistant",
+          "content": "",
+          "tool_calls": "[{\"id\": \"call_e873c3a128ac10cd\", \"call_id\": \"call_e873c3a128ac10cd\", \"response_item_id\": \"fc_e873c3a128ac10cd\", \"type\": \"function\", \"function\": {\"name\": \"read_file\", \"arguments\": \"{\\\"path\\\":\\\"/home/mint/.hermes/profiles/work/cache/okak-hermes-acceptance/fixture.txt\\\"}\"}}]",
+          "tool_call_id": null,
+          "tool_name": null
+        },
+        {
+          "role": "tool",
+          "content": "{\"content\": \"1|OKAK_HERMES_TOOL_LOOP_8276\\n2|\", \"total_lines\": 1, \"file_size\": 27, \"truncated\": false, \"is_binary\": false, \"is_image\": false}",
+          "tool_calls": null,
+          "tool_call_id": "call_e873c3a128ac10cd",
+          "tool_name": "read_file"
+        },
+        {
+          "role": "assistant",
+          "content": "OKAK_HERMES_TOOL_LOOP_8276",
+          "tool_calls": null,
+          "tool_call_id": null,
+          "tool_name": null
+        }
+      ],
+      "matching_runtime_logs": [
+        "2026-10-28 17:44:04,923 INFO [20261028_174402_0989e6] agent.turn_context: conversation turn: session=20261028_174402_0989e6 model=claude-sonnet-4-6 provider=custom platform=cli history=0 msg='This is an already approved read-only provider acceptance test. Use read_file ex...'",
+        "2026-10-28 17:44:08,694 INFO [20261028_174402_0989e6] agent.conversation_loop: API call #1: model=claude-sonnet-4-6 provider=custom in=6351 out=100 total=6451 latency=3.1s",
+        "2026-10-28 17:44:08,762 INFO [20261028_174402_0989e6] agent.tool_executor: tool read_file completed (0.06s, 141 chars)",
+        "2026-10-28 17:44:10,214 INFO [20261028_174402_0989e6] agent.conversation_loop: API call #2: model=claude-sonnet-4-6 provider=custom in=6485 out=19 total=6504 latency=1.4s",
+        "2026-10-28 17:44:10,229 INFO [20261028_174402_0989e6] agent.conversation_loop: Turn ended: reason=text_response(finish_reason=stop) model=claude-sonnet-4-6 api_calls=2/4 budget=2/4 tool_turns=1 last_msg_role=assistant response_len=26 session=20261028_174402_0989e6"
+      ],
+      "fixture_marker_verified": true,
+      "exit_code": 0,
+      "normal_rules": true,
+      "toolsets": [
+        "file"
+      ]
+    }
+  ],
+  "verified_count": 2,
+  "baseline_session": "20261028_173549_dfed13",
+  "baseline_exit_code": 1,
+  "baseline_error": "HTTP 503 Token error: All accounts limited after three retries",
+  "probe_note": "Earlier default-profile smoke sessions are not the work acceptance; the two IDs above explicitly use --profile work and HERMES_SESSION_PROFILE=work.",
+  "final_after_api_mode_declaration": {
+    "verified_count": 2,
+    "sessions": [
+      {
+        "session": {
+          "id": "20261028_175224_9765f2",
+          "source": "tool",
+          "model": "gemini-3.8-flash-high",
+          "profile_name": "work",
+          "api_call_count": 2,
+          "tool_call_count": 1,
+          "billing_provider": "custom",
+          "billing_base_url": "https://ai.okak.club/v1",
+          "end_reason": "cli_close"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Already approved read-only acceptance test. Use read_file once on /home/mint/.hermes/profiles/work/cache/okak-hermes-acceptance/fixture.txt, then return only its exact marker. No writes, no other tools, no spec.",
+            "tool_calls": null,
+            "tool_call_id": null,
+            "tool_name": null
+          },
+          {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": "[{\"id\": \"call_783cbe461e1e7c30\", \"call_id\": \"call_783cbe461e1e7c30\", \"response_item_id\": \"fc_783cbe461e1e7c30\", \"type\": \"function\", \"function\": {\"name\": \"read_file\", \"arguments\": \"{\\\"path\\\":\\\"/home/mint/.hermes/profiles/work/cache/okak-hermes-acceptance/fixture.txt\\\"}\"}}]",
+            "tool_call_id": null,
+            "tool_name": null
+          },
+          {
+            "role": "tool",
+            "content": "{\"content\": \"1|OKAK_HERMES_TOOL_LOOP_8276\\n2|\", \"total_lines\": 1, \"file_size\": 27, \"truncated\": false, \"is_binary\": false, \"is_image\": false}",
+            "tool_calls": null,
+            "tool_call_id": "call_783cbe461e1e7c30",
+            "tool_name": "read_file"
+          },
+          {
+            "role": "assistant",
+            "content": "OKAK_HERMES_TOOL_LOOP_8276",
+            "tool_calls": null,
+            "tool_call_id": null,
+            "tool_name": null
+          }
+        ],
+        "exit_code": 0,
+        "all_assertions_passed": true
+      },
+      {
+        "session": {
+          "id": "20261028_175224_2ce9aa",
+          "source": "tool",
+          "model": "claude-sonnet-4-6",
+          "profile_name": "work",
+          "api_call_count": 2,
+          "tool_call_count": 1,
+          "billing_provider": "custom",
+          "billing_base_url": "https://ai.okak.club/v1",
+          "end_reason": "cli_close"
+        },
+        "messages": [
+          {
+            "role": "user",
+            "content": "Already approved read-only acceptance test. Use read_file once on /home/mint/.hermes/profiles/work/cache/okak-hermes-acceptance/fixture.txt, then return only its exact marker. No writes, no other tools, no spec.",
+            "tool_calls": null,
+            "tool_call_id": null,
+            "tool_name": null
+          },
+          {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": "[{\"id\": \"call_f009cdd1229ab95b\", \"call_id\": \"call_f009cdd1229ab95b\", \"response_item_id\": \"fc_f009cdd1229ab95b\", \"type\": \"function\", \"function\": {\"name\": \"read_file\", \"arguments\": \"{\\\"path\\\":\\\"/home/mint/.hermes/profiles/work/cache/okak-hermes-acceptance/fixture.txt\\\"}\"}}]",
+            "tool_call_id": null,
+            "tool_name": null
+          },
+          {
+            "role": "tool",
+            "content": "{\"content\": \"1|OKAK_HERMES_TOOL_LOOP_8276\\n2|\", \"total_lines\": 1, \"file_size\": 27, \"truncated\": false, \"is_binary\": false, \"is_image\": false}",
+            "tool_calls": null,
+            "tool_call_id": "call_f009cdd1229ab95b",
+            "tool_name": "read_file"
+          },
+          {
+            "role": "assistant",
+            "content": "OKAK_HERMES_TOOL_LOOP_8276",
+            "tool_calls": null,
+            "tool_call_id": null,
+            "tool_name": null
+          }
+        ],
+        "exit_code": 0,
+        "all_assertions_passed": true
+      }
+    ]
+  }
+}

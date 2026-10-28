@@ -1,0 +1,371 @@
+{
+  "backup_dir": "/home/mint/.hermes/profiles/work/backups/okak-shared-20261028T164139Z",
+  "started_at_epoch": 1793205772.6901734,
+  "homes": [
+    {
+      "profile": "default",
+      "home": "/home/mint/.hermes",
+      "config_after_sha256": "31e9b9113828407fb4c39da061a6f18cc613854e93a74790a3d098aa50e29b7d",
+      "alias_count": 82,
+      "removed_alias_count": 9,
+      "added_alias_count": 1,
+      "provider_default": "gemini-3.8-flash-high",
+      "global_model_unchanged": true,
+      "unrelated_config_unchanged": true,
+      "credential_files_unchanged": true,
+      "unrelated_catalog_caches_unchanged": true,
+      "discovery_api_mode": "openai_chat"
+    },
+    {
+      "profile": "study",
+      "home": "/home/mint/.hermes/profiles/study",
+      "config_after_sha256": "a62dc43bba2308bd96148df1d9702ad0d47b157dc33880ce56b95680be35b5c5",
+      "alias_count": 82,
+      "removed_alias_count": 9,
+      "added_alias_count": 1,
+      "provider_default": "gemini-3.8-flash-high",
+      "global_model_unchanged": true,
+      "unrelated_config_unchanged": true,
+      "credential_files_unchanged": true,
+      "unrelated_catalog_caches_unchanged": true,
+      "discovery_api_mode": "openai_chat"
+    },
+    {
+      "profile": "team-custodia",
+      "home": "/home/mint/.hermes/profiles/team-custodia",
+      "config_after_sha256": "f86b9705061751a1ada4aebaf3d2df7b12a7f8bd90978f5f9061a7f8201c4dc9",
+      "alias_count": 82,
+      "removed_alias_count": 9,
+      "added_alias_count": 1,
+      "provider_default": "gemini-3.8-flash-high",
+      "global_model_unchanged": true,
+      "unrelated_config_unchanged": true,
+      "credential_files_unchanged": true,
+      "unrelated_catalog_caches_unchanged": true,
+      "discovery_api_mode": "openai_chat"
+    },
+    {
+      "profile": "team-directio",
+      "home": "/home/mint/.hermes/profiles/team-directio",
+      "config_after_sha256": "9c78dbb0cb3673110056cf5bd3565eb0a8462269615bef33c6da21bffb4d4b8d",
+      "alias_count": 82,
+      "removed_alias_count": 9,
+      "added_alias_count": 1,
+      "provider_default": "gemini-3.8-flash-high",
+      "global_model_unchanged": true,
+      "unrelated_config_unchanged": true,
+      "credential_files_unchanged": true,
+      "unrelated_catalog_caches_unchanged": true,
+      "discovery_api_mode": "openai_chat"
+    },
+    {
+      "profile": "team-facies",
+      "home": "/home/mint/.hermes/profiles/team-facies",
+      "config_after_sha256": "03ef39576823e6b57d95012a360dc4f0a5f428cdbbcd963b8bea65de8b394a72",
+      "alias_count": 82,
+      "removed_alias_count": 9,
+      "added_alias_count": 1,
+      "provider_default": "gemini-3.8-flash-high",
+      "global_model_unchanged": true,
+      "unrelated_config_unchanged": true,
+      "credential_files_unchanged": true,
+      "unrelated_catalog_caches_unchanged": true,
+      "discovery_api_mode": "openai_chat"
+    },
+    {
+      "profile": "team-imaginatio",
+      "home": "/home/mint/.hermes/profiles/team-imaginatio",
+      "config_after_sha256": "7fdb41beec9cbcba20caf049e207110dab0999a9c18eca9932bd61cfc2a1cbdb",
+      "alias_count": 82,
+      "removed_alias_count": 9,
+      "added_alias_count": 1,
+      "provider_default": "gemini-3.8-flash-high",
+      "global_model_unchanged": true,
+      "unrelated_config_unchanged": true,
+      "credential_files_unchanged": true,
+      "unrelated_catalog_caches_unchanged": true,
+      "discovery_api_mode": "openai_chat"
+    },
+    {
+      "profile": "team-iudicium",
+      "home": "/home/mint/.hermes/profiles/team-iudicium",
+      "config_after_sha256": "a7fa47226b2b5a9326958174064af524e2d2bdcacf964629cc96565ba2df73e9",
+      "alias_count": 82,
+      "removed_alias_count": 9,
+      "added_alias_count": 1,
+      "provider_default": "gemini-3.8-flash-high",
+      "global_model_unchanged": true,
+      "unrelated_config_unchanged": true,
+      "credential_files_unchanged": true,
+      "unrelated_catalog_caches_unchanged": true,
+      "discovery_api_mode": "openai_chat"
+    },
+    {
+      "profile": "team-nuntius",
+      "home": "/home/mint/.hermes/profiles/team-nuntius",
+      "config_after_sha256": "42adb2d19c49e037aa8ab7551020a50bc38263b640c4d261744e1ca9e12adc1e",
+      "alias_count": 82,
+      "removed_alias_count": 9,
+      "added_alias_count": 1,
+      "provider_default": "gemini-3.8-flash-high",
+      "global_model_unchanged": true,
+      "unrelated_config_unchanged": true,
+      "credential_files_unchanged": true,
+      "unrelated_catalog_caches_unchanged": true,
+      "discovery_api_mode": "openai_chat"
+    },
+    {
+      "profile": "team-stabilis",
+      "home": "/home/mint/.hermes/profiles/team-stabilis",
+      "config_after_sha256": "b0384252cf4aea5351d81b27ad068506735b28e6d5095c889dfb824550d4018e",
+      "alias_count": 82,
+      "removed_alias_count": 9,
+      "added_alias_count": 1,
+      "provider_default": "gemini-3.8-flash-high",
+      "global_model_unchanged": true,
+      "unrelated_config_unchanged": true,
+      "credential_files_unchanged": true,
+      "unrelated_catalog_caches_unchanged": true,
+      "discovery_api_mode": "openai_chat"
+    },
+    {
+      "profile": "team-substantia",
+      "home": "/home/mint/.hermes/profiles/team-substantia",
+      "config_after_sha256": "cc538220aa6bdfbd2c8cf9969427f3f4edda1ff4f1c390730afa036a2d614a3f",
+      "alias_count": 82,
+      "removed_alias_count": 9,
+      "added_alias_count": 1,
+      "provider_default": "gemini-3.8-flash-high",
+      "global_model_unchanged": true,
+      "unrelated_config_unchanged": true,
+      "credential_files_unchanged": true,
+      "unrelated_catalog_caches_unchanged": true,
+      "discovery_api_mode": "openai_chat"
+    },
+    {
+      "profile": "work",
+      "home": "/home/mint/.hermes/profiles/work",
+      "config_after_sha256": "e181e185436c51523069a06abadd21f150ba3df575db8edcc3315b33c53180ad",
+      "alias_count": 82,
+      "removed_alias_count": 9,
+      "added_alias_count": 0,
+      "provider_default": "gemini-3.8-flash-high",
+      "global_model_unchanged": true,
+      "unrelated_config_unchanged": true,
+      "credential_files_unchanged": true,
+      "unrelated_catalog_caches_unchanged": true,
+      "discovery_api_mode": "openai_chat"
+    }
+  ],
+  "finished_at_epoch": 1793206330.436481,
+  "count": 11,
+  "prior_natural_sync_readback": {
+    "service_properties": "Result=success\nExecMainExitTimestamp=Wed 2026-10-28 17:45:19 CET\nExecMainExitTimestampMonotonic=2967490521501\n",
+    "checked_at_epoch": 1793205932.5202997,
+    "profiles": [
+      {
+        "profile": "default",
+        "same_config_hash": true,
+        "default_correct": true,
+        "aliases_live": true
+      },
+      {
+        "profile": "study",
+        "same_config_hash": true,
+        "default_correct": true,
+        "aliases_live": true
+      },
+      {
+        "profile": "team-custodia",
+        "same_config_hash": true,
+        "default_correct": true,
+        "aliases_live": true
+      },
+      {
+        "profile": "team-directio",
+        "same_config_hash": true,
+        "default_correct": true,
+        "aliases_live": true
+      },
+      {
+        "profile": "team-facies",
+        "same_config_hash": true,
+        "default_correct": true,
+        "aliases_live": true
+      },
+      {
+        "profile": "team-imaginatio",
+        "same_config_hash": true,
+        "default_correct": true,
+        "aliases_live": true
+      },
+      {
+        "profile": "team-iudicium",
+        "same_config_hash": true,
+        "default_correct": true,
+        "aliases_live": true
+      },
+      {
+        "profile": "team-nuntius",
+        "same_config_hash": true,
+        "default_correct": true,
+        "aliases_live": true
+      },
+      {
+        "profile": "team-stabilis",
+        "same_config_hash": true,
+        "default_correct": true,
+        "aliases_live": true
+      },
+      {
+        "profile": "team-substantia",
+        "same_config_hash": true,
+        "default_correct": true,
+        "aliases_live": true
+      },
+      {
+        "profile": "work",
+        "same_config_hash": true,
+        "default_correct": true,
+        "aliases_live": true
+      }
+    ],
+    "timer_completed_after_repair": true
+  },
+  "natural_sync_readback": {
+    "checked_at_epoch": 1793206478.3345604,
+    "service_properties": "Result=success\nExecMainExitTimestamp=Wed 2026-10-28 17:53:30 CET\n",
+    "timer_completed_after_repair": true,
+    "profiles": [
+      {
+        "profile": "default",
+        "same_config_hash": true,
+        "only_approved_delta": true,
+        "default_correct": true,
+        "api_mode_matches_transport": true,
+        "credential_hashes_stable_since_initial_backup": {
+          ".env": true,
+          "auth.json": false
+        },
+        "aliases_match_live_catalog": true
+      },
+      {
+        "profile": "study",
+        "same_config_hash": true,
+        "only_approved_delta": true,
+        "default_correct": true,
+        "api_mode_matches_transport": true,
+        "credential_hashes_stable_since_initial_backup": {
+          ".env": true,
+          "auth.json": true
+        },
+        "aliases_match_live_catalog": true
+      },
+      {
+        "profile": "team-custodia",
+        "same_config_hash": true,
+        "only_approved_delta": true,
+        "default_correct": true,
+        "api_mode_matches_transport": true,
+        "credential_hashes_stable_since_initial_backup": {
+          ".env": true,
+          "auth.json": true
+        },
+        "aliases_match_live_catalog": true
+      },
+      {
+        "profile": "team-directio",
+        "same_config_hash": true,
+        "only_approved_delta": true,
+        "default_correct": true,
+        "api_mode_matches_transport": true,
+        "credential_hashes_stable_since_initial_backup": {
+          ".env": true,
+          "auth.json": true
+        },
+        "aliases_match_live_catalog": true
+      },
+      {
+        "profile": "team-facies",
+        "same_config_hash": true,
+        "only_approved_delta": true,
+        "default_correct": true,
+        "api_mode_matches_transport": true,
+        "credential_hashes_stable_since_initial_backup": {
+          ".env": true,
+          "auth.json": true
+        },
+        "aliases_match_live_catalog": true
+      },
+      {
+        "profile": "team-imaginatio",
+        "same_config_hash": true,
+        "only_approved_delta": true,
+        "default_correct": true,
+        "api_mode_matches_transport": true,
+        "credential_hashes_stable_since_initial_backup": {
+          ".env": true
+        },
+        "aliases_match_live_catalog": true
+      },
+      {
+        "profile": "team-iudicium",
+        "same_config_hash": true,
+        "only_approved_delta": true,
+        "default_correct": true,
+        "api_mode_matches_transport": true,
+        "credential_hashes_stable_since_initial_backup": {
+          ".env": true,
+          "auth.json": true
+        },
+        "aliases_match_live_catalog": true
+      },
+      {
+        "profile": "team-nuntius",
+        "same_config_hash": true,
+        "only_approved_delta": true,
+        "default_correct": true,
+        "api_mode_matches_transport": true,
+        "credential_hashes_stable_since_initial_backup": {
+          ".env": true
+        },
+        "aliases_match_live_catalog": true
+      },
+      {
+        "profile": "team-stabilis",
+        "same_config_hash": true,
+        "only_approved_delta": true,
+        "default_correct": true,
+        "api_mode_matches_transport": true,
+        "credential_hashes_stable_since_initial_backup": {
+          ".env": true
+        },
+        "aliases_match_live_catalog": true
+      },
+      {
+        "profile": "team-substantia",
+        "same_config_hash": true,
+        "only_approved_delta": true,
+        "default_correct": true,
+        "api_mode_matches_transport": true,
+        "credential_hashes_stable_since_initial_backup": {
+          ".env": true
+        },
+        "aliases_match_live_catalog": true
+      },
+      {
+        "profile": "work",
+        "same_config_hash": true,
+        "only_approved_delta": true,
+        "default_correct": true,
+        "api_mode_matches_transport": true,
+        "credential_hashes_stable_since_initial_backup": {
+          ".env": true,
+          "auth.json": true
+        },
+        "aliases_match_live_catalog": true
+      }
+    ],
+    "credential_note": "All credential files matched backups immediately after the shared config repair (per-home checks above). During later normal runtime/picker checks root auth.json hash changed; background keepalive journal explicitly records auth.json update at 17:45:24. Full latest root auth metadata mutation is not attributed exhaustively. No auth restoration/rotation/removal was performed by the config repair. All .env hashes and every named-profile auth.json hash still match. Do not claim the root auth file remained byte-identical throughout the whole session."
+  }
+}
