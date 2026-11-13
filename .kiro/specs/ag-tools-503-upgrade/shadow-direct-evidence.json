@@ -1,0 +1,21 @@
+{
+  "pool_enabled": false,
+  "change_authorized": true,
+  "proxy_entries_and_bindings_preserved": true,
+  "gemini": {
+    "http": 403,
+    "code": "account_forbidden",
+    "type": "permission_error",
+    "tos_violation": true,
+    "network_error": false,
+    "generated": false
+  },
+  "sonnet": {
+    "http": 503,
+    "code": "all_accounts_limited",
+    "type": "rate_limit_error",
+    "network_error": false,
+    "generated": false
+  },
+  "interpretation": "Direct egress removed the separate network failure; upstream ban confirmed. Sonnet after Gemini ban mark sees pool exhausted. No generation success."
+}

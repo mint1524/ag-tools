@@ -1,0 +1,33 @@
+{
+  "tag": "20261113T113808Z",
+  "snapshot": "ag_tools_backup_20261113T113808Z",
+  "restore": "ag_tools_restore_20261113T113808Z",
+  "archive": "/home/gosha/backups/ag-tools/ag_tools_data-20261113T113808Z.tar.gz",
+  "sha256": "07e999d8bbe0ccc51ade4c0da6c14bc503b18f4de095b86361af8c6d2be611be",
+  "mode": "0o600",
+  "bytes": 64703214,
+  "backup": {
+    "source_json_stable": true,
+    "snapshot_json_equal": true,
+    "json_count": 8,
+    "indexed_accounts": 1,
+    "sqlite": {
+      "security.db": "ok",
+      "proxy_logs.db": "ok",
+      "user_tokens.db": "ok",
+      "token_stats.db": "ok"
+    }
+  },
+  "restore_proof": {
+    "all_restored_file_hashes_match": true,
+    "json_valid": true,
+    "sqlite": {
+      "security.db": "ok",
+      "proxy_logs.db": "ok",
+      "user_tokens.db": "ok",
+      "token_stats.db": "ok"
+    }
+  },
+  "cold_writer_stopped": true,
+  "pool_disabled_after_archive": true
+}

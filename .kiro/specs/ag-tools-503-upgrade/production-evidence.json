@@ -1,0 +1,84 @@
+{
+  "service": "sidequests-agtools-a1xtnr",
+  "image": "docker.io/lbjlaq/antigravity-manager:v5.0.3@sha256:a10cc6e4580da081b84c86bdd715bd48e7867ad859d8adeecedf266203b70d51",
+  "container_image_id": "sha256:a10cc6e4580da081b84c86bdd715bd48e7867ad859d8adeecedf266203b70d51",
+  "running_containers": 1,
+  "scope": {
+    "mounts_preserved": true,
+    "env_preserved": true,
+    "networks_preserved": true,
+    "replicas": true
+  },
+  "health": {
+    "status": "ok",
+    "version": "5.0.3"
+  },
+  "ui_http": 200,
+  "assets": {
+    "./assets/index-fAzjk3oT.js": 200,
+    "./assets/index-CiWAoELL.css": 200
+  },
+  "models_http": 200,
+  "models_count": 14,
+  "model_ids": [
+    "claude-opus-4-6",
+    "claude-opus-4-6-thinking",
+    "claude-sonnet-4-6",
+    "gemini-3.1-flash-image",
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
+    "gemini-3.8-flash",
+    "gemini-3.8-flash-high",
+    "gemini-3.8-flash-low",
+    "gemini-3.8-flash-medium",
+    "gemini-3.8-flash-tiered",
+    "gpt-oss-120b",
+    "gpt-oss-120b-medium",
+    "internal-background-task"
+  ],
+  "anonymous_models_http": 401,
+  "data": {
+    "account_identity_preserved": true,
+    "indexed_accounts": 1,
+    "refresh_token_preserved": true,
+    "auth_settings_preserved": true,
+    "pool_enabled": false,
+    "proxy_list_and_bindings_preserved": true,
+    "client_token_policy_preserved": true,
+    "client_tokens": 0,
+    "json_valid": true,
+    "sqlite": {
+      "security.db": "ok",
+      "proxy_logs.db": "ok",
+      "user_tokens.db": "ok",
+      "token_stats.db": "ok",
+      "thinking_store.db": "ok"
+    }
+  },
+  "generation_probes": [
+    {
+      "model": "gemini-3.8-flash-high",
+      "http": 403,
+      "error_code": "account_forbidden",
+      "error_type": "permission_error",
+      "tos_violation": true,
+      "network_error": false,
+      "generated": false
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "http": 503,
+      "error_code": "all_accounts_limited",
+      "error_type": "rate_limit_error",
+      "tos_violation": false,
+      "network_error": false,
+      "generated": false
+    }
+  ],
+  "log_flags": {
+    "tos_violation": true,
+    "permission_denied": true,
+    "panic": false
+  },
+  "rollback_executed": false
+}

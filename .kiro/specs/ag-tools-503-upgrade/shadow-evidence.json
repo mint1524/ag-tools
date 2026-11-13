@@ -1,0 +1,85 @@
+{
+  "name": "ag-tools-shadow-20261113",
+  "volume": "ag_tools_shadow_20261113T112619Z",
+  "image": "docker.io/lbjlaq/antigravity-manager:v5.0.3@sha256:a10cc6e4580da081b84c86bdd715bd48e7867ad859d8adeecedf266203b70d51",
+  "isolation": {
+    "loopback_only": true,
+    "production_volume_mounted": false,
+    "traefik_labels": false,
+    "restart": "no",
+    "memory_limit": 536870912,
+    "cpu_limit": 0.5
+  },
+  "first_health": {
+    "status": "ok",
+    "version": "5.0.3"
+  },
+  "first_data": {
+    "account_identity_preserved": true,
+    "indexed_accounts": 1,
+    "refresh_token_preserved": true,
+    "auth_config_preserved": true,
+    "client_token_policy_preserved": true,
+    "client_tokens": 0,
+    "json_valid": true,
+    "sqlite": {
+      "security.db": "ok",
+      "proxy_logs.db": "ok",
+      "user_tokens.db": "ok",
+      "token_stats.db": "ok",
+      "thinking_store.db": "ok"
+    }
+  },
+  "second_health": {
+    "status": "ok",
+    "version": "5.0.3"
+  },
+  "second_data": {
+    "account_identity_preserved": true,
+    "indexed_accounts": 1,
+    "refresh_token_preserved": true,
+    "auth_config_preserved": true,
+    "client_token_policy_preserved": true,
+    "client_tokens": 0,
+    "json_valid": true,
+    "sqlite": {
+      "security.db": "ok",
+      "proxy_logs.db": "ok",
+      "user_tokens.db": "ok",
+      "token_stats.db": "ok",
+      "thinking_store.db": "ok"
+    }
+  },
+  "models_http": 200,
+  "models_count": 14,
+  "model_ids": [
+    "claude-opus-4-6",
+    "claude-opus-4-6-thinking",
+    "claude-sonnet-4-6",
+    "gemini-3.1-flash-image",
+    "gemini-3.1-flash-lite",
+    "gemini-3.5-flash-lite",
+    "gemini-3.8-flash",
+    "gemini-3.8-flash-high",
+    "gemini-3.8-flash-low",
+    "gemini-3.8-flash-medium",
+    "gemini-3.8-flash-tiered",
+    "gpt-oss-120b",
+    "gpt-oss-120b-medium",
+    "internal-background-task"
+  ],
+  "anonymous_models_http": 401,
+  "ui_http": 200,
+  "assets": {
+    "./assets/index-fAzjk3oT.js": 200,
+    "./assets/index-CiWAoELL.css": 200
+  },
+  "generation": {
+    "http": 502,
+    "tos_violation": false,
+    "pool_error": false,
+    "generated": false
+  },
+  "final_state": "exited",
+  "production_spec_unchanged": true
+}
